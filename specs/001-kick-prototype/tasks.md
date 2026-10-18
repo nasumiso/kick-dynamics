@@ -145,11 +145,12 @@
 - 完了確認：`verification/independent/IV-04/` に導出資料が保存されている。
 - 結果（2026-10-18）：`verification/independent/IV-04/derivation.md` を作成。第 1 版（Codex、`gpt-6.1-sol`・推論 `low`、`6ba6f3e` 基準）を、仕様の補足（`83a79ea`）後に第 2 版（`gpt-6.1-sol`・推論 `high`、旧版を参照せずに再導出）で置き換えた。Claude Code は照合（IV-04-C）まで内容を読まない。ただし 2026-10-18 に、Claude Code が文書内の参照を grep で検索した際に `verification/` を除外し損ね、IV-03・IV-04 の導出資料の一部の行（テストケース表の一部と疑義の節の一部）が出力に含まれた。照合の際に、この露出を考慮する（詳細と対応は IV-03-C / IV-04-C で判断）。仕様の不足・疑義の指摘は、仕様の補足として別途検討する。
 
-### [ ] T1.2-01 飛翔状態と力モデルのインタフェース
+### [x] T1.2-01 飛翔状態と力モデルのインタフェース
 - 担当：Claude Code
 - 内容：各力項の ON/OFF とモデルの差し替え（定数／関数）。
 - 依存：T1.1-08
 - 完了確認：型検査が通る。05 §7 の各項に対応するインタフェースがある。
+- 結果（2026-10-18）：`src/flight/types.ts`・`forces.ts`・`src/result.ts`。力項の ON/OFF とモデル選択は `SimulationSettings` 側に置く（暫定、04 §6 に記録）。係数は定数／`(Re, S)` の関数で、非有限・負の値は `SimResult` のエラー。$S$ は暫定で $\lvert\boldsymbol\omega\rvert$ を使う（05 §7.6 は未決定）。マグヌス力・回転減衰は ON にすると `unsupported-model` を返す（T1.2-05・06 で実装）。閾値は未決定のため既定値を持たない。
 
 ### [ ] T1.2-02 固定刻みの積分器と重力のみの飛翔
 - 担当：Claude Code
