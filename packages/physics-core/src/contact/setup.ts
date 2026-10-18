@@ -1,5 +1,6 @@
 // キック入力から物理的に整合した衝突直前の状態を組み立てる（docs/05-physics-model.md §6.2）。
 import type { RigidBodyState } from '../bodies/types';
+import { validateBall, validateFoot } from '../bodies/validate';
 import { fromColumns } from '../math/mat3';
 import { fromMat3, IDENTITY_QUAT } from '../math/quat';
 import { add, addScaled, cross, dot, isFiniteVec3, length, normalize, scale, sub, UNIT_X, UNIT_Y, type Vec3 } from '../math/vec3';
@@ -45,6 +46,10 @@ export function buildImpactSetup(input: KickInput, params: ImpactGeometryParamet
   if (!(Number.isFinite(epsPhi) && epsPhi >= 0 && epsPhi < 1)) {
     return fail('invalid-parameter', `roll reference threshold ε_φ must satisfy 0 ≤ ε_φ < 1 (${epsPhi})`);
   }
+  const ballValid = validateBall(params.ball);
+  if (!ballValid.ok) return ballValid;
+  const footValid = validateFoot(params.foot);
+  if (!footValid.ok) return footValid;
   const [sx, sy] = input.footContactLocation;
   const finite = isFiniteVec3(input.contactDirection) && Number.isFinite(input.footRollAboutNormal) && Number.isFinite(sx) && Number.isFinite(sy)
     && isFiniteVec3(input.footContactPointVelocity) && isFiniteVec3(input.footAngularVelocity);

@@ -2,6 +2,7 @@
 // Newton の反発係数（法線）と Coulomb 摩擦（接線）の代数解。
 import { angularMomentum, ballInertia, inertiaWorld, kineticEnergy, linearMomentum, type MassProperties } from '../bodies/dynamics';
 import type { BallParams, RigidBodyState } from '../bodies/types';
+import { validateBall, validateFoot } from '../bodies/validate';
 import { mulVec, solve } from '../math/mat3';
 import { add, addScaled, cross, dot, length, normalize, scale, sub, type Vec3 } from '../math/vec3';
 import { fail, ok, type SimResult } from '../result';
@@ -48,6 +49,10 @@ function validate(params: ContactCoefficients): SimResult<void> {
  * 想定内の失敗（係数の範囲外、解けない構成）は SimResult のエラーで返す（04 §6）。
  */
 export function solveImpact(setup: ImpactSetup, params: ContactParameters, model: FootModel): SimResult<ImpactResult> {
+  if (model === 'finite-mass') {
+    const footValid = validateFoot(params.foot);
+    if (!footValid.ok) return footValid;
+  }
   const footMassProperties: MassProperties | null = model === 'kinematic-wall'
     ? null
     : { mass: params.foot.mass, inertiaWorld: inertiaWorld(params.foot.inertiaBody, setup.foot.orientation) };
@@ -63,6 +68,8 @@ export function solveContact(
 ): SimResult<ImpactResult> {
   const valid = validate(params);
   if (!valid.ok) return valid;
+  const ballValid = validateBall(ballParams);
+  if (!ballValid.ok) return ballValid;
   const n = normalize(setup.contactNormal);
   const ballArm = sub(setup.contactPoint, setup.ball.position);
   const footArm = sub(setup.contactPoint, setup.foot.position);
