@@ -2,7 +2,7 @@
 // Newton の反発係数（法線）と Coulomb 摩擦（接線）の代数解。
 import { angularMomentum, ballInertia, inertiaWorld, kineticEnergy, linearMomentum, type MassProperties } from '../bodies/dynamics';
 import type { BallParams, RigidBodyState } from '../bodies/types';
-import { validateBall, validateFoot } from '../bodies/validate';
+import { validateBall, validateFoot, validateMassProperties } from '../bodies/validate';
 import { mulVec, solve } from '../math/mat3';
 import { add, addScaled, cross, dot, isFiniteVec3, length, normalize, scale, sub, type Vec3 } from '../math/vec3';
 import { fail, ok, type SimResult } from '../result';
@@ -77,7 +77,12 @@ export function solveContact(
   if (!valid.ok) return valid;
   const ballValid = validateBall(ballParams);
   if (!ballValid.ok) return ballValid;
+  if (footMassProperties !== null) {
+    const otherValid = validateMassProperties(footMassProperties.mass, footMassProperties.inertiaWorld);
+    if (!otherValid.ok) return otherValid;
+  }
   if (!isFiniteSetup(setup)) return fail('invalid-input', 'impact setup contains a non-finite value');
+  if (!(length(setup.contactNormal) > 0)) return fail('invalid-input', 'contact normal has zero length');
   const n = normalize(setup.contactNormal);
   const ballArm = sub(setup.contactPoint, setup.ball.position);
   const footArm = sub(setup.contactPoint, setup.foot.position);

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { boxInertia } from '../../src/bodies/dynamics';
 import { isSymmetricPositiveDefinite } from '../../src/bodies/validate';
 import { buildImpactSetup } from '../../src/contact/setup';
-import { solveImpact } from '../../src/contact/solver';
+import { solveContact, solveImpact } from '../../src/contact/solver';
 import { solveGroundBounce } from '../../src/ground/bounce';
 import { IDENTITY_QUAT } from '../../src/math/quat';
 import { ball, contactParams, foot, makeSetup } from '../contact/fixtures';
@@ -69,5 +69,21 @@ describe('validation of extreme but finite parameters (PR #7 review)', () => {
   it('rejects a ball whose moment of inertia overflows', () => {
     const r = solveImpact(setup, { ...contactParams(0.5, 0.3), ball: { ...ball, mass: 1e300, radius: 1e10 } }, 'kinematic-wall');
     expect(!r.ok && r.error.code).toBe('invalid-parameter');
+  });
+});
+
+describe('solveContact input validation (PR #7 review)', () => {
+  const coefficients = { restitution: 0.5, friction: 0.3, tangentialSpeedThreshold: 1e-9 };
+
+  it('rejects invalid mass properties of a finite-mass counterpart', () => {
+    for (const [mass, inertiaWorld] of [[0, foot.inertiaBody], [1.2, [0, 0, 0, 0, 0, 0, 0, 0, 0]]] as const) {
+      const r = solveContact(setup, ball, { mass, inertiaWorld }, coefficients);
+      expect(!r.ok && r.error.code).toBe('invalid-parameter');
+    }
+  });
+
+  it('rejects a zero-length contact normal as invalid-input', () => {
+    const r = solveContact({ ...setup, contactNormal: [0, 0, 0] }, ball, null, coefficients);
+    expect(!r.ok && r.error.code).toBe('invalid-input');
   });
 });

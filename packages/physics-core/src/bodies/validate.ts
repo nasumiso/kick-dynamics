@@ -42,6 +42,15 @@ export function isSymmetricPositiveDefinite(m: Mat3): boolean {
 }
 
 /** m_A > 0（有限）、物体座標の慣性テンソルが対称正定値、直方体の寸法が正（いずれも有限）。 */
+/** 有限質量の相手（ワールド座標の質量と慣性テンソル）：質量が正で逆数が有限、慣性テンソルが対称正定値で逆行列が有限。 */
+export function validateMassProperties(mass: number, inertiaWorld: Mat3): SimResult<void> {
+  if (!invertible(mass)) return fail('invalid-parameter', `mass must be finite and positive with a finite inverse (${mass})`);
+  if (!isSymmetricPositiveDefinite(inertiaWorld)) {
+    return fail('invalid-parameter', 'inertia tensor must be finite, symmetric and positive definite with a finite inverse');
+  }
+  return ok(undefined);
+}
+
 export function validateFoot(foot: FootParams): SimResult<void> {
   const mass = positive('foot mass', foot.mass);
   if (!mass.ok) return mass;

@@ -121,6 +121,11 @@ export function simulateFlightRun(
         const rest = rk4Step(handled.value, remaining, ball, environment, settings);
         if (!rest.ok) return rest;
         next = rest.value;
+        if (heightAboveContact(next, ball) < 0 && next.linearVelocity[1] <= 0) {
+          // 処理後の残り時間のうちに再び地面を通過した（ステップより短い反発、05 §7.7）。最終ステップでも検出するため、
+          // 次のステップの開始を待たずにここでも判定する。転がりへの移行は T1.3-08。
+          return fail('unsupported-model', `the ball went below the ground within the remaining ${remaining} s after a ground contact at t = ${time} s (rolling transition is T1.3-08)`);
+        }
       } else {
         // 接地がステップの終了時刻と一致：処理後の状態がそのまま時刻 t_{k+1} の状態。
         state = handled.value;

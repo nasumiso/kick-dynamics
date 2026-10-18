@@ -131,3 +131,15 @@ describe('rebound shorter than the remaining step (PR #7 review)', () => {
     expect(!r.ok && r.error.code).toBe('unsupported-model');
   });
 });
+
+describe('rebound shorter than the remaining time of the final step (PR #7 review)', () => {
+  it('returns unsupported-model when the ball re-enters the ground after a contact in the last step', () => {
+    // Δt = maxTime = 0.005 s、初期高さ 1 mm、v_y = −1、e_g = 0.001：最終（唯一の）ステップ内で接地し、反発後の残り時間で再び地面を通過する。
+    const settings: FlightSimulationSettings = {
+      timeStep: 0.005, maxTime: 0.005, eventTimeTolerance: 1e-9, forces: { ...allOff, gravity: true }, thresholds,
+    };
+    const start: RigidBodyState = { position: [0, ball.radius + 0.001, 0], orientation: IDENTITY_QUAT, linearVelocity: [0, -1, 0], angularVelocity: [0, 0, 0] };
+    const r = simulateFlight(start, ball, environment, settings, groundBounceHandler(ball, coefficients(0.001, 0)));
+    expect(!r.ok && r.error.code).toBe('unsupported-model');
+  });
+});
