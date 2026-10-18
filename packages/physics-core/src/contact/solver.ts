@@ -1,12 +1,18 @@
 // 瞬間点接触のソルバー（docs/05-physics-model.md §6.3〜6.9）。
 // Newton の反発係数（法線）と Coulomb 摩擦（接線）の代数解。
-import { ballInertia, inertiaWorld, kineticEnergy } from '../bodies/dynamics';
+import { angularMomentum, ballInertia, inertiaWorld, kineticEnergy, linearMomentum, type MassProperties } from '../bodies/dynamics';
 import type { RigidBodyState } from '../bodies/types';
 import { mulVec, solve } from '../math/mat3';
 import { add, addScaled, cross, dot, length, normalize, scale, sub, type Vec3 } from '../math/vec3';
 import { fail, ok, type SimResult } from '../result';
 import { contactMatrix, finiteInertia, KINEMATIC_INERTIA, type ImpactInertia } from './k-matrix';
 import type { ContactParameters, FootModel, ImpactRegime, ImpactResult, ImpactSetup, ImpactWarning } from './types';
+
+/**
+ * 警告の判定に使う相対的な幅（05 §10.2 P-28、仮置き）。ΔT は ½|J|(|u⁻| + |u⁺|) に対して、
+ * 滑り方向の反転は |u⁻| に対して、この比率を超えたときだけ警告する（丸め誤差で警告しないため）。
+ */
+export const DIAGNOSTIC_RELATIVE_TOLERANCE = 1e-9;
 
 /** 接触点の速度 v + ω × r（05 §6.3）。 */
 export function pointVelocity(state: RigidBodyState, arm: Vec3): Vec3 {
@@ -41,11 +47,18 @@ export function solveImpact(setup: ImpactSetup, params: ContactParameters, model
   const ballArm = sub(setup.contactPoint, setup.ball.position);
   const footArm = sub(setup.contactPoint, setup.foot.position);
   const ballBody = finiteInertia(params.ball.mass, ballInertia(params.ball));
-  const footBody = model === 'kinematic-wall'
-    ? KINEMATIC_INERTIA
-    : finiteInertia(params.foot.mass, inertiaWorld(params.foot.inertiaBody, setup.foot.orientation));
-
-  const ballMassProperties = { mass: params.ball.mass, inertiaWorld: ballInertia(params.ball) };
+  const ballMassProperties: MassProperties = { mass: params.ball.mass, inertiaWorld: ballInertia(params.ball) };
+  const footMassProperties: MassProperties | null = model === 'kinematic-wall'
+    ? null
+    : { mass: params.foot.mass, inertiaWorld: inertiaWorld(params.foot.inertiaBody, setup.foot.orientation) };
+  const footBody = footMassProperties === null ? KINEMATIC_INERTIA : finiteInertia(footMassProperties.mass, footMassProperties.inertiaWorld);
+  const momenta = (ballState: RigidBodyState, footState: RigidBodyState) => footMassProperties === null ? null : {
+    momentum: add(linearMomentum(ballMassProperties, ballState), linearMomentum(footMassProperties, footState)),
+    angularMomentum: add(
+      angularMomentum(ballMassProperties, ballState, setup.contactPoint), angularMomentum(footMassProperties, footState, setup.contactPoint),
+    ),
+  };
+  const momentaBefore = momenta(setup.ball, setup.foot);
   const ballEnergyBefore = kineticEnergy(ballMassProperties, setup.ball);
   const uBefore = sub(pointVelocity(setup.ball, ballArm), pointVelocity(setup.foot, footArm));
   const unBefore = dot(uBefore, n);
@@ -55,7 +68,10 @@ export function solveImpact(setup: ImpactSetup, params: ContactParameters, model
       impulse: [0, 0, 0], regime: 'separating', ballAfter: setup.ball, footAfter: setup.foot,
       diagnostics: {
         relativeVelocityBefore: uBefore, relativeVelocityAfter: uBefore, kineticEnergyChange: 0,
-        ballKineticEnergyBefore: ballEnergyBefore, ballKineticEnergyAfter: ballEnergyBefore, slidingDirection: null, warnings: [],
+        ballKineticEnergyBefore: ballEnergyBefore, ballKineticEnergyAfter: ballEnergyBefore,
+        systemMomentum: momentaBefore && { before: momentaBefore.momentum, after: momentaBefore.momentum },
+        systemAngularMomentum: momentaBefore && { before: momentaBefore.angularMomentum, after: momentaBefore.angularMomentum },
+        slidingDirection: null, warnings: [],
       },
     });
   }
@@ -109,14 +125,29 @@ export function solveImpact(setup: ImpactSetup, params: ContactParameters, model
   const ballAfter = applyImpulse(setup.ball, ballBody, ballArm, impulse);
   const footAfter = applyImpulse(setup.foot, footBody, footArm, scale(impulse, -1));
   const uAfter = sub(pointVelocity(ballAfter, ballArm), pointVelocity(footAfter, footArm));
+  const momentaAfter = momenta(ballAfter, footAfter);
+
+  // 5. 診断：エネルギーの増加と滑り方向の反転は、結果を補正せずに警告する（05 §6.8、§6.11）。
+  const kineticEnergyChange = 0.5 * dot(impulse, add(uBefore, uAfter));
+  const energyScale = 0.5 * length(impulse) * (length(uBefore) + length(uAfter));
+  const footTranslatesOnly = length(setup.foot.angularVelocity) === 0;
+  if ((model === 'finite-mass' || footTranslatesOnly) && kineticEnergyChange > DIAGNOSTIC_RELATIVE_TOLERANCE * energyScale) {
+    warnings.push('energy-increase');
+  }
+  if (slidingDirection !== null) {
+    const utAfter = sub(uAfter, scale(n, dot(uAfter, n)));
+    if (dot(utAfter, slidingDirection) < -DIAGNOSTIC_RELATIVE_TOLERANCE * length(uBefore)) warnings.push('slip-reversal');
+  }
   return ok({
     impulse, regime, ballAfter, footAfter,
     diagnostics: {
       relativeVelocityBefore: uBefore,
       relativeVelocityAfter: uAfter,
-      kineticEnergyChange: 0.5 * dot(impulse, add(uBefore, uAfter)),
+      kineticEnergyChange,
       ballKineticEnergyBefore: ballEnergyBefore,
       ballKineticEnergyAfter: kineticEnergy(ballMassProperties, ballAfter),
+      systemMomentum: momentaBefore && momentaAfter && { before: momentaBefore.momentum, after: momentaAfter.momentum },
+      systemAngularMomentum: momentaBefore && momentaAfter && { before: momentaBefore.angularMomentum, after: momentaAfter.angularMomentum },
       slidingDirection,
       warnings,
     },

@@ -51,6 +51,12 @@ export interface ImpactDiagnostics {
   /** 地上系でのボールの運動エネルギー（並進＋回転）の衝突前後 J */
   readonly ballKineticEnergyBefore: number;
   readonly ballKineticEnergyAfter: number;
+  /**
+   * 足とボールの全運動量と、接触点 p（固定点）まわりの全角運動量の衝突前後（05 §6.11）。
+   * 無限質量モデルでは定義しないため null。
+   */
+  readonly systemMomentum: { readonly before: Vec3; readonly after: Vec3 } | null;
+  readonly systemAngularMomentum: { readonly before: Vec3; readonly after: Vec3 } | null;
   /** 滑りの解で使った滑り方向 t̂（固着・離反、μ = 0 の滑りでは null） */
   readonly slidingDirection: Vec3 | null;
   readonly warnings: readonly ImpactWarning[];
@@ -59,5 +65,8 @@ export interface ImpactDiagnostics {
 /**
  * 衝突の警告（05 §6.8）。結果は返し、補正はしない。
  * - tangent-direction-approximated：|u_t⁻| ≤ ε_t なのに固着解が摩擦円錐を外れたため、t̂ = −J*_t/|J*_t| を近似として使った
+ * - energy-increase：ΔT > 0（有限質量モデル、または無限質量モデルで ω_A = 0 の場合だけ判定、05 §6.11）
+ * - slip-reversal：滑りの解で u_t⁺ · t̂ < 0（05 §6.8 の手順 5）
+ * 判定には丸め誤差を除くための相対的な幅（P-28、仮置き）を使う。
  */
-export type ImpactWarning = 'tangent-direction-approximated';
+export type ImpactWarning = 'tangent-direction-approximated' | 'energy-increase' | 'slip-reversal';

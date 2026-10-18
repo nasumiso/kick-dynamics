@@ -47,15 +47,16 @@ const phase1Table: ParameterSet = {
   torqueCoefficient: undetermined('P-22', 'C_M', '—', 'OQ-08'),
   zeroSpeedThreshold: { id: 'P-23', symbol: 'ε_v', unit: 'm/s', value: 1e-6, confidence: 'provisional', source: '力の大きさの見積もり（T1.2-05）' },
   zeroSpinThreshold: { id: 'P-24', symbol: 'ε_ω', unit: 'rad/s', value: 1e-6, confidence: 'provisional', source: '正規化のゼロ除算の回避（T1.2-06）' },
-  tangentialSpeedThreshold: undetermined('P-25', 'ε_t', 'm/s', 'M1.3'),
+  tangentialSpeedThreshold: { id: 'P-25', symbol: 'ε_t', unit: 'm/s', value: 1e-9, confidence: 'provisional', source: '丸め誤差の見積もり（T1.3-03）' },
   rollReferenceThreshold: undetermined('P-26', 'ε_φ', '—', 'M1.3'),
   verticalLaunchThreshold: { id: 'P-27', symbol: 'ε_vert', unit: '—', value: 1e-6, confidence: 'provisional', source: 'スピン成分の定義不能の判定（T1.2-09）' },
+  diagnosticRelativeTolerance: { id: 'P-28', symbol: 'τ_diag', unit: '—', value: 1e-9, confidence: 'provisional', source: '衝突診断の警告の判定幅（T1.3-05）' },
 };
 
 describe('ParameterSet', () => {
   it('covers every parameter ID of 05 §10.2 exactly once', () => {
     const ids = Object.values(phase1Table).map((entry) => entry.id).sort();
-    const expected = Array.from({ length: 27 }, (_, i) => `P-${String(i + 1).padStart(2, '0')}`);
+    const expected = Array.from({ length: 28 }, (_, i) => `P-${String(i + 1).padStart(2, '0')}`);
     expect(ids).toEqual(expected);
   });
 

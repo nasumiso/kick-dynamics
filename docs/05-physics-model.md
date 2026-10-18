@@ -452,6 +452,7 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 | P-26 | $\varepsilon_\phi$ | $\phi$ の基準軸を切り替える閾値（$\hat{\mathbf y}$ の射影の長さに対する、§6.2） | — | 未決定 | 未決定 | 数値上の閾値。M1.3 |
 | P-24 | $\varepsilon_\omega$ | 無回転の判定閾値（$\lvert\boldsymbol\omega\rvert$ に対する、§7.5 (c)） | rad/s | $10^{-6}$ | 仮置き | 数値上の閾値、$\varepsilon_\omega > 0$（T1.2-06）。根拠：$\hat{\boldsymbol\omega}$ の正規化でのゼロ除算を避ける目的だけの値。$10^{-6}$ rad/s は約 $10^{-5}$ rpm で、表示・測定値に影響しない。定数 $C_M$ では閾値の境界でトルクが不連続に 0 になる（§7.4 の定数 $C_L$ と同じ性質）。物理的な根拠はない |
 | P-27 | $\varepsilon_{\text{vert}}$ | スピン成分を定義不能とする閾値（$\lvert\hat{\mathbf v}\times\hat{\mathbf y}\rvert$ に対する、§9） | — | $10^{-6}$ | 仮置き | 数値上の閾値（T1.2-09）。根拠：$\lvert\hat{\mathbf v}\times\hat{\mathbf y}\rvert = \cos\theta$ で、$10^{-6}$ は打ち出し角が鉛直から約 $6\times10^{-5}$ 度以内。基底 $\mathbf e_2$ の正規化の分母が丸め誤差の水準まで小さくなることを避ける目的だけの値。物理的な根拠はない。§9 に閾値の記載がなかったため追加した（追加と値の仮置きを承認、2026-10-18） |
+| P-28 | $\tau_{\text{diag}}$ | 衝突診断の警告の相対的な判定幅（§6.8 の手順 5、§6.11） | — | $10^{-9}$ | 仮置き | 数値上の閾値（T1.3-05、`DIAGNOSTIC_RELATIVE_TOLERANCE`）。エネルギー増加は $\Delta T > \tau_{\text{diag}} \cdot \tfrac12\lvert\mathbf J\rvert(\lvert\mathbf u^-\rvert + \lvert\mathbf u^+\rvert)$、滑り方向の反転は $\mathbf u_t^+\cdot\hat{\mathbf t} < -\tau_{\text{diag}}\lvert\mathbf u^-\rvert$ のとき警告する。根拠：$\Delta T$ の各項の大きさに対する丸め誤差は機械イプシロンの数十倍程度で、それより十分大きく、物理的に意味のある増加（探索で見つかった例は $10^{-2}$ J 以上）より十分小さい。物理的な根拠はない |
 
 - 値を変更したら、確からしさ・出典・適用条件を同時に更新する。
 - UI のデフォルト値として「仮置き」の値を使う場合も、本表に値と「仮置き」の区分を記録する。
