@@ -102,7 +102,7 @@ describe('VER-F12 ground event boundary conditions', () => {
       expect(contacts).toHaveLength(1);
       expect(contacts[0]!.time).toBe(0);
       expect(contacts[0]!.atStart).toBe(true);
-      expect(r.events).toEqual([{ type: 'ground-contact', time: 0, atStart: true, bisectionIterations: 0, projectionEnergy: 0, response: 'terminate' }]);
+      expect(r.events).toEqual([{ type: 'ground-contact', time: 0, sampleIndex: 0, atStart: true, bisectionIterations: 0, projectionEnergy: 0, response: 'terminate' }]);
     }
   });
 
@@ -128,7 +128,7 @@ describe('VER-F12 ground event boundary conditions', () => {
     });
     expect(groundContacts(r)).toHaveLength(expected.length);
     expect(expected).toHaveLength(2);
-    expect(r.events.at(-1)).toEqual({ type: 'max-time', time: 250 * dt });
+    expect(r.events.at(-1)).toEqual({ type: 'max-time', time: 250 * dt, sampleIndex: r.samples.length - 1 });
     // 時刻の格子：接地の時刻を除いたサンプルの時刻は k Δt（k = 0…250）と完全に一致する。
     const contactTimes = new Set(contacts.map((c) => c.time));
     const gridTimes = r.samples.map((s) => s.time).filter((t) => !contactTimes.has(t));
@@ -165,7 +165,7 @@ describe('VER-F12 ground event boundary conditions', () => {
 describe('ground events: other cases', () => {
   it('ends with a max-time event when the ball never reaches the ground', () => {
     const r = simulateFlightRun(body([0, 1, 0], [5, 0, 0]), ball, environment, { ...settings(0.01, 0.5), forces: allOff });
-    expect(r.ok && r.value.events).toEqual([{ type: 'max-time', time: 0.5 }]);
+    expect(r.ok && r.value.events).toEqual([{ type: 'max-time', time: 0.5, sampleIndex: 50 }]);
     expect(r.ok && r.value.samples).toHaveLength(51);
   });
 

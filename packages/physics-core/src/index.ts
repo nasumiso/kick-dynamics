@@ -31,3 +31,5 @@ export { computeForces } from './flight/forces';
 export { integrateFixedSteps, rk4Step } from './flight/integrator';
 export { simulateFlightRun, terminateOnGroundContact } from './flight/ground-events';
 export type { FlightRun } from './flight/ground-events';
+export { simulateFlight, stateAt, toTrajectory } from './flight/trajectory';
+export type { Trajectory } from './flight/trajectory';

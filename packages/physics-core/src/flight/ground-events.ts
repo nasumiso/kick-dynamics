@@ -52,12 +52,14 @@ export function simulateFlightRun(
 
   /** 接地を処理する。terminate なら null、continue なら処理後の状態を返す。 */
   function contact(time: number, raw: RigidBodyState, atStart: boolean, bisectionIterations: number): SimResult<RigidBodyState | null> {
+    // 処理の前の状態（raw）は、呼び出し側で直前のサンプルとして追加済み。
+    const sampleIndex = samples.length - 1;
     const projected: RigidBodyState = { ...raw, position: [raw.position[0], GROUND_HEIGHT + ball.radius, raw.position[2]] };
     const projectionEnergy = ball.mass * environment.gravity * (projected.position[1] - raw.position[1]);
     const handled = onGroundContact({ time, state: projected, atStart } satisfies GroundContact);
     if (!handled.ok) return handled;
     const response: GroundContactResponse = handled.value;
-    events.push({ type: 'ground-contact', time, atStart, bisectionIterations, projectionEnergy, response: response.kind });
+    events.push({ type: 'ground-contact', time, sampleIndex, atStart, bisectionIterations, projectionEnergy, response: response.kind });
     if (response.kind === 'terminate') return ok(null);
     const after = response.state;
     if (heightAboveContact(after, ball) <= 0 && after.linearVelocity[1] <= 0) {
@@ -121,7 +123,7 @@ export function simulateFlightRun(
     samples.push({ time: end, state: next });
     state = next;
   }
-  events.push({ type: 'max-time', time: steps * dt });
+  events.push({ type: 'max-time', time: steps * dt, sampleIndex: samples.length - 1 });
   return ok({ samples, events });
 }
 

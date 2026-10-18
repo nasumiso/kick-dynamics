@@ -82,11 +82,15 @@ export type GroundContactResponse =
  */
 export type GroundContactHandler = (contact: GroundContact) => SimResult<GroundContactResponse>;
 
-/** 飛翔中のイベント。 */
+/**
+ * 飛翔中のイベント。sampleIndex は、イベントの時刻の状態を表すサンプルの添字
+ * （接地では処理の前の状態。処理の後に飛翔を続ける場合は sampleIndex + 1 が処理の後の状態）。
+ */
 export type FlightEvent =
   | {
     readonly type: 'ground-contact';
     readonly time: number;
+    readonly sampleIndex: number;
     readonly atStart: boolean;
     /** 二分法の反復回数（atStart のときは 0） */
     readonly bisectionIterations: number;
@@ -94,7 +98,7 @@ export type FlightEvent =
     readonly projectionEnergy: number;
     readonly response: GroundContactResponse['kind'];
   }
-  | { readonly type: 'max-time'; readonly time: number };
+  | { readonly type: 'max-time'; readonly time: number; readonly sampleIndex: number };
 
 /** 時刻つきの状態。 */
 export interface FlightSample {
