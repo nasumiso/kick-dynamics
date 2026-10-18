@@ -447,7 +447,7 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 | P-23 | $\varepsilon_v$ | ゼロ速度の判定閾値（$\lvert\mathbf v_r\rvert$ に対する） | m/s | $10^{-6}$ | 仮置き | 数値上の閾値、$\varepsilon_v > 0$（T1.2-05）。根拠：抗力は $\lvert\mathbf v_r\rvert^2$ に比例し 0 で連続なので、閾値以下で 0 とすることによる力の差は $\tfrac12\rho A C_D\varepsilon_v^2$（$C_D \le 1$ で約 $2\times10^{-14}$ N）で無視できる。$S$ の分母が 0 に近づくことを避ける目的だけの値。物理的な根拠はない |
 | P-25 | $\varepsilon_t$ | 接線速度がほぼ 0 とみなす閾値（$\lvert\mathbf u_t^-\rvert$ に対する、§6.8） | m/s | 未決定 | 未決定 | 数値上の閾値。M1.3 |
 | P-26 | $\varepsilon_\phi$ | $\phi$ の基準軸を切り替える閾値（$\hat{\mathbf y}$ の射影の長さに対する、§6.2） | — | 未決定 | 未決定 | 数値上の閾値。M1.3 |
-| P-24 | $\varepsilon_\omega$ | 無回転の判定閾値（$\lvert\boldsymbol\omega\rvert$ に対する、§7.5 (c)） | rad/s | 未決定 | 未決定 | 数値上の閾値、$\varepsilon_\omega > 0$。M1.2 |
+| P-24 | $\varepsilon_\omega$ | 無回転の判定閾値（$\lvert\boldsymbol\omega\rvert$ に対する、§7.5 (c)） | rad/s | $10^{-6}$ | 仮置き | 数値上の閾値、$\varepsilon_\omega > 0$（T1.2-06）。根拠：$\hat{\boldsymbol\omega}$ の正規化でのゼロ除算を避ける目的だけの値。$10^{-6}$ rad/s は約 $10^{-5}$ rpm で、表示・測定値に影響しない。定数 $C_M$ では閾値の境界でトルクが不連続に 0 になる（§7.4 の定数 $C_L$ と同じ性質）。物理的な根拠はない |
 
 - 値を変更したら、確からしさ・出典・適用条件を同時に更新する。
 - UI のデフォルト値として「仮置き」の値を使う場合も、本表に値と「仮置き」の区分を記録する。

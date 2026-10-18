@@ -1,6 +1,6 @@
 # 001 キックプロトタイプ（Phase 1）タスク
 
-> 状態：Draft（2026-10-18）。T0 は T0-08 を除き完了。M1.1 は完了。M1.2 は T1.2-05 まで完了。
+> 状態：Draft（2026-10-18）。T0 は T0-08 を除き完了。M1.1 は完了。M1.2 は T1.2-06 まで完了。
 > 計画は [plan.md](plan.md)、受入条件は [spec.md](spec.md)、検証項目と独立検証の手順は [06-validation.md](../../docs/06-validation.md) を参照してください。
 
 ## 使い方
@@ -176,10 +176,11 @@
 - 完了確認：VER-F05、VER-F06、VER-F07、VER-F10 のテストが合格する。
 - 結果（2026-10-18）：`src/flight/forces.ts` の `magnusForce`、`test/flight/magnus.test.ts`。VER-F05（円運動の厳密解に位置が 4 次で収束、速さの誤差は 4 次以上で減少）、F06（$\boldsymbol\omega = \mathbf 0$、$\boldsymbol\omega \parallel \mathbf v_r$（丸め誤差を含む）、$\lvert\mathbf v_r\rvert \le \varepsilon_v$、風速との相対速度で 0。係数を評価しない）、F07（重力＋抗力＋マグヌス、定数 $C_L$ と $S$ に比例する $C_L$ の 2 通り、全ステップで TOL-A）、F10（符号）に合格。**仮置き**：$\varepsilon = 10^{-9}$ m/s²（P-21）、$\varepsilon_v = 10^{-6}$ m/s（P-23）。根拠は丸め誤差と力の大きさの見積もりで、05 §10.2 に記録した。**暫定**：$C_L$ の関数には $\lvert\boldsymbol\omega\rvert$ による $S$ を渡す（$\lvert\boldsymbol\omega_\perp\rvert$ を使うかは未決定、OQ-07）。負の $C_L$ は拒否しない（未決定、05 §7.4）。VER-F06 のうち §7.5 (c) の $\lvert\boldsymbol\omega\rvert \le \varepsilon_\omega$ の場合は、回転減衰を実装する T1.2-06 で確かめる。$C_L$・$C_D$ はテスト用の任意の値。
 
-### [ ] T1.2-06 回転減衰と姿勢の積分
+### [x] T1.2-06 回転減衰と姿勢の積分
 - 担当：Claude Code
 - 依存：T1.2-02
 - 完了確認：VER-F09、VER-F11、VER-F13 のテストが合格する。長時間の積分で四元数のノルムが保たれる（VER-M03 の条件）。
+- 結果（2026-10-18）：`src/flight/forces.ts` に 05 §7.5 (b)（`linearSpinDecayTorque`）と (c)（`aeroTorque`）を追加。姿勢の積分は T1.2-02 の RK4 のまま。`test/flight/rotation.test.ts` で VER-F09（重力＋抗力＋マグヌスで ω が一定）、F11（厳密解に 4 次で収束、回転の向きが ADR-0005 の規約と一致）、F13（4 次で収束、向きは全ステップで TOL-A）、VER-M03 のノルムの保持（20000 ステップで TOL-A）、VER-F06 の (c) の縮退に合格。(b) は $\lvert\mathbf v_r\rvert$ によらず働く。$c_\omega$・$C_M$ の負・非有限の値は `SimResult` のエラー。**仮置き**：$\varepsilon_\omega = 10^{-6}$ rad/s（P-24、根拠は 05 §10.2）。キックの計算で (a)〜(c) のどれを使うか・係数の値は未決定（OQ-08）。$c_\omega$・$C_M$ はテスト用の任意の値。
 
 ### [ ] T1.2-07 地面交差イベントの検出
 - 担当：Claude Code

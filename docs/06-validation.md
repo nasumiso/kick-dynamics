@@ -78,7 +78,9 @@ VER に合格しても、モデルが実物を再現していることにはな�
 - 自動テストは、丸め誤差の影響を避けて Δt = 0.04〜0.005 s で次数を判定する（TOL-B の判定幅は仮置き）。
 - マグヌス力・回転減衰を含む条件での収束は、それぞれ VER-F05・F11・F13 で確かめる。
 
-**縮退判定の閾値**：VER-F02〜F13 のテストは、05 §10.2 の仮置きの値（P-21 $\varepsilon$、P-23 $\varepsilon_v$、P-24 $\varepsilon_\omega$）を使う（`packages/physics-core/test/flight/fixtures.ts`）。VER-F06 は、$\boldsymbol\omega \parallel \mathbf v_r$ で外積に丸め誤差が残る場合も $\varepsilon$ によって $\mathbf F_M = \mathbf 0$ になることを含めて確かめる（T1.2-05）。
+**縮退判定の閾値**：VER-F02〜F13 のテストは、05 §10.2 の仮置きの値（P-21 $\varepsilon$、P-23 $\varepsilon_v$、P-24 $\varepsilon_\omega$）を使う（`packages/physics-core/test/flight/fixtures.ts`）。VER-F06 は、$\boldsymbol\omega \parallel \mathbf v_r$ で外積に丸め誤差が残る場合も $\varepsilon$ によって $\mathbf F_M = \mathbf 0$ になることを含めて確かめる（T1.2-05）。05 §7.5 (c) の縮退（$\lvert\boldsymbol\omega\rvert \le \varepsilon_\omega$、$\lvert\mathbf v_r\rvert \le \varepsilon_v$）は T1.2-06 で確かめる。
+
+**VER-F11・F13 の記録**（T1.2-06）：姿勢（$\lvert\boldsymbol\omega\rvert \approx 19$ rad/s、1 s、Δt = 0.02〜0.0025 s）と線形の回転減衰（$c_\omega/I_B \approx 1$ s⁻¹、2 s、Δt = 0.08〜0.01 s）の誤差は、いずれも Δt を半分にすると約 1/16 になる（観測次数約 4）。各ステップの後に四元数を正規化しても 4 次の収束は保たれる。
 
 ### 4.3 接触（足–ボール）
 

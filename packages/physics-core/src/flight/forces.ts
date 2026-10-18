@@ -60,6 +60,30 @@ export function magnusForce(
   return ok(scale(axis, (0.5 * environment.airDensity * area * cl.value * context.speed * context.speed) / axisLength));
 }
 
+/** 線形の回転減衰 τ = −c_ω ω（05 §7.5 (b)）。c_ω は有限かつ非負。 */
+export function linearSpinDecayTorque(angularVelocity: Vec3, coefficient: number): SimResult<Vec3> {
+  if (!Number.isFinite(coefficient) || coefficient < 0) {
+    return fail('invalid-coefficient', `c_ω must be finite and non-negative (${coefficient})`);
+  }
+  return ok(scale(angularVelocity, -coefficient));
+}
+
+/**
+ * 無次元トルク係数による回転減衰 τ = −½ ρ A R C_M |v_r|² ω̂（05 §7.5 (c)）。
+ * |ω| ≤ ε_ω のときは 0 とし、係数を評価しない。|v_r| ≤ ε_v の場合は呼び出し側で先に 0 とする（05 §7.3）。
+ */
+export function aeroTorque(
+  context: AeroContext, angularVelocity: Vec3, ball: BallParams, environment: FlightEnvironment,
+  coefficient: CoefficientModel, threshold: number,
+): SimResult<Vec3> {
+  const spin = length(angularVelocity);
+  if (spin <= threshold) return ok(ZERO);
+  const cm = evaluateCoefficient(coefficient, context, 'C_M', true);
+  if (!cm.ok) return cm;
+  const area = Math.PI * ball.radius * ball.radius;
+  return ok(scale(angularVelocity, (-0.5 * environment.airDensity * area * ball.radius * cm.value * context.speed * context.speed) / spin));
+}
+
 /** 状態 state のボールに働く力とトルク（ワールド座標）。 */
 export function computeForces(
   state: RigidBodyState,
@@ -68,14 +92,14 @@ export function computeForces(
   forces: FlightForceSettings,
   thresholds: DegeneracyThresholds,
 ): SimResult<ForceAndTorque> {
-  // 未実装のモデルは、状態によらず先にエラーにする（黙って無視しない）。
-  // 線形の回転減衰（05 §7.5 (b)）は |v_r| によらず働くため、ゼロ速度の早期終了より前に判定する。
-  if (forces.spinDecay.kind !== 'none') {
-    return fail('unsupported-model', 'spin decay is not implemented yet (T1.2-06)');
-  }
-
   let force: Vec3 = forces.gravity ? scale(gravityVector(environment.gravity), ball.mass) : ZERO;
-  const torque: Vec3 = ZERO;
+  let torque: Vec3 = ZERO;
+  // 線形の回転減衰（05 §7.5 (b)）は |v_r| によらず働くため、ゼロ速度の早期終了より前に計算する。
+  if (forces.spinDecay.kind === 'linear') {
+    const decay = linearSpinDecayTorque(state.angularVelocity, forces.spinDecay.coefficient);
+    if (!decay.ok) return decay;
+    torque = decay.value;
+  }
 
   const relativeVelocity = sub(state.linearVelocity, environment.wind);
   const speed = length(relativeVelocity);
@@ -99,6 +123,11 @@ export function computeForces(
     const magnus = magnusForce(context, state.angularVelocity, ball, environment, forces.magnus.coefficient, thresholds.magnus);
     if (!magnus.ok) return magnus;
     force = add(force, magnus.value);
+  }
+  if (forces.spinDecay.kind === 'torque-coefficient') {
+    const aero = aeroTorque(context, state.angularVelocity, ball, environment, forces.spinDecay.coefficient, thresholds.zeroSpin);
+    if (!aero.ok) return aero;
+    torque = aero.value;
   }
   return ok({ force, torque });
 }
