@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output (Vite / TypeScript)
+dist/
+*.tsbuildinfo
+*.local
+
+# Test coverage (Vitest)
+coverage/
+
+# Logs
+npm-debug.log*
+*.log
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# macOS
+.DS_Store
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# AI tools (local, per-user settings)
+.claude/settings.local.json
