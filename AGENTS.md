@@ -18,6 +18,7 @@ KickDynamics（サッカーキック軌道シミュレータ）で作業する A
 | 要求（US / FR / NFR） | [docs/02-requirements.md](docs/02-requirements.md) |
 | 未決事項（OQ）・必要な実測データ（D） | [docs/research/references-and-open-questions.md](docs/research/references-and-open-questions.md) |
 | Phase 1 受入条件（AC） | [specs/001-kick-prototype/spec.md](specs/001-kick-prototype/spec.md) |
+| AI エージェントの運用（検索の除外、Codex への依頼、Git、クラウドでの作業） | [docs/ai-workflow.md](docs/ai-workflow.md) |
 
 数式や一覧を他の文書へ複製せず、正本へリンクする。
 
