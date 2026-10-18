@@ -114,7 +114,7 @@
 - 内容：`RigidBodyState`、`BallParams`、`FootParams`、`ParameterSet`（値・単位・確からしさ・出典・適用条件）。
 - 依存：T1.1-04
 - 完了確認：型検査が通る。05 §10 の全パラメータと確からしさの区分が型で表現できる。
-- 結果（2026-10-18）：`src/bodies/types.ts`（`RigidBodyState`、`BallParams`、`FootParams`、`FootShape`）と `src/params/parameter-set.ts`（`ParameterEntry`、`ParameterSet`、`Confidence`）。P-01〜P-24 の全項目を表現できることをテストで確認。05 §10.2 の P-20 が §10.1 にない区分「仮定」を使っているため、型に `assumption` を加えた（05 の整合は要確認）。
+- 結果（2026-10-18）：`src/bodies/types.ts`（`RigidBodyState`、`BallParams`、`FootParams`、`FootShape`）と `src/params/parameter-set.ts`（`ParameterEntry`、`ParameterSet`、`Confidence`）。P-01〜P-24 の全項目を表現できることをテストで確認（その後 P-25・P-26 を追加）。05 §10.2 の P-20 が §10.1 にない区分「仮定」を使っていたため、型に `assumption` を加えた（05 §10.1 に「仮定」を追加して整合させた）。
 
 ### [x] T1.1-08 慣性テンソルの変換と力学量
 - 担当：Claude Code
@@ -254,7 +254,7 @@
 - 担当：Claude Code
 - 内容：足の回転の更新、運動量・角運動量・運動エネルギーの前後、警告（エネルギー増加、滑り方向の反転）。
 - 依存：T1.3-03
-- 完了確認：VER-C05、C06、C07、C08、C14 のテストが合格する。
+- 完了確認：VER-C05、C06、C07、C08、C14、C18 のテストが合格する。
 
 ### [ ] T1.3-06 入力からの接触幾何の構築
 - 担当：Claude Code
@@ -271,7 +271,7 @@
 ### [ ] T1.3-08 転がりと停止（目標・優先度は調整可）
 - 担当：Claude Code
 - 依存：T1.3-07、OQ-09 の決定
-- 完了確認：VER-G03、G04 のテストが合格する。実装しない場合は、その判断を OQ-09 に記録する。
+- 完了確認：VER-G03〜G06 のテストが合格する。実装しない場合は、その判断を OQ-09 に記録する。
 
 ### [ ] IV-01-C / IV-02-C / IV-05-C 接触・接地の照合
 - 担当：Codex

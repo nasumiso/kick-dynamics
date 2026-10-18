@@ -42,17 +42,19 @@ const phase1Table: ParameterSet = {
   torqueCoefficient: undetermined('P-22', 'C_M', '—', 'OQ-08'),
   zeroSpeedThreshold: undetermined('P-23', 'ε_v', 'm/s', 'M1.2'),
   zeroSpinThreshold: undetermined('P-24', 'ε_ω', 'rad/s', 'M1.2'),
+  tangentialSpeedThreshold: undetermined('P-25', 'ε_t', 'm/s', 'M1.3'),
+  rollReferenceThreshold: undetermined('P-26', 'ε_φ', '—', 'M1.3'),
 };
 
 describe('ParameterSet', () => {
   it('covers every parameter ID of 05 §10.2 exactly once', () => {
     const ids = Object.values(phase1Table).map((entry) => entry.id).sort();
-    const expected = Array.from({ length: 24 }, (_, i) => `P-${String(i + 1).padStart(2, '0')}`);
+    const expected = Array.from({ length: 26 }, (_, i) => `P-${String(i + 1).padStart(2, '0')}`);
     expect(ids).toEqual(expected);
   });
 
   it('can express every confidence category of 05 §10.1', () => {
-    const all: Confidence[] = ['defined', 'standard', 'literature', 'measured', 'provisional', 'undetermined'];
+    const all: Confidence[] = ['defined', 'standard', 'literature', 'measured', 'provisional', 'assumption', 'undetermined'];
     for (const confidence of all) {
       const entry: ParameterEntry<number> = { ...phase1Table.restitution, value: 0.5, confidence };
       expect(entry.confidence).toBe(confidence);
