@@ -1,6 +1,6 @@
 # 001 キックプロトタイプ（Phase 1）タスク
 
-> 状態：Draft（2026-10-18）。T0 は T0-08 を除き完了。M1.1 以降は未着手です。
+> 状態：Draft（2026-10-18）。T0 は T0-08 を除き完了。M1.1 は T1.1-01 まで完了。
 > 計画は [plan.md](plan.md)、受入条件は [spec.md](spec.md)、検証項目と独立検証の手順は [06-validation.md](../../docs/06-validation.md) を参照してください。
 
 ## 使い方
@@ -71,10 +71,11 @@
 
 ## M1.1 描画非依存の計算コア基盤とテスト
 
-### [ ] T1.1-01 ワークスペースの雛形
+### [x] T1.1-01 ワークスペースの雛形
 - 担当：Claude Code
 - 依存：T0-01, T0-04
 - 完了確認：依存のインストールと型検査のコマンドがエラーなく完了する。
+- 結果（2026-10-18）：ルートに `package.json`（workspaces）、`tsconfig.base.json`、`tsconfig.json`、`vitest.config.ts` を追加。`typescript` 7.0.2、`vitest` 5.0.5 を導入し `package-lock.json` で固定。`npm install` と `npm run typecheck` が成功。`npm test` はワークスペースがまだないため「No projects were found」で失敗する（T1.1-02 で解消）。
 
 ### [ ] T1.1-02 `packages/physics-core` の雛形とテストランナー
 - 担当：Claude Code
