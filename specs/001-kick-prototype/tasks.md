@@ -91,10 +91,11 @@
 - 完了確認：Core から `three` を import する仮のコードで検査が失敗し、削除後に成功する（VER-S05）。
 - 結果（2026-10-18）：依存を追加しないスクリプト `packages/physics-core/scripts/check-boundary.mjs`（`npm run check:boundary`）を作成。`dependencies` 系のフィールドがないことと、`src/` の import 指定子が相対パスだけであることを検査する。`three` を import する仮のコード（および `node:fs` の動的 import）で失敗し、削除後に合格することを確認した。lint ツールは使わない。
 
-### [ ] T1.1-04 Vec3 演算
+### [x] T1.1-04 Vec3 演算
 - 担当：Claude Code
 - 依存：T0-03, T1.1-02
 - 完了確認：VER-M01 のテストが合格する。
+- 結果（2026-10-18）：`src/math/vec3.ts`。長さ 0・非有限のベクトルの正規化は例外（プログラムの誤り）。TOL-A を仮置き（rel = abs = 1e-12）とし、06 §3 と `test/tolerance.ts` に記録した。
 
 ### [ ] T1.1-05 Mat3 演算と外積行列
 - 担当：Claude Code
