@@ -39,6 +39,12 @@ export function footAxes(n: Vec3, roll: number, referenceThreshold: number): { x
  * 入力の誤り（有限でない値、d の長さ 0、接触面の外、離反方向の速度）は SimResult のエラー。
  */
 export function buildImpactSetup(input: KickInput, params: ImpactGeometryParameters): SimResult<ImpactSetup> {
+  // ε_φ は 0 ≤ ε_φ < 1 に限る：単位法線では |ŷ の射影|² = 1 − n_y²、|x̂ の射影|² = 1 − n_x² なので、
+  // ŷ の射影が ε_φ 以下のとき x̂ の射影の長さは √(1 − ε_φ²) 以上で 0 にならない。範囲外では零ベクトルを正規化しうる。
+  const epsPhi = params.rollReferenceThreshold;
+  if (!(Number.isFinite(epsPhi) && epsPhi >= 0 && epsPhi < 1)) {
+    return fail('invalid-parameter', `roll reference threshold ε_φ must satisfy 0 ≤ ε_φ < 1 (${epsPhi})`);
+  }
   const [sx, sy] = input.footContactLocation;
   const finite = isFiniteVec3(input.contactDirection) && Number.isFinite(input.footRollAboutNormal) && Number.isFinite(sx) && Number.isFinite(sy)
     && isFiniteVec3(input.footContactPointVelocity) && isFiniteVec3(input.footAngularVelocity);

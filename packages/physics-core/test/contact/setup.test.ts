@@ -131,3 +131,22 @@ describe('VER-C17 accuracy just above the ε_φ switch (IV-02-C I02-H01)', () =>
     });
   }
 });
+
+describe('roll reference threshold validation (PR #7 review)', () => {
+  it('rejects ε_φ outside 0 ≤ ε_φ < 1 as invalid-parameter instead of throwing', () => {
+    const alongX: KickInput = { ...base, contactDirection: [-1, 0, 0], footContactPointVelocity: [10, 0, 0] };
+    const alongY: KickInput = { ...base, contactDirection: [0, -1, 0], footContactPointVelocity: [0, 10, 0] };
+    for (const [input, threshold] of [[alongX, 1], [alongX, 2], [alongY, -1e-6], [alongX, Number.NaN], [alongX, Number.POSITIVE_INFINITY]] as const) {
+      const r = buildImpactSetup(input, { ...geometry, rollReferenceThreshold: threshold });
+      expect(!r.ok && r.error.code).toBe('invalid-parameter');
+    }
+  });
+
+  it('accepts the ends of the valid range on the poles', () => {
+    // ε_φ = 0：n = +ŷ ちょうどなら ŷ の射影は 0 ≤ 0 なので x̂ の射影を使う。ε_φ → 1 でも n = +x̂ では ŷ の射影（長さ 1 > ε_φ）を使う。
+    const alongY: KickInput = { ...base, contactDirection: [0, -1, 0], footContactPointVelocity: [0, 10, 0] };
+    const alongX: KickInput = { ...base, contactDirection: [-1, 0, 0], footContactPointVelocity: [10, 0, 0] };
+    expect(buildImpactSetup(alongY, { ...geometry, rollReferenceThreshold: 0 }).ok).toBe(true);
+    expect(buildImpactSetup(alongX, { ...geometry, rollReferenceThreshold: 0.999999 }).ok).toBe(true);
+  });
+});
