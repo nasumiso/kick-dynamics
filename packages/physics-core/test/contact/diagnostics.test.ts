@@ -158,4 +158,12 @@ describe('foot orientation that is not a unit quaternion (PR #7 review)', () => 
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe('invalid-input');
   });
+
+  it('returns invalid-input for a zero ball orientation (finite mass and kinematic wall)', () => {
+    const zeroBall: ImpactSetup = { ...eccentric, ball: { ...eccentric.ball, orientation: [0, 0, 0, 0] } };
+    for (const model of ['finite-mass', 'kinematic-wall'] as const) {
+      const r = solveImpact(zeroBall, contactParams(0.7, 0.4), model);
+      expect(!r.ok && r.error.code).toBe('invalid-input');
+    }
+  });
 });

@@ -1,5 +1,5 @@
 // 慣性テンソルと力学量（docs/05-physics-model.md §2、§5、§6.11）。
-import { diag, mul, mulVec, scale as scaleMat, transpose, IDENTITY, type Mat3 } from '../math/mat3';
+import { add as addMat, diag, mul, mulVec, scale as scaleMat, transpose, IDENTITY, type Mat3 } from '../math/mat3';
 import { toMat3, type Quat } from '../math/quat';
 import { add, cross, dot, scale, sub, type Vec3 } from '../math/vec3';
 import type { BallParams } from './types';
@@ -19,7 +19,9 @@ export function ballInertia(ball: BallParams): Mat3 {
 /** ワールド座標での慣性テンソル I_W = R I_body Rᵀ。 */
 export function inertiaWorld(inertiaBody: Mat3, orientation: Quat): Mat3 {
   const r = toMat3(orientation);
-  return mul(mul(r, inertiaBody), transpose(r));
+  const rotated = mul(mul(r, inertiaBody), transpose(r));
+  // R I Rᵀ は数学的には対称だが、丸め誤差で (i, j) と (j, i) がずれるため、対称部分 ½(A + Aᵀ) を返す（浮動小数点でも厳密に対称）。
+  return scaleMat(addMat(rotated, transpose(rotated)), 0.5);
 }
 
 export interface MassProperties {

@@ -90,6 +90,10 @@ export function solveContact(
     if (!otherValid.ok) return otherValid;
   }
   if (!isFiniteSetup(setup)) return fail('invalid-input', 'impact setup contains a non-finite value');
+  // 姿勢は回転を表す必要がある（零四元数は正規化できず、後段の飛翔計算で使えない）。
+  if (![setup.ball, setup.foot].every((s) => quatNorm(s.orientation) > 0 && Number.isFinite(quatNorm(s.orientation)))) {
+    return fail('invalid-input', 'ball and foot orientations must be finite non-zero quaternions');
+  }
   if (!(length(setup.contactNormal) > 0)) return fail('invalid-input', 'contact normal has zero length');
   const n = normalize(setup.contactNormal);
   const ballArm = sub(setup.contactPoint, setup.ball.position);

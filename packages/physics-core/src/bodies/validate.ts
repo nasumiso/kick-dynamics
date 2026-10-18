@@ -27,12 +27,12 @@ export function validateBall(ball: BallParams): SimResult<void> {
 }
 
 /**
- * 3×3 行列が有限・対称・正定値で、逆行列が有限に求まるか（対称行列の Sylvester の判定法：主小行列式がすべて正）。
+ * 3×3 行列が有限・（厳密に）対称・正定値で、逆行列が有限に求まるか（対称行列の Sylvester の判定法：主小行列式がすべて正）。
  */
 export function isSymmetricPositiveDefinite(m: Mat3): boolean {
   if (!m.every(Number.isFinite)) return false;
-  const scale = Math.max(...m.map(Math.abs));
-  const symmetric = [[0, 1], [0, 2], [1, 2]].every(([i, j]) => Math.abs(get(m, i!, j!) - get(m, j!, i!)) <= 1e-12 * scale);
+  // 対称性は許容幅なしで判定する（慣性テンソルは定義上対称で、inertiaWorld は厳密に対称な行列を返す）。
+  const symmetric = [[0, 1], [0, 2], [1, 2]].every(([i, j]) => get(m, i!, j!) === get(m, j!, i!));
   const minor1 = get(m, 0, 0);
   const minor2 = get(m, 0, 0) * get(m, 1, 1) - get(m, 0, 1) * get(m, 1, 0);
   const det = determinant(m);

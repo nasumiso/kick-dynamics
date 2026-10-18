@@ -1,11 +1,11 @@
 // 物性値の検証（PR #7 のレビュー）：範囲外の値は逆行列の計算で例外を投げる前に invalid-parameter を返す。
 import { describe, expect, it } from 'vitest';
-import { boxInertia } from '../../src/bodies/dynamics';
+import { boxInertia, inertiaWorld } from '../../src/bodies/dynamics';
 import { isSymmetricPositiveDefinite } from '../../src/bodies/validate';
 import { buildImpactSetup } from '../../src/contact/setup';
 import { solveContact, solveImpact } from '../../src/contact/solver';
 import { solveGroundBounce } from '../../src/ground/bounce';
-import { IDENTITY_QUAT } from '../../src/math/quat';
+import { IDENTITY_QUAT, normalize as normalizeQuat } from '../../src/math/quat';
 import { ball, contactParams, foot, makeSetup } from '../contact/fixtures';
 
 const setup = makeSetup({ normal: [1, 0, 0], footArm: [0.04, 0.01, 0], footPointVelocity: [10, 1, 0] });
@@ -52,6 +52,13 @@ describe('validation of physical parameters', () => {
 
   it('accepts the box inertia of 05 §5.2 as symmetric positive definite', () => {
     expect(isSymmetricPositiveDefinite(boxInertia(1.2, [0.26, 0.1, 0.08]))).toBe(true);
+  });
+
+  it('judges symmetry without a tolerance, and inertiaWorld returns an exactly symmetric tensor', () => {
+    expect(isSymmetricPositiveDefinite([2, 1e-300, 0, 0, 2, 0, 0, 0, 2])).toBe(false);
+    const q = normalizeQuat([0.3, -0.7, 0.2, 0.6]);
+    const world = inertiaWorld(boxInertia(1.2, [0.26, 0.1, 0.08]), q);
+    expect(isSymmetricPositiveDefinite(world)).toBe(true);
   });
 });
 
