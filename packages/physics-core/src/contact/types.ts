@@ -5,6 +5,29 @@ import type { Vec3 } from '../math/vec3';
 /** 有限質量の 3D 剛体（05 §5.2）、または無限質量の動く壁（05 §6.9）。 */
 export type FootModel = 'finite-mass' | 'kinematic-wall';
 
+/** キック入力（05 §6.2 の表、04 §6）。 */
+export interface KickInput {
+  /** d：ボール中心 → 接触点の向き（長さが 0 でなければ正規化して使う） */
+  readonly contactDirection: Vec3;
+  /** φ：接触法線まわりの足の回転角 rad */
+  readonly footRollAboutNormal: number;
+  /** (s_x, s_y)：接触面（+z_b 面）上の接触位置 m */
+  readonly footContactLocation: readonly [number, number];
+  /** v_A^p：接触点での足の速度 m/s（ワールド座標） */
+  readonly footContactPointVelocity: Vec3;
+  /** ω_A：足の角速度 rad/s（ワールド座標） */
+  readonly footAngularVelocity: Vec3;
+  readonly footModel: FootModel;
+}
+
+/** 接触幾何の構築に使う物性と閾値（05 §5、§6.2、P-01〜P-06、P-26）。 */
+export interface ImpactGeometryParameters {
+  readonly ball: BallParams;
+  readonly foot: FootParams;
+  /** ε_φ：φ の基準軸を ŷ の射影から x̂ の射影へ切り替える閾値（P-26） */
+  readonly rollReferenceThreshold: number;
+}
+
 /** 物理的に整合した衝突直前の状態（05 §6.2）。 */
 export interface ImpactSetup {
   readonly ball: RigidBodyState;

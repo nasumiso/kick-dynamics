@@ -163,7 +163,7 @@ declare function simulateKick(
 ): SimResult<KickSimulationResult>;
 
 // 段階 API（テスト・検証ツールが使う）
-declare function buildImpactSetup(input: KickInput, parameters: ParameterSet): SimResult<ImpactSetup>;
+declare function buildImpactSetup(input: KickInput, parameters: ParameterSet): SimResult<ImpactSetup>; // 実装は ImpactGeometryParameters を受け取る（T1.3-06）
 declare function solveImpact(setup: ImpactSetup, parameters: ParameterSet, model: FootModel): SimResult<ImpactResult>;
 declare function simulateFlight(ball: RigidBodyState, parameters: ParameterSet, settings: SimulationSettings): SimResult<Trajectory>;
 declare function computeMetrics(impact: ImpactResult, trajectory: Trajectory, parameters: ParameterSet): KickMetrics;

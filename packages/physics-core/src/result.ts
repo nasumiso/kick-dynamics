@@ -12,6 +12,8 @@ export type SimErrorCode =
   | 'invalid-parameter'
   | 'invalid-setting'
   | 'impact-unsolvable'
+  | 'invalid-input'
+  | 'separating-input'
   | 'unsupported-model';
 
 export type SimResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: SimError };

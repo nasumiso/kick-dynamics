@@ -1,6 +1,6 @@
 # 001 キックプロトタイプ（Phase 1）タスク
 
-> 状態：Draft（2026-10-18）。T0 は完了。M1.1 は完了。M1.2 は IV-03-R / IV-04-R まで完了（判断保留の事項は IV-03-R / IV-04-R の結果欄に記録）。M1.3 は T1.3-05 まで完了。
+> 状態：Draft（2026-10-18）。T0 は完了。M1.1 は完了。M1.2 は IV-03-R / IV-04-R まで完了（判断保留の事項は IV-03-R / IV-04-R の結果欄に記録）。M1.3 は T1.3-06 まで完了。
 > 計画は [plan.md](plan.md)、受入条件は [spec.md](spec.md)、検証項目と独立検証の手順は [06-validation.md](../../docs/06-validation.md) を参照してください。
 
 ## 使い方
@@ -285,11 +285,12 @@
 - 完了確認：VER-C05、C06、C07、C08、C14、C18 のテストが合格する。
 - 結果（2026-10-18）：診断値に全運動量と接触点まわりの全角運動量の前後（有限質量のときだけ。無限質量では `null`）を追加。警告 `energy-increase`（有限質量、または無限質量で $\boldsymbol\omega_A = \mathbf 0$ のときだけ判定）と `slip-reversal` を追加し、結果は補正しない。`test/contact/diagnostics.test.ts` で VER-C05・C06（6 通りの $e$・$\mu$、任意の固定点）、C07、C08（偏心と重心を通る場合）、C14（$\mu = 0$ の 15 通りの接触位置、非連成の摩擦あり）、C18（連成で $\Delta T \approx 0.028$ J の増加、固着と反発の条件はそのまま）、滑り方向の反転の警告に合格。テストの足の姿勢と $\mathbf r_A$ は 05 §6.2 と整合させた（`footPose`）。C18 と反転の構成は、整合した構成を固定の疑似乱数で探索して見つけた（約 20 万通りのうちエネルギーが増えたのは 43 通り）。**仮置き**：警告の相対的な判定幅 $\tau_{\text{diag}} = 10^{-9}$（05 に P-28 として追加、`ParameterSet` の型にも追加）。探索の途中で、足の重心が接触平面のボール側にある（$\mathbf r_A\cdot\mathbf n < 0$）幾何学的にありえない構成では数 J の増加も出たが、05 §6.2 の幾何と整合しないため検証の対象外とした。
 
-### [ ] T1.3-06 入力からの接触幾何の構築
+### [x] T1.3-06 入力からの接触幾何の構築
 - 担当：Claude Code
 - 内容：`buildImpactSetup`。
 - 依存：T0-07, T1.3-01
 - 完了確認：VER-C17 のテストが合格する。離反方向の入力でエラー値が返る。
+- 結果（2026-10-18）：`src/contact/setup.ts`（`buildImpactSetup`、`footAxes`）と `src/math/quat.ts` の `fromMat3`（回転行列 → 四元数、対角成分の最大を使う方式。VER-M03 のテストを追加）。`KickInput` と `ImpactGeometryParameters` を `src/contact/types.ts` に追加。`test/contact/setup.test.ts` で VER-C17（接触点と法線、+z_b 面の法線 = n、$\mathbf x_A = \mathbf p - \mathbf r_A$、$\mathbf v_A = \mathbf v_A^p - \boldsymbol\omega_A\times\mathbf r_A$ と接触点の速度、$\phi = 0$ の基準と右ねじの回転、$\varepsilon_\phi$ の境界の両側、入力の検証の各エラー：`invalid-input`・`separating-input`）に合格。**仮置き**：$\varepsilon_\phi = 10^{-6}$（P-26、根拠は 05 §10.2）。接触の成立条件は閾値なし（$\mathbf v_A^p\cdot\mathbf n > 0$）のため、接線方向だけの入力のテストは $\mathbf v_A^p\cdot\mathbf n$ が厳密に 0 になる構成で行った。Core の公開 API（`index.ts`）に接触ソルバー・接触幾何を追加。
 
 ### [ ] T1.3-07 地面バウンド
 - 担当：Claude Code

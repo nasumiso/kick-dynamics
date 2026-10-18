@@ -69,3 +69,27 @@ export function derivative(q: Quat, angularVelocity: Vec3): Quat {
   const d = multiply([angularVelocity[0], angularVelocity[1], angularVelocity[2], 0], q);
   return [0.5 * d[0], 0.5 * d[1], 0.5 * d[2], 0.5 * d[3]];
 }
+
+/**
+ * 回転行列（行優先、R v = q ⊗ v ⊗ q*）から単位四元数を求める（toMat3 の逆）。
+ * 対角成分のうち最大のものを使う方式で、どの回転でも分母が小さくならない。符号は定めない（q と −q は同じ回転）。
+ */
+export function fromMat3(m: Mat3): Quat {
+  const [m00, m01, m02, m10, m11, m12, m20, m21, m22] = m;
+  const trace = m00 + m11 + m22;
+  let q: Quat;
+  if (trace >= m00 && trace >= m11 && trace >= m22) {
+    const s = 2 * Math.sqrt(1 + trace);
+    q = [(m21 - m12) / s, (m02 - m20) / s, (m10 - m01) / s, s / 4];
+  } else if (m00 >= m11 && m00 >= m22) {
+    const s = 2 * Math.sqrt(1 + m00 - m11 - m22);
+    q = [s / 4, (m01 + m10) / s, (m02 + m20) / s, (m21 - m12) / s];
+  } else if (m11 >= m22) {
+    const s = 2 * Math.sqrt(1 + m11 - m00 - m22);
+    q = [(m01 + m10) / s, s / 4, (m12 + m21) / s, (m02 - m20) / s];
+  } else {
+    const s = 2 * Math.sqrt(1 + m22 - m00 - m11);
+    q = [(m02 + m20) / s, (m12 + m21) / s, s / 4, (m10 - m01) / s];
+  }
+  return normalize(q);
+}
