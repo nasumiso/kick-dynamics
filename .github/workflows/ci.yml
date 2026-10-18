@@ -11,11 +11,15 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # 24：ローカル開発、22：Claude Code のクラウドセッションの既定（docs/ai-workflow.md §4）
+        node-version: [22, 24]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: 24
+          node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
       # 型検査・Core の依存境界の検査（VER-S05）・テスト（AGENTS.md「コマンド」）

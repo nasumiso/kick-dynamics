@@ -24,6 +24,7 @@
 
 ## 4. クラウドでの作業
 
-- 動作環境は Node 24、最初に `npm ci` を実行する（CI と同じ）。
+- Node：ローカルは 24、クラウドの VM は既定で 22（20・21 も同梱）。CI は 22 と 24 の両方で `npm run check` を実行し、どちらでも動くことを確かめる。
+- 依存のインストール：`.claude/settings.json` の SessionStart フックが `scripts/cloud-setup.sh` を実行し、クラウドのときだけ `npm ci` する（lockfile などが変わっていなければ省く）。クラウドの環境の「Setup script」には何も書かない（キャッシュされ、lockfile の変更に追従しないため）。
 - ローカルの Claude Code のメモリはクラウドから読めない。続けて守るべき運用は本書か AGENTS.md に書く。
 - 作業の引き継ぎ状態（次のタスク、未決定の事項）は `specs/001-kick-prototype/tasks.md` と PR の説明・コメントに残す。
