@@ -97,7 +97,7 @@ flowchart LR
 ```ts
 type Vec3 = readonly [number, number, number];
 type Quat = readonly [number, number, number, number]; // [x, y, z, w]（ADR-0005）
-type Mat3 = readonly [number, number, number, number, number, number, number, number, number]; // 行・列の並び順は M1.1 で決める
+type Mat3 = readonly [number, number, number, number, number, number, number, number, number]; // 行優先：要素 (i, j) は m[3 * i + j]（決定、T1.1-05）
 
 interface RigidBodyState {
   position: Vec3;        // m（ワールド座標、重心）
