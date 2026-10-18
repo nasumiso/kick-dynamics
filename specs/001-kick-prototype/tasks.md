@@ -152,10 +152,11 @@
 - 完了確認：型検査が通る。05 §7 の各項に対応するインタフェースがある。
 - 結果（2026-10-18）：`src/flight/types.ts`・`forces.ts`・`src/result.ts`。力項の ON/OFF とモデル選択は `SimulationSettings` 側に置く（暫定、04 §6 に記録）。係数は定数／`(Re, S)` の関数で、非有限・負の値は `SimResult` のエラー。$S$ は暫定で $\lvert\boldsymbol\omega\rvert$ を使う（05 §7.6 は未決定）。マグヌス力・回転減衰は ON にすると `unsupported-model` を返す（T1.2-05・06 で実装）。閾値は未決定のため既定値を持たない。
 
-### [ ] T1.2-02 固定刻みの積分器と重力のみの飛翔
+### [x] T1.2-02 固定刻みの積分器と重力のみの飛翔
 - 担当：Claude Code
 - 依存：T1.2-01
 - 完了確認：VER-F01 のテストが合格する。
+- 結果（2026-10-18）：`src/flight/integrator.ts`（古典的 RK4。$(\mathbf x, \mathbf v, q, \boldsymbol\omega)$ を同時に積分し、各ステップ後に四元数を正規化）。VER-F01 は Δt = 0.01 s・200 ステップの全時刻で TOL-A（仮置き）に合格。積分法は OQ-12 の候補どおり RK4 を使い、Δt の決定は T1.2-04。
 
 ### [ ] T1.2-03 抗力
 - 担当：Claude Code
