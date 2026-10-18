@@ -220,11 +220,12 @@
 - 依存：T0-05, T0-07
 - 完了確認：`verification/independent/IV-02/` に導出資料が保存されている。
 
-### [ ] IV-05-D 接地の独立導出
+### [x] IV-05-D 接地の独立導出
 - 担当：Codex
 - 内容：05 §8 と 06 §4.4 から、バウンドの閉形式、転がりの拘束、停止条件とテストケースを導出する。
 - 依存：T0-05
 - 完了確認：`verification/independent/IV-05/` に導出資料が保存されている。
+- 結果（2026-10-18）：`verification/independent/IV-05/derivation.md` を作成（Codex、`gpt-6.1-sol`・推論 `high`、`2605bd2` 以降の仕様に基づく）。作成途中の版が T1.1-09 のコミット（`b237763`）に誤って含まれたため、完成版を別のコミットで置き換えた。Claude Code は内容を読んでいない。
 
 ### [ ] T1.3-01 行列 K
 - 担当：Claude Code
