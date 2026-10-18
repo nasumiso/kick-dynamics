@@ -1,7 +1,9 @@
 // T1.1-07：05 §10 の全パラメータと確からしさの区分が型で表現できること。
 // 値は 05 §10.2（2026-10-18 時点）の記載をそのまま写したテスト用の例で、Core の既定値ではない。
 import { describe, expect, it } from 'vitest';
+import { boxInertia } from '../../src/bodies/dynamics';
 import type { Confidence, ParameterEntry, ParameterId, ParameterSet } from '../../src/params/parameter-set';
+import { expectAllClose } from '../tolerance';
 
 function undetermined<T>(id: ParameterId, symbol: string, unit: string, source: string): ParameterEntry<T> {
   return { id, symbol, unit, value: null, confidence: 'undetermined', source };
@@ -18,9 +20,12 @@ const phase1Table: ParameterSet = {
     confidence: 'standard', source: '外周 0.68–0.70 m からの換算（一次情報未照合）',
   },
   ballInertiaCoefficient: undetermined('P-03', 'κ', '—', 'OQ-06'),
-  footMass: undetermined('P-04', 'm_A', 'kg', 'OQ-02'),
-  footInertiaBody: undetermined('P-05', 'I_A^body', 'kg·m²', 'P-04・P-06 から直方体の式で計算'),
-  footDimensions: undetermined('P-06', 'L_x, L_y, L_z', 'm', 'OQ-02、T0-08'),
+  footMass: { id: 'P-04', symbol: 'm_A', unit: 'kg', value: 1.2, confidence: 'provisional', source: '出典なし（T0-08）。OQ-02' },
+  footInertiaBody: {
+    id: 'P-05', symbol: 'I_A^body', unit: 'kg·m²', value: [0.00164, 0, 0, 0, 0.0074, 0, 0, 0, 0.00776],
+    confidence: 'provisional', source: 'P-04・P-06 から直方体の式で計算',
+  },
+  footDimensions: { id: 'P-06', symbol: 'L_x, L_y, L_z', unit: 'm', value: [0.26, 0.1, 0.08], confidence: 'provisional', source: '出典なし（T0-08）。OQ-02' },
   restitution: undetermined('P-07', 'e', '—', 'OQ-04'),
   friction: undetermined('P-08', 'μ', '—', 'OQ-05'),
   gravity: { id: 'P-09', symbol: 'g', unit: 'm/s²', value: 9.80665, confidence: 'defined', source: '標準重力' },
@@ -60,5 +65,11 @@ describe('ParameterSet', () => {
       const entry: ParameterEntry<number> = { ...phase1Table.restitution, value: 0.5, confidence };
       expect(entry.confidence).toBe(confidence);
     }
+  });
+});
+
+describe('provisional foot parameters (T0-08)', () => {
+  it('derive P-05 from P-04 and P-06 with the box formula of 05 §5.2', () => {
+    expectAllClose(boxInertia(phase1Table.footMass.value!, phase1Table.footDimensions.value!), phase1Table.footInertiaBody.value!);
   });
 });
