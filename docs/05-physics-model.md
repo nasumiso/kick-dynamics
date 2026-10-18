@@ -439,7 +439,7 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 | P-15 | $e_g$ | 地面の反発係数 | — | 未決定 | 未決定 | 地面の種類に依存。OQ-09 |
 | P-16 | $\mu_g$ | 地面の摩擦係数 | — | 未決定 | 未決定 | OQ-09 |
 | P-17 | $\mu_r$ | 転がり抵抗係数 | — | 未決定 | 未決定 | OQ-09 |
-| P-18 | $\Delta t$ | 物理の時間刻み | s | 未決定 | 未決定 | 収束試験で決める。OQ-12 |
+| P-18 | $\Delta t$ | 物理の時間刻み | s | 候補 0.005 | 仮置き | 収束試験（VER-F02、06 §4.2 の記録）で精度は制約にならないことを確認し、他の制約に余裕を持たせた暫定の候補（T1.2-04）。確定は OQ-12 |
 | P-19 | $v_{\text{rest}},\ v_{\text{stop}},\ \omega_{\text{stop}}$ | 転がり移行・停止の閾値 | m/s, rad/s | 未決定 | 未決定 | $e_g v_{\text{rest}} \ge g\Delta t/2$ の条件あり（§7.7）。OQ-09 |
 | P-20 | $\mathbf w$ | 風速 | m/s | $\mathbf 0$ | 仮定 | Phase 1 は無風 |
 | P-21 | $\varepsilon$ | マグヌス力の縮退判定の閾値（$\lvert\boldsymbol\omega\times\mathbf v_r\rvert$ に対する） | m/s² 相当 | 未決定 | 未決定 | 数値上の閾値、$\varepsilon > 0$。M1.2 |
