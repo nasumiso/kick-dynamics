@@ -66,6 +66,7 @@ flowchart TD
   - Core の `tsconfig` の `lib` に `DOM` を含めない（DOM の型を使うと型検査で失敗する）。
   - Core の `package.json` に `dependencies` を持たない。
   - import 文の検査（lint ルール、または簡単なスクリプト）。lint ツールの導入は依存の追加にあたるため、採否はユーザーの承認後に決める。
+- 採用した強制方法（T1.1-03）：上記の `lib`・`dependencies` に加え、依存を追加しないスクリプト `packages/physics-core/scripts/check-boundary.mjs`（`npm run check:boundary`）で、`src/` の import 指定子が相対パスだけであることを検査する（`three`、`node:` 組み込みモジュールなど外部への参照をすべて禁止）。
 
 ## 5. データフロー
 

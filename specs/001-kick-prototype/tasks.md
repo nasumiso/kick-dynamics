@@ -84,11 +84,12 @@
 - 完了確認：サンプルテスト 1 件が Node 上で合格する。`document` を参照する仮のコードが型エラーになることを確かめてから削除する。
 - 結果（2026-10-18）：パッケージ名は `@kick-dynamics/physics-core`（暫定）、`exports` は `src/index.ts` を直接指す。`tsconfig` の `lib` は `ES2022` のみ・`types` は空。`document` を参照する仮のコードで TS2584 になることを確認して削除した。サンプルテスト 1 件が合格。
 
-### [ ] T1.1-03 依存境界の検査
+### [x] T1.1-03 依存境界の検査
 - 担当：Claude Code
 - 内容：Core が禁止パッケージを import していないことを検査する仕組み（04 §4 の候補から選ぶ。lint ツールの追加は承認が必要）。
 - 依存：T1.1-02
 - 完了確認：Core から `three` を import する仮のコードで検査が失敗し、削除後に成功する（VER-S05）。
+- 結果（2026-10-18）：依存を追加しないスクリプト `packages/physics-core/scripts/check-boundary.mjs`（`npm run check:boundary`）を作成。`dependencies` 系のフィールドがないことと、`src/` の import 指定子が相対パスだけであることを検査する。`three` を import する仮のコード（および `node:fs` の動的 import）で失敗し、削除後に合格することを確認した。lint ツールは使わない。
 
 ### [ ] T1.1-04 Vec3 演算
 - 担当：Claude Code

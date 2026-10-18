@@ -8,7 +8,9 @@
   ],
   "scripts": {
     "typecheck": "tsc -b",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:boundary": "node packages/physics-core/scripts/check-boundary.mjs",
+    "check": "npm run typecheck && npm run check:boundary && npm test"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
