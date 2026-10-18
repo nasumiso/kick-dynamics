@@ -116,11 +116,12 @@
 - 完了確認：型検査が通る。05 §10 の全パラメータと確からしさの区分が型で表現できる。
 - 結果（2026-10-18）：`src/bodies/types.ts`（`RigidBodyState`、`BallParams`、`FootParams`、`FootShape`）と `src/params/parameter-set.ts`（`ParameterEntry`、`ParameterSet`、`Confidence`）。P-01〜P-24 の全項目を表現できることをテストで確認。05 §10.2 の P-20 が §10.1 にない区分「仮定」を使っているため、型に `assumption` を加えた（05 の整合は要確認）。
 
-### [ ] T1.1-08 慣性テンソルの変換と力学量
+### [x] T1.1-08 慣性テンソルの変換と力学量
 - 担当：Claude Code
 - 内容：$\mathbf I_W$、運動量、角運動量、運動エネルギーの計算。
 - 依存：T1.1-06, T1.1-07
 - 完了確認：VER-M04 のテストが合格する。
+- 結果（2026-10-18）：`src/bodies/dynamics.ts`（直方体・ボールの慣性テンソル、$\mathbf I_W$、運動量、任意の点まわりの角運動量、運動エネルギー）。足の値はテスト用の任意値（T0-08 は未決定）。
 
 ### [ ] T1.1-09 コマンドの記載
 - 担当：Claude Code
