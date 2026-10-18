@@ -109,11 +109,12 @@
 - 完了確認：VER-M03、VER-M06 のテストが合格する。
 - 結果（2026-10-18）：`src/math/quat.ts`（Hamilton 積、`[x, y, z, w]`、能動回転、`derivative` = ½ ω̂ ⊗ q）と `src/frames.ts`（軸・重力の向き）。VER-M03 のうち長時間の積分でのノルムの保持は、姿勢の積分を実装する T1.2-06 で確かめる。
 
-### [ ] T1.1-07 剛体状態・パラメータセットの型
+### [x] T1.1-07 剛体状態・パラメータセットの型
 - 担当：Claude Code
 - 内容：`RigidBodyState`、`BallParams`、`FootParams`、`ParameterSet`（値・単位・確からしさ・出典・適用条件）。
 - 依存：T1.1-04
 - 完了確認：型検査が通る。05 §10 の全パラメータと確からしさの区分が型で表現できる。
+- 結果（2026-10-18）：`src/bodies/types.ts`（`RigidBodyState`、`BallParams`、`FootParams`、`FootShape`）と `src/params/parameter-set.ts`（`ParameterEntry`、`ParameterSet`、`Confidence`）。P-01〜P-24 の全項目を表現できることをテストで確認。05 §10.2 の P-20 が §10.1 にない区分「仮定」を使っているため、型に `assumption` を加えた（05 の整合は要確認）。
 
 ### [ ] T1.1-08 慣性テンソルの変換と力学量
 - 担当：Claude Code
