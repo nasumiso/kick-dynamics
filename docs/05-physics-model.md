@@ -56,6 +56,9 @@ y 軸を上向きとし、四元数の成分順を Three.js に合わせたの�
 | $\rho,\ \eta$ | 空気の密度・粘性係数 | kg/m³, Pa·s |
 | $A = \pi R^2$ | ボールの投影面積 | m² |
 | $C_D,\ C_L,\ C_M$ | 抗力係数・揚力（マグヌス）係数・空力トルク係数 | — |
+| $c_\omega$ | 線形の回転減衰係数（§7.5 (b)） | kg·m²/s |
+| $\varepsilon,\ \varepsilon_v,\ \varepsilon_\omega$ | 縮退判定の閾値（$\lvert\boldsymbol\omega\times\mathbf v_r\rvert$、$\lvert\mathbf v_r\rvert$、$\lvert\boldsymbol\omega\rvert$ に対するもの。§7.3〜7.5） | m/s², m/s, rad/s |
+| $h$ | 地面イベントの判定量 $h = y - R$（§7.7） | m |
 | $Re,\ S$ | レイノルズ数・スピンパラメータ | — |
 | $\Delta t$ | 物理の時間刻み | s |
 
@@ -291,6 +294,9 @@ $$
 
 $\mathbf w$ は風速（Phase 1 は $\mathbf w = \mathbf 0$）。$C_D$ は定数または $Re$ などの関数として差し替え可能にする。サッカーボールでは、$C_D$ が $Re$ に強く依存する領域（いわゆる抗力危機）がキックの速度域と重なる可能性が指摘されており、定数 $C_D$ の適用範囲は調査課題とする（[OQ-07](research/references-and-open-questions.md)、R-04）。
 
+- 係数は $C_D \ge 0$ とする（負の値はエネルギーを供給するため、入力の検証で拒否する）。
+- **ゼロ速度**：$\lvert\mathbf v_r\rvert \le \varepsilon_v$ のときは、抗力・マグヌス力・§7.5 (c) のトルクをすべて $\mathbf 0$ とし、$Re$・$S$ と係数を評価しない（$S$ はこのとき定義されない）。$\varepsilon_v > 0$、値は M1.2 で決める（P-23）。
+
 ### 7.4 マグヌス力
 
 $$
@@ -300,7 +306,9 @@ $$
 
 - $C_L$ のモデル候補：定数、$S$ の関数、測定表の補間（[OQ-07](research/references-and-open-questions.md)）。
 - この形では $\boldsymbol\omega$ の $\mathbf v_r$ に平行な成分は力の向きに寄与しない。$C_L$ を $|\boldsymbol\omega|$ と $|\boldsymbol\omega_\perp|$（$\mathbf v_r$ に垂直な成分）のどちらで評価するかは未決定。
-- $\varepsilon$ はゼロ除算を避けるための閾値（値は M1.2 で決める）。
+- $\varepsilon$ はゼロ除算を避けるための閾値で、$\varepsilon > 0$（値は M1.2 で決める、P-21）。$\lvert\mathbf v_r\rvert \le \varepsilon_v$ の場合は §7.3 の規則が先に適用される。
+- **定数 $C_L$ の制約**：$C_L$ を定数（$\neq 0$）とすると、$\lvert\boldsymbol\omega\rvert$ が小さくても力の大きさは $\tfrac12\rho A C_L\lvert\mathbf v_r\rvert^2$ のままで、$\boldsymbol\omega \to \mathbf 0$ や $\boldsymbol\omega \parallel \mathbf v_r$ に近づいても小さくならず、閾値 $\varepsilon$ の境界で不連続に 0 へ跳ぶ。このため、定数 $C_L$ は検証用（VER-F05、F10 など）と位置づけ、キックの計算には $\boldsymbol\omega \to \mathbf 0$ で $C_L \to 0$ となるモデル（例：$S$ に比例する形。係数の値と適用範囲は未決定、OQ-07）を候補とする。
+- 係数の符号：通常向きの揚力を $C_L > 0$ と定義する。負の $C_L$ を許すかは未決定。
 - 符号の確認：$+x$ 方向に飛ぶボールのバックスピンは $\boldsymbol\omega \parallel +\hat{\mathbf z}$ で、$\hat{\mathbf z}\times\hat{\mathbf x} = +\hat{\mathbf y}$ より上向きの力になる（VER-F10）。
 
 ### 7.5 回転減衰
@@ -308,8 +316,8 @@ $$
 候補（[OQ-08](research/references-and-open-questions.md)）：
 
 - (a) なし：$\boldsymbol\tau_{\text{aero}} = \mathbf 0$。実装検証の基準として必ず用意する。
-- (b) 線形：$\boldsymbol\tau_{\text{aero}} = -c_\omega\,\boldsymbol\omega$
-- (c) 無次元トルク係数：$\boldsymbol\tau_{\text{aero}} = -\tfrac12\,\rho\,A\,R\,C_M\,|\mathbf v_r|^2\,\hat{\boldsymbol\omega}$（$C_M$ は $S$、$Re$ の関数の候補）
+- (b) 線形：$\boldsymbol\tau_{\text{aero}} = -c_\omega\,\boldsymbol\omega$。$c_\omega$ は有次元（kg·m²/s）で、$c_\omega \ge 0$。
+- (c) 無次元トルク係数：$\boldsymbol\tau_{\text{aero}} = -\tfrac12\,\rho\,A\,R\,C_M\,|\mathbf v_r|^2\,\hat{\boldsymbol\omega}$（$C_M \ge 0$、無次元。$S$、$Re$ の関数の候補）。$\hat{\boldsymbol\omega} = \boldsymbol\omega/\lvert\boldsymbol\omega\rvert$ は $\lvert\boldsymbol\omega\rvert > \varepsilon_\omega$ のときだけ評価し、$\lvert\boldsymbol\omega\rvert \le \varepsilon_\omega$ または $\lvert\mathbf v_r\rvert \le \varepsilon_v$ のときは $\boldsymbol\tau_{\text{aero}} = \mathbf 0$ とする。$\varepsilon_\omega > 0$、値は M1.2 で決める（P-24）
 
 ### 7.6 無次元数
 
@@ -317,13 +325,22 @@ $$
 Re = \frac{\rho\,|\mathbf v_r|\,(2R)}{\eta},\qquad S = \frac{R\,|\boldsymbol\omega|}{|\mathbf v_r|}
 $$
 
-$S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採用する定義は未決定（係数データの出典の定義に合わせる）。
+$S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採用する定義は未決定（係数データの出典の定義に合わせる）。$\lvert\mathbf v_r\rvert \le \varepsilon_v$ のときは $Re$・$S$ を評価しない（§7.3）。
 
 ### 7.7 数値積分
 
 - 固定刻み $\Delta t$。候補：古典的 4 次ルンゲ＝クッタ法（主）、半陰的オイラー法（比較用）（[OQ-12](research/references-and-open-questions.md)）。
 - 四元数は各ステップの後に正規化する。
-- **地面イベント**：ステップ内で $y - R$ の符号が正から負に変わったら、接触時刻をステップ内で求め（線形補間、二分法などの候補）、その時刻まで積分し直してから §8.1 の処理を行う。
+- **地面イベント**（暫定、M1.2 で確定）：判定量を $h = y - R$ とする。
+  - 検出：ステップの開始で $h > 0$、終了で $h \le 0$ のとき、そのステップ内に接地があったとみなす。終了でちょうど $h = 0$ の場合も含む（このときはステップの終了時刻を接地時刻とする）。
+  - 接地時刻：**二分法**で求める。ステップの開始状態から部分刻み $\tau$ だけ同じ積分法で積分し直した $h(\tau)$ を評価し、区間幅が打ち切り幅 $\delta_t$ 以下になったら終了する。接地時刻には区間の右端（$h \le 0$ 側）を採る。$\delta_t$ の値は TOL-C とともに決める。線形補間は比較用とする（時刻の精度は通常 2 次にとどまり、積分法の次数を引き継がない）。
+  - 二分法の反復回数の上限は $\lceil\log_2(\Delta t/\delta_t)\rceil$ とし、区間幅の条件を満たさなくても上限で終了する（浮動小数点の精度で区間が縮まなくなる場合への備え）。$\delta_t$ は、時刻の浮動小数点の分解能より十分大きく取る。
+  - その時刻の状態で §8.1 の処理を行う。区間の右端を採るため、ボールは最大で $\lvert v_y\rvert\,\delta_t$ 程度地面に食い込むが、位置は補正せず、その状態のままバウンドを計算する。
+  - 残り時間：ステップの開始時刻を $t_k = k\Delta t$、接地時刻を $t^{*}$ とすると、バウンド処理の後に残り時間 $t_{k+1} - t^{*}$ を 1 回積分して $t_{k+1}$ に戻り、以降は元の刻み $t_k = k\Delta t$ に従う（結果の再現性と収束試験のため、時刻の格子をずらさない）。
+  - 初期状態：飛翔の開始時に $h \le 0$ の場合（衝突直後の地面上のボールなど）は、開始時刻を接地イベントとして扱わない。$v_y < 0$ なら §8.3、$v_y = 0$ なら §8.2 の処理になる。
+  - 重複の防止：バウンド処理後の状態は $h \le 0$ から始まるため、次のステップの開始で $h > 0$ という条件を満たさず、同じ接地を二重に検出しない。
+  - 制約：判定はステップの両端だけで行うため、最初の接触を捉えられると保証できるのは、ステップ内で $h$ の符号が 1 回だけ変わる場合に限る。1 ステップの間に $h$ が負になって正に戻る（地面をかすめる）場合や、複数回交差する場合は検出できないか、最初の接触にならないことがある。$\Delta t$ を決める際に、この見落としが起こりうる速度域を確認する。
+  - 離地と再接地が同じステップ内で起きる場合（ごく小さなバウンド）の見落としを避けるため、転がりへの移行の閾値 $v_{\text{rest}}$（§8.1）に $e_g\,v_{\text{rest}} \ge g\,\Delta t/2$ という条件を課す（$e_g > 0$ の場合）。これにより、転がりへ移らずにバウンドしたボールの滞空時間は、重力だけの近似で $\Delta t$ 以上になる。
 - 終了条件：停止（§8.2）、最大シミュレーション時間、領域外。
 - $\Delta t$ は描画 FPS と独立に、収束試験（VER-F02）の結果から決める。
 
@@ -405,14 +422,17 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 | P-11 | $\eta$ | 空気の粘性係数 | Pa·s | 未記入 | 規格値（予定） | 国際標準大気の値を候補とし、照合後に記入 |
 | P-12 | $C_D$ | 抗力係数 | — | 未決定 | 未決定 | モデル形も未決定。OQ-07 |
 | P-13 | $C_L$ | 揚力（マグヌス）係数 | — | 未決定 | 未決定 | OQ-07 |
-| P-14 | $c_\omega$ / $C_M$ | 回転減衰の係数 | — | 未決定 | 未決定 | OQ-08 |
+| P-14 | $c_\omega$ | 線形の回転減衰係数（§7.5 (b)） | kg·m²/s | 未決定 | 未決定 | $c_\omega \ge 0$。OQ-08 |
 | P-15 | $e_g$ | 地面の反発係数 | — | 未決定 | 未決定 | 地面の種類に依存。OQ-09 |
 | P-16 | $\mu_g$ | 地面の摩擦係数 | — | 未決定 | 未決定 | OQ-09 |
 | P-17 | $\mu_r$ | 転がり抵抗係数 | — | 未決定 | 未決定 | OQ-09 |
 | P-18 | $\Delta t$ | 物理の時間刻み | s | 未決定 | 未決定 | 収束試験で決める。OQ-12 |
-| P-19 | $v_{\text{rest}},\ v_{\text{stop}},\ \omega_{\text{stop}}$ | 転がり移行・停止の閾値 | m/s, rad/s | 未決定 | 未決定 | OQ-09 |
+| P-19 | $v_{\text{rest}},\ v_{\text{stop}},\ \omega_{\text{stop}}$ | 転がり移行・停止の閾値 | m/s, rad/s | 未決定 | 未決定 | $e_g v_{\text{rest}} \ge g\Delta t/2$ の条件あり（§7.7）。OQ-09 |
 | P-20 | $\mathbf w$ | 風速 | m/s | $\mathbf 0$ | 仮定 | Phase 1 は無風 |
-| P-21 | $\varepsilon$ | マグヌス力の縮退判定の閾値 | m/s² 相当 | 未決定 | 未決定 | 数値上の閾値。M1.2 |
+| P-21 | $\varepsilon$ | マグヌス力の縮退判定の閾値（$\lvert\boldsymbol\omega\times\mathbf v_r\rvert$ に対する） | m/s² 相当 | 未決定 | 未決定 | 数値上の閾値、$\varepsilon > 0$。M1.2 |
+| P-22 | $C_M$ | 空力トルク係数（§7.5 (c)） | — | 未決定 | 未決定 | $C_M \ge 0$。OQ-08 |
+| P-23 | $\varepsilon_v$ | ゼロ速度の判定閾値（$\lvert\mathbf v_r\rvert$ に対する） | m/s | 未決定 | 未決定 | 数値上の閾値、$\varepsilon_v > 0$。M1.2 |
+| P-24 | $\varepsilon_\omega$ | 無回転の判定閾値（$\lvert\boldsymbol\omega\rvert$ に対する、§7.5 (c)） | rad/s | 未決定 | 未決定 | 数値上の閾値、$\varepsilon_\omega > 0$。M1.2 |
 
 - 値を変更したら、確からしさ・出典・適用条件を同時に更新する。
 - UI のデフォルト値として「仮置き」の値を使う場合も、本表に値と「仮置き」の区分を記録する。
