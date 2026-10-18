@@ -138,7 +138,7 @@ interface ImpactResult {
 }
 
 interface Trajectory {         // 構造体の配列ではなく、配列の構造体（WASM・Worker 転送向き）
-  time: Float64Array;          // s。単調非減少。同じ時刻が続くのは接地の処理の前後だけ（暫定、T1.2-08）
+  time: Float64Array;          // s。単調非減少。同じ時刻が続くのは接地の処理の前後だけ（決定、2026-10-18、T1.2-08）
   position: Float64Array;      // 3N
   linearVelocity: Float64Array;   // 3N
   orientation: Float64Array;   // 4N
@@ -176,7 +176,7 @@ type SimResult<T> = { ok: true; value: T } | { ok: false; error: SimError };
 - 想定内の入力エラー（離反方向の足速度、範囲外のパラメータなど）は例外ではなく `SimResult` のエラー値で返す。プログラムの誤りは例外でよい。
 - `ParameterSet` は値とメタデータ（単位・出典・確からしさ・適用条件）を持つ。Core の計算は値のみを使い、メタデータはそのまま結果に含めて UI と出力へ渡す。
 - 各力項の ON/OFF とモデル選択（定数 `C_D` か関数かなど）は `SimulationSettings` 側（`FlightForceSettings`）に置き、物理定数（$g$、$\rho$、$\eta$、風速）は `FlightEnvironment` として渡す。どちらもパイプライン（T1.5-01）で `ParameterSet` の値から組み立てる（暫定、T1.2-01、`packages/physics-core/src/flight/types.ts`）。
-- 飛翔と地面イベント（暫定、T1.2-07、`packages/physics-core/src/flight/ground-events.ts`）：`simulateFlightRun(ball, …, settings, onGroundContact)` が 05 §7.7 の地面イベントを扱う。設定は `FlightSimulationSettings`（Δt、最大時間 `maxTime`、二分法の打ち切り幅 `eventTimeTolerance` = $\delta_t$）。接地の処理（05 §8 のバウンドなど）は `GroundContactHandler`（接地時刻と $y$ を $R$ に射影した状態を受け取り、終了か処理後の状態を返す）として渡し、既定は最初の接地で終了する。バウンドは T1.3-07 でこの形の処理として実装する。処理の関数は Core の内部（パイプライン）で組み立てるもので、§9 の「境界にコールバックを置かない」方針の対象である `simulateKick` の引数には出さない。飛翔の開始時に $h \le 0$ かつ $v_y \le 0$ の場合は、開始時刻に `atStart: true` の接地として処理する（05 §7.7 の「初期状態」）。終了条件のうち「領域外」は、領域の定義が未決定のため実装していない。
+- 飛翔と地面イベント（T1.2-07。接地の処理を関数で渡す設計は決定、2026-10-18。`packages/physics-core/src/flight/ground-events.ts`）：`simulateFlightRun(ball, …, settings, onGroundContact)` が 05 §7.7 の地面イベントを扱う。設定は `FlightSimulationSettings`（Δt、最大時間 `maxTime`、二分法の打ち切り幅 `eventTimeTolerance` = $\delta_t$）。接地の処理（05 §8 のバウンドなど）は `GroundContactHandler`（接地時刻と $y$ を $R$ に射影した状態を受け取り、終了か処理後の状態を返す）として渡し、既定は最初の接地で終了する。バウンドは T1.3-07 でこの形の処理として実装する。処理の関数は Core の内部（パイプライン）で組み立てるもので、§9 の「境界にコールバックを置かない」方針の対象である `simulateKick` の引数には出さない。飛翔の開始時に $h \le 0$ かつ $v_y \le 0$ の場合は、開始時刻に `atStart: true` の接地として処理する（05 §7.7 の「初期状態」）。終了条件のうち「領域外」は、領域の定義が未決定のため実装していない（OQ-25）。
 - 軌道データ（暫定、T1.2-08、`packages/physics-core/src/flight/trajectory.ts`）：サンプルは時刻の格子 $k\Delta t$ の全ステップと、イベントの時刻の状態（接地では処理の前と後の 2 つ、同じ時刻）。サンプリング間隔を Δt より粗くする設定は持たない（OQ-12）。現在の実装の `simulateFlight` は `ParameterSet` ではなく、ボールの物性・`FlightEnvironment`・`FlightSimulationSettings`・接地の処理を受け取る段階 API で、`ParameterSet` からの組み立てはパイプライン（T1.5-01）で行う。係数の評価などのエラーがありうるため、戻り値は `SimResult<Trajectory>` とした。現時点のイベントは `ground-contact` と `max-time`（`impact`・`roll-start`・`stop` は M1.3・M1.5）。
 - 空力係数を関数で与える場合、関数は $(Re, S)$ を受け取り、有限の値を返す。$C_D$・$C_M$ は非負、$C_L$ の符号は [05 §7.4](05-physics-model.md) の規約に従う（負の $C_L$ も拒否しない。暫定、T1.2-05）。関数が範囲外の値・NaN・無限大を返した場合や、入力が係数の定義域外の場合は、値を補正・切り詰めせずに `SimResult` のエラーとして返す。
 
