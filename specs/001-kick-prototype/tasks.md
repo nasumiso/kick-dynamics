@@ -1,6 +1,6 @@
 # 001 キックプロトタイプ（Phase 1）タスク
 
-> 状態：Draft（2026-10-18）。T0 は完了。M1.1 は完了。M1.2 は IV-03-R / IV-04-R まで完了（判断保留の事項は IV-03-R / IV-04-R の結果欄に記録）。M1.3 は T1.3-03 まで完了。
+> 状態：Draft（2026-10-18）。T0 は完了。M1.1 は完了。M1.2 は IV-03-R / IV-04-R まで完了（判断保留の事項は IV-03-R / IV-04-R の結果欄に記録）。M1.3 は T1.3-04 まで完了。
 > 計画は [plan.md](plan.md)、受入条件は [spec.md](spec.md)、検証項目と独立検証の手順は [06-validation.md](../../docs/06-validation.md) を参照してください。
 
 ## 使い方
@@ -272,10 +272,11 @@
 - 完了確認：VER-C10、C11 のテストが合格する。
 - 結果（2026-10-18）：`solveImpact` に 05 §6.8 の手順 4 の滑りの解を追加（$\hat{\mathbf t} = \mathbf u_t^-/\lvert\mathbf u_t^-\rvert$、$\lvert\mathbf u_t^-\rvert \le \varepsilon_t$ なら $-\mathbf J^{*}_t/\lvert\mathbf J^{*}_t\rvert$ で近似して警告 `tangent-direction-approximated`、分母が 0 以下または $\mathbf J^{*}_t = \mathbf 0$ なら `impact-unsolvable` のエラーに $\mathbf u^-$・$\mathbf K$・$\mathbf J^{*}$ を付ける）。`test/contact/friction.test.ts` で VER-C10（有限・無限質量、$\mu$ = 0.05, 0.3, 2、固着と滑りの両方、近似の警告）と VER-C11（無限質量の足で閉形式と一致、境界の前後と $\mu \to 0$ で差が比例して小さくなる）に合格。**仮置き**：$\varepsilon_t = 10^{-9}$ m/s（P-25、根拠は 05 §10.2）、VER-C11 の判定方法（06 §4.3）。**未確認**：`impact-unsolvable` に至る自然な構成は、結合を強くした人工的な足でも探索で見つからず（分母が負になる向きでは固着解が先に採用された）、このエラーの経路はテストで通していない。IV-01-C の照合で確認する。
 
-### [ ] T1.3-04 無限質量モード
+### [x] T1.3-04 無限質量モード
 - 担当：Claude Code
 - 依存：T1.3-03
 - 完了確認：VER-C12、C16 のテストが合格する。
+- 結果（2026-10-18）：無限質量の足（`kinematic-wall`）は T1.3-02 で `KINEMATIC_INERTIA` として実装済み。診断値に $\Delta T = \tfrac12\mathbf J\cdot(\mathbf u^- + \mathbf u^+)$ と地上系のボールの運動エネルギーの前後を追加。`test/contact/kinematic-wall.test.ts` で VER-C12（固着・滑りの両方で、差が $1/\lambda$ に比例）、VER-C16（$\omega_A = \mathbf 0$ の 5 通りの $e$・$\mu$ で、足とともに並進する系のボールのエネルギーが増えず $\Delta T$ と一致、地上系の増加は警告しない、足は変化しない）に合格。**仮置き**：VER-C12 の判定方法（06 §4.3）。C16 のエネルギーの差は rel = abs = 1e-10（T1.3-02 の C04 と同じ理由の仮置き）。
 
 ### [ ] T1.3-05 偏心衝突と衝突診断
 - 担当：Claude Code

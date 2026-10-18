@@ -1,6 +1,6 @@
 // 瞬間点接触のソルバー（docs/05-physics-model.md §6.3〜6.9）。
 // Newton の反発係数（法線）と Coulomb 摩擦（接線）の代数解。
-import { ballInertia, inertiaWorld } from '../bodies/dynamics';
+import { ballInertia, inertiaWorld, kineticEnergy } from '../bodies/dynamics';
 import type { RigidBodyState } from '../bodies/types';
 import { mulVec, solve } from '../math/mat3';
 import { add, addScaled, cross, dot, length, normalize, scale, sub, type Vec3 } from '../math/vec3';
@@ -45,13 +45,18 @@ export function solveImpact(setup: ImpactSetup, params: ContactParameters, model
     ? KINEMATIC_INERTIA
     : finiteInertia(params.foot.mass, inertiaWorld(params.foot.inertiaBody, setup.foot.orientation));
 
+  const ballMassProperties = { mass: params.ball.mass, inertiaWorld: ballInertia(params.ball) };
+  const ballEnergyBefore = kineticEnergy(ballMassProperties, setup.ball);
   const uBefore = sub(pointVelocity(setup.ball, ballArm), pointVelocity(setup.foot, footArm));
   const unBefore = dot(uBefore, n);
   // 1. 離反（u_n⁻ ≥ 0）：衝撃量 0、状態は変化しない。
   if (unBefore >= 0) {
     return ok({
       impulse: [0, 0, 0], regime: 'separating', ballAfter: setup.ball, footAfter: setup.foot,
-      diagnostics: { relativeVelocityBefore: uBefore, relativeVelocityAfter: uBefore, slidingDirection: null, warnings: [] },
+      diagnostics: {
+        relativeVelocityBefore: uBefore, relativeVelocityAfter: uBefore, kineticEnergyChange: 0,
+        ballKineticEnergyBefore: ballEnergyBefore, ballKineticEnergyAfter: ballEnergyBefore, slidingDirection: null, warnings: [],
+      },
     });
   }
 
@@ -106,6 +111,14 @@ export function solveImpact(setup: ImpactSetup, params: ContactParameters, model
   const uAfter = sub(pointVelocity(ballAfter, ballArm), pointVelocity(footAfter, footArm));
   return ok({
     impulse, regime, ballAfter, footAfter,
-    diagnostics: { relativeVelocityBefore: uBefore, relativeVelocityAfter: uAfter, slidingDirection, warnings },
+    diagnostics: {
+      relativeVelocityBefore: uBefore,
+      relativeVelocityAfter: uAfter,
+      kineticEnergyChange: 0.5 * dot(impulse, add(uBefore, uAfter)),
+      ballKineticEnergyBefore: ballEnergyBefore,
+      ballKineticEnergyAfter: kineticEnergy(ballMassProperties, ballAfter),
+      slidingDirection,
+      warnings,
+    },
   });
 }

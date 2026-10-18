@@ -43,6 +43,14 @@ export interface ImpactDiagnostics {
   /** 接触点の相対速度 u（ボール − 足）の衝突前後 m/s */
   readonly relativeVelocityBefore: Vec3;
   readonly relativeVelocityAfter: Vec3;
+  /**
+   * ΔT = ½ J·(u⁻ + u⁺) J（05 §6.11）。有限質量モデルでは足とボールの運動エネルギーの合計の変化。
+   * 無限質量モデルで ω_A = 0 なら、足とともに並進する系から見たボールの運動エネルギーの変化。
+   */
+  readonly kineticEnergyChange: number;
+  /** 地上系でのボールの運動エネルギー（並進＋回転）の衝突前後 J */
+  readonly ballKineticEnergyBefore: number;
+  readonly ballKineticEnergyAfter: number;
   /** 滑りの解で使った滑り方向 t̂（固着・離反、μ = 0 の滑りでは null） */
   readonly slidingDirection: Vec3 | null;
   readonly warnings: readonly ImpactWarning[];
