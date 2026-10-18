@@ -22,7 +22,7 @@ export type ParameterId =
   | 'P-01' | 'P-02' | 'P-03' | 'P-04' | 'P-05' | 'P-06' | 'P-07' | 'P-08'
   | 'P-09' | 'P-10' | 'P-11' | 'P-12' | 'P-13' | 'P-14' | 'P-15' | 'P-16'
   | 'P-17' | 'P-18' | 'P-19' | 'P-20' | 'P-21' | 'P-22' | 'P-23' | 'P-24'
-  | 'P-25' | 'P-26' | 'P-27';
+  | 'P-25' | 'P-26' | 'P-27' | 'P-28';
 
 export interface ParameterEntry<T> {
   readonly id: ParameterId;
@@ -80,4 +80,5 @@ export interface ParameterSet {
   readonly tangentialSpeedThreshold: ParameterEntry<number>; // P-25
   readonly rollReferenceThreshold: ParameterEntry<number>; // P-26
   readonly verticalLaunchThreshold: ParameterEntry<number>; // P-27
+  readonly diagnosticRelativeTolerance: ParameterEntry<number>; // P-28
 }

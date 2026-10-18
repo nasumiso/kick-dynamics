@@ -15,9 +15,9 @@ const EVENT_TIME_TOLERANCE = 1e-9; // δ_t（仮置き、06 §3）
 const metricsSettings: MetricsSettings = { verticalLaunchThreshold: 1e-6 }; // P-27（仮置き）
 const g = environment.gravity;
 
-function fly(v0: Vec3, w0: Vec3, forces: Partial<FlightForceSettings> = {}, timeStep = 0.01, handler?: GroundContactHandler): Trajectory {
+function fly(v0: Vec3, w0: Vec3, forces: Partial<FlightForceSettings> = {}, timeStep = 0.01, handler?: GroundContactHandler, maxTime = 6): Trajectory {
   const settings: FlightSimulationSettings = {
-    timeStep, maxTime: 6, eventTimeTolerance: EVENT_TIME_TOLERANCE, forces: { ...allOff, gravity: true, ...forces }, thresholds,
+    timeStep, maxTime, eventTimeTolerance: EVENT_TIME_TOLERANCE, forces: { ...allOff, gravity: true, ...forces }, thresholds,
   };
   const initial: RigidBodyState = { position: [0, ball.radius, 0], orientation: IDENTITY_QUAT, linearVelocity: v0, angularVelocity: w0 };
   const r = simulateFlight(initial, ball, environment, settings, handler);
@@ -61,7 +61,8 @@ describe('VER-S03 metrics of a vacuum projectile', () => {
     const reflect: GroundContactHandler = (c) => ok({
       kind: 'continue', state: { ...c.state, linearVelocity: [c.state.linearVelocity[0], -0.5 * c.state.linearVelocity[1], c.state.linearVelocity[2]] },
     });
-    const bouncing = computeFlightMetrics(fly(v0, w0, {}, 0.01, reflect), metricsSettings);
+    // 反射を続けると反発が Δt より短くなりエラーになる（05 §7.7）ので、2 回目の接地の後で止める。
+    const bouncing = computeFlightMetrics(fly(v0, w0, {}, 0.01, reflect, 3), metricsSettings);
     expect(bouncing.flightTime).toBe(m.flightTime);
     expect(bouncing.landingPoint).toEqual(m.landingPoint);
     expect(bouncing.maxHeight).toBe(m.maxHeight);

@@ -1,7 +1,9 @@
 // T1.1-07：05 §10 の全パラメータと確からしさの区分が型で表現できること。
 // 値は 05 §10.2（2026-10-18 時点）の記載をそのまま写したテスト用の例で、Core の既定値ではない。
 import { describe, expect, it } from 'vitest';
+import { boxInertia } from '../../src/bodies/dynamics';
 import type { Confidence, ParameterEntry, ParameterId, ParameterSet } from '../../src/params/parameter-set';
+import { expectAllClose } from '../tolerance';
 
 function undetermined<T>(id: ParameterId, symbol: string, unit: string, source: string): ParameterEntry<T> {
   return { id, symbol, unit, value: null, confidence: 'undetermined', source };
@@ -18,9 +20,12 @@ const phase1Table: ParameterSet = {
     confidence: 'standard', source: '外周 0.68–0.70 m からの換算（一次情報未照合）',
   },
   ballInertiaCoefficient: undetermined('P-03', 'κ', '—', 'OQ-06'),
-  footMass: undetermined('P-04', 'm_A', 'kg', 'OQ-02'),
-  footInertiaBody: undetermined('P-05', 'I_A^body', 'kg·m²', 'P-04・P-06 から直方体の式で計算'),
-  footDimensions: undetermined('P-06', 'L_x, L_y, L_z', 'm', 'OQ-02、T0-08'),
+  footMass: { id: 'P-04', symbol: 'm_A', unit: 'kg', value: 1.2, confidence: 'provisional', source: '出典なし（T0-08）。OQ-02' },
+  footInertiaBody: {
+    id: 'P-05', symbol: 'I_A^body', unit: 'kg·m²', value: [0.00164, 0, 0, 0, 0.0074, 0, 0, 0, 0.00776],
+    confidence: 'provisional', source: 'P-04・P-06 から直方体の式で計算',
+  },
+  footDimensions: { id: 'P-06', symbol: 'L_x, L_y, L_z', unit: 'm', value: [0.26, 0.1, 0.08], confidence: 'provisional', source: '出典なし（T0-08）。OQ-02' },
   restitution: undetermined('P-07', 'e', '—', 'OQ-04'),
   friction: undetermined('P-08', 'μ', '—', 'OQ-05'),
   gravity: { id: 'P-09', symbol: 'g', unit: 'm/s²', value: 9.80665, confidence: 'defined', source: '標準重力' },
@@ -42,15 +47,16 @@ const phase1Table: ParameterSet = {
   torqueCoefficient: undetermined('P-22', 'C_M', '—', 'OQ-08'),
   zeroSpeedThreshold: { id: 'P-23', symbol: 'ε_v', unit: 'm/s', value: 1e-6, confidence: 'provisional', source: '力の大きさの見積もり（T1.2-05）' },
   zeroSpinThreshold: { id: 'P-24', symbol: 'ε_ω', unit: 'rad/s', value: 1e-6, confidence: 'provisional', source: '正規化のゼロ除算の回避（T1.2-06）' },
-  tangentialSpeedThreshold: undetermined('P-25', 'ε_t', 'm/s', 'M1.3'),
-  rollReferenceThreshold: undetermined('P-26', 'ε_φ', '—', 'M1.3'),
+  tangentialSpeedThreshold: { id: 'P-25', symbol: 'ε_t', unit: 'm/s', value: 1e-9, confidence: 'provisional', source: '丸め誤差の見積もり（T1.3-03）' },
+  rollReferenceThreshold: { id: 'P-26', symbol: 'ε_φ', unit: '—', value: 1e-6, confidence: 'provisional', source: '正規化の精度の見積もり（T1.3-06）' },
   verticalLaunchThreshold: { id: 'P-27', symbol: 'ε_vert', unit: '—', value: 1e-6, confidence: 'provisional', source: 'スピン成分の定義不能の判定（T1.2-09）' },
+  diagnosticRelativeTolerance: { id: 'P-28', symbol: 'τ_diag', unit: '—', value: 1e-9, confidence: 'provisional', source: '衝突診断の警告の判定幅（T1.3-05）' },
 };
 
 describe('ParameterSet', () => {
   it('covers every parameter ID of 05 §10.2 exactly once', () => {
     const ids = Object.values(phase1Table).map((entry) => entry.id).sort();
-    const expected = Array.from({ length: 27 }, (_, i) => `P-${String(i + 1).padStart(2, '0')}`);
+    const expected = Array.from({ length: 28 }, (_, i) => `P-${String(i + 1).padStart(2, '0')}`);
     expect(ids).toEqual(expected);
   });
 
@@ -60,5 +66,11 @@ describe('ParameterSet', () => {
       const entry: ParameterEntry<number> = { ...phase1Table.restitution, value: 0.5, confidence };
       expect(entry.confidence).toBe(confidence);
     }
+  });
+});
+
+describe('provisional foot parameters (T0-08)', () => {
+  it('derive P-05 from P-04 and P-06 with the box formula of 05 §5.2', () => {
+    expectAllClose(boxInertia(phase1Table.footMass.value!, phase1Table.footDimensions.value!), phase1Table.footInertiaBody.value!);
   });
 });

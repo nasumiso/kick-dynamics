@@ -87,6 +87,12 @@ export function simulateFlightRun(
     const stepped = rk4Step(state, dt, ball, environment, settings);
     if (!stepped.ok) return stepped;
     let next = stepped.value;
+    if (heightAboveContact(state, ball) <= 0 && heightAboveContact(next, ball) < 0 && next.linearVelocity[1] <= 0) {
+      // 地面上（h ≤ 0）から始まったステップで、ボールが地面の下へ進んだ：処理後の滞空がステップより短い反発などで、
+      // 再接地を検出できなかった（05 §7.7 の制約。開始で h > 0 という検出条件を満たさない）。黙って続けずにエラーにする。
+      // 転がりへの移行（05 §8.1 の v_rest、e_g v_rest ≥ g Δt/2）は T1.3-08 で扱う。
+      return fail('unsupported-model', `the ball went below the ground in the step starting at t = ${start} s without a detectable ground contact (rolling transition is T1.3-08)`);
+    }
 
     if (heightAboveContact(state, ball) > 0 && heightAboveContact(next, ball) <= 0) {
       let lo = 0;
@@ -115,6 +121,11 @@ export function simulateFlightRun(
         const rest = rk4Step(handled.value, remaining, ball, environment, settings);
         if (!rest.ok) return rest;
         next = rest.value;
+        if (heightAboveContact(next, ball) < 0 && next.linearVelocity[1] <= 0) {
+          // 処理後の残り時間のうちに再び地面を通過した（ステップより短い反発、05 §7.7）。最終ステップでも検出するため、
+          // 次のステップの開始を待たずにここでも判定する。転がりへの移行は T1.3-08。
+          return fail('unsupported-model', `the ball went below the ground within the remaining ${remaining} s after a ground contact at t = ${time} s (rolling transition is T1.3-08)`);
+        }
       } else {
         // 接地がステップの終了時刻と一致：処理後の状態がそのまま時刻 t_{k+1} の状態。
         state = handled.value;

@@ -34,5 +34,16 @@ export type { FlightRun } from './flight/ground-events';
 export { simulateFlight, stateAt, toTrajectory } from './flight/trajectory';
 export type { Trajectory } from './flight/trajectory';
 
+export type {
+  ContactParameters, FootModel, ImpactDiagnostics, ImpactGeometryParameters, ImpactRegime, ImpactResult, ImpactSetup, ImpactWarning,
+  KickInput,
+} from './contact/types';
+export { ballContactMatrix, bodyContactMatrix, contactMatrix, finiteInertia, KINEMATIC_INERTIA } from './contact/k-matrix';
+export type { ImpactInertia } from './contact/k-matrix';
+export { DIAGNOSTIC_RELATIVE_TOLERANCE, pointVelocity, solveContact, solveImpact } from './contact/solver';
+export type { ContactCoefficients } from './contact/solver';
+export { groundBounceHandler, solveGroundBounce } from './ground/bounce';
+export { buildImpactSetup, footAxes } from './contact/setup';
+
 export { computeFlightMetrics, spinComponents } from './metrics/flight-metrics';
 export type { FlightMetrics, MetricsSettings, SpinComponents } from './metrics/flight-metrics';

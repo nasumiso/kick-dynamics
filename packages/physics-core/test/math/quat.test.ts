@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { mul, mulVec, transpose, IDENTITY } from '../../src/math/mat3';
 import {
-  conjugate, derivative, fromAxisAngle, IDENTITY_QUAT, multiply, norm, normalize, rotate, toMat3, type Quat,
+  conjugate, derivative, fromAxisAngle, fromMat3, IDENTITY_QUAT, multiply, norm, normalize, rotate, toMat3, type Quat,
 } from '../../src/math/quat';
 import { normalize as normalizeVec, type Vec3 } from '../../src/math/vec3';
 import { expectAllClose, expectClose } from '../tolerance';
@@ -80,5 +80,20 @@ describe('VER-M03 quaternion algebra', () => {
     // 単位四元数の微分はノルムを保つ向き（q · q̇ = 0）。
     const d = derivative(qa, omega);
     expectClose(qa[0] * d[0] + qa[1] * d[1] + qa[2] * d[2] + qa[3] * d[3], 0);
+  });
+});
+
+describe('VER-M03 rotation matrix → quaternion', () => {
+  it('inverts toMat3 up to the sign of q, including rotations near 180°', () => {
+    const cases: Quat[] = [
+      IDENTITY_QUAT, qa, qb, fromAxisAngle([1, 0, 0], Math.PI), fromAxisAngle([0, 1, 0], Math.PI - 1e-9),
+      fromAxisAngle(normalizeVec([1, -1, 2]), 3.1), fromAxisAngle([0, 0, 1], -2.9),
+    ];
+    for (const q of cases) {
+      const back = fromMat3(toMat3(q));
+      expectClose(norm(back), 1);
+      expectAllClose(toMat3(back), toMat3(q));
+      expectAllClose(rotate(back, v), rotate(q, v));
+    }
   });
 });

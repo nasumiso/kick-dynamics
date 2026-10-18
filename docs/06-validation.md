@@ -96,14 +96,14 @@ VER に合格しても、モデルが実物を再現していることにはな�
 | VER-C08 | 偏心衝突 | $\mathbf r_A$ が $\mathbf n$ と非平行、有限質量 | 足の角速度変化が $-\mathbf I_A^{-1}(\mathbf r_A\times\mathbf J)$ と一致し、VER-C06 を満たす。重心を通る衝突（総衝撃量 $\mathbf J$ の作用線が足の重心を通る：$\mathbf r_A\times\mathbf J = \mathbf 0$）では足の角速度変化が 0 | TOL-A | 1 |
 | VER-C09 | 法線方向の反発条件 | 解が得られた場合（`stick`・`slide`）。解けない場合は 05 §6.8 のエラーが返り、状態が更新されないこと | $u_n^+ = -e\,u_n^-$ | TOL-A | 1 |
 | VER-C10 | 摩擦の条件 | 解が得られた場合。$\lvert\mathbf u_t^-\rvert \le \varepsilon_t$ の近似を使った場合は警告が付くこと | $\vert \mathbf J_t\vert  \le \mu j_n$。固着なら $\mathbf u_t^+ = \mathbf 0$、滑りなら $\mathbf J_t$ が $-\hat{\mathbf t}$ 方向 | TOL-A | 1 |
-| VER-C11 | 連続性 | 非連成で接線方向に等方的な場合（$\mathbf K = k_n\mathbf n\mathbf n^{\mathsf T} + k_t(\mathbf E - \mathbf n\mathbf n^{\mathsf T})$。無限質量モデル、地面との衝突など）に限る。$\mu\to 0$、および固着／滑りの境界の前後。一般の連成する場合は不連続を許容する（05 §6.13） | 結果が連続に変化し、$\mu = 0$ の結果に近づく | TOL-B 相当（判定方法は M1.3 で決める） | 1 |
-| VER-C12 | 無限質量への極限 | $m_A$ と $\mathbf I_A$ を大きくする | 有限質量モデルの結果が無限質量モデルの結果に近づく | 判定方法は M1.3 で決める | 1 |
+| VER-C11 | 連続性 | 非連成で接線方向に等方的な場合（$\mathbf K = k_n\mathbf n\mathbf n^{\mathsf T} + k_t(\mathbf E - \mathbf n\mathbf n^{\mathsf T})$。無限質量モデル、地面との衝突など）に限る。$\mu\to 0$、および固着／滑りの境界の前後。一般の連成する場合は不連続を許容する（05 §6.13） | 結果が連続に変化し、$\mu = 0$ の結果に近づく | TOL-B 相当。判定方法（**仮置き**、T1.3-03）：境界 $\mu_c$ の前後 $\mu_c(1\pm\delta)$ の結果の差、および $\mu$ の結果と $\mu = 0$ の結果の差が、$\delta$（または $\mu$）を 1/100 にするとほぼ 1/100 になる（比が 100 の ±10% 以内）。あわせて境界の両側で 05 §6.8 の閉形式と TOL-A で一致する | 1 |
+| VER-C12 | 無限質量への極限 | $m_A$ と $\mathbf I_A$ を大きくする | 有限質量モデルの結果が無限質量モデルの結果に近づく | 判定方法（**仮置き**、T1.3-04）：$m_A$・$\mathbf I_A$ を $\lambda$ 倍したときの衝突直後のボールの速度・角速度の差が $1/\lambda$ に比例して小さくなる（$\lambda$ を 100 倍で差がほぼ 1/100、比が 100 の ±10% 以内）。固着・滑りの両方で、境界から離れた構成 | 1 |
 | VER-C13 | 離反時 | $u_n^- \ge 0$ | 衝撃量 $\mathbf 0$、状態は変化しない、結果が `separating` | 厳密 | 1 |
 | VER-C14 | 散逸 | エネルギーの非増加が保証される条件（摩擦なし、または非連成の場合） | $\Delta T \le 0$ で、警告が出ない | TOL-A | 1 |
 | VER-C18 | エネルギー増加の検出 | 法線と接線が連成し、代数解で $\Delta T > 0$ となる構成 | 結果が返り（エラーにしない）、エネルギー増加の警告が付く。補正されていない | 厳密（警告の有無） | 1 |
 | VER-C15 | 行列 K の性質 | 任意 | 対称・正定値。ボール部分が 05 §6.5 の閉形式と一致 | TOL-A | 1 |
 | VER-C16 | 無限質量での並進系のエネルギー | 無限質量、$\boldsymbol\omega_A = \mathbf 0$ | 足とともに並進する系から見たボールの運動エネルギー（並進＋回転）が増加せず、診断の $\Delta T$ と一致する。地上系でのボールのエネルギー増加は警告されない | TOL-A | 1 |
-| VER-C17 | 接触幾何の整合 | `buildImpactSetup` | 足の接触面（$+z_b$ 面）の法線が $\mathbf n$ と一致し、$\mathbf x_A = \mathbf p - \mathbf r_A$、$\vert \mathbf d\vert  = 1$。$\phi = 0$ の姿勢が 05 §6.2 の基準と一致。重心速度が $\mathbf v_A = \mathbf v_A^{p} - \boldsymbol\omega_A\times\mathbf r_A$ を満たし、接触点の速度が入力の $\mathbf v_A^{p}$ に戻る。姿勢は回転として比較する（$q$ と $-q$ を区別しない）。$\varepsilon_\phi$ による基準軸の切り替えの両側で、それぞれの基準と一致する。05 §6.2 の入力の検証の各場合にエラーが返る | TOL-A（エラーの有無は厳密） | 1 |
+| VER-C17 | 接触幾何の整合 | `buildImpactSetup` | 足の接触面（$+z_b$ 面）の法線が $\mathbf n$ と一致し、$\mathbf x_A = \mathbf p - \mathbf r_A$、$\vert \mathbf d\vert  = 1$。$\phi = 0$ の姿勢が 05 §6.2 の基準と一致。重心速度が $\mathbf v_A = \mathbf v_A^{p} - \boldsymbol\omega_A\times\mathbf r_A$ を満たし、接触点の速度が入力の $\mathbf v_A^{p}$ に戻る。姿勢は回転として比較する（$q$ と $-q$ を区別しない）。$\varepsilon_\phi$ による基準軸の切り替えの両側で、それぞれの基準と一致する。05 §6.2 の入力の検証の各場合にエラーが返る | TOL-A（エラーの有無は厳密）。ただし $\varepsilon_\phi$ の直上（$\hat{\mathbf y}$ の射影の長さ $\ell$ が小さい場合）は、射影の打ち消し合いで姿勢の誤差が機械イプシロン $/\ell$ 程度に増えるため、絶対誤差 $64\,\epsilon_{\text{mach}}/\ell$ で判定する（**仮置き**。係数 64 は演算の規模による余裕。IV-02-C の I02-H01、2026-10-18） | 1 |
 
 ### 4.4 接地
 

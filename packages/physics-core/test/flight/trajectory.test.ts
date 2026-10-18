@@ -11,7 +11,8 @@ import { allOff, ball, environment, thresholds } from './fixtures';
 
 const settings: FlightSimulationSettings = {
   timeStep: 0.01,
-  maxTime: 3,
+  // 反射を続けると反発が Δt より短くなり、再接地を検出できずにエラーになる（05 §7.7）。その手前で止める。
+  maxTime: 2,
   eventTimeTolerance: 1e-9, // δ_t（仮置き、06 §3）
   forces: {
     ...allOff,
@@ -86,7 +87,7 @@ describe('Trajectory output format', () => {
 
   it('keeps both samples at t = 0 when the flight starts on the ground with v_y < 0', () => {
     const start: RigidBodyState = { ...initial, linearVelocity: [12, -3, 1] };
-    const r = simulateFlight(start, ball, environment, settings, reflect);
+    const r = simulateFlight(start, ball, environment, { ...settings, maxTime: 0.5 }, reflect);
     if (!r.ok) throw new Error(r.error.message);
     const t = r.value;
     expect(t.events[0]).toMatchObject({ type: 'start-on-ground', time: 0, sampleIndex: 0, response: 'continue' });
