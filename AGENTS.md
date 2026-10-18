@@ -1,93 +1,52 @@
 # AGENTS.md
 
-KickDynamics（サッカーキック軌道シミュレータ）で作業する AI エージェント向けの永続ルールです。名称：物理コア = KickDynamics Core（仮称、`packages/physics-core`）、ブラウザシミュレータ = KickDynamics Lab（仮称、`apps/web`）、将来のゲーム名 = FootBallistics（候補・商標未確認のため確定名として扱わない）。詳細は各正本文書を参照し、ここには要点のみを置きます。
+KickDynamics（サッカーキック軌道シミュレータ）で作業する AI エージェント向けの、毎回守るルールだけを置く。名称・構成・コマンドは [README.md](README.md)、作業手順は [docs/ai-workflow.md](docs/ai-workflow.md) を参照。
 
 ## 現在の段階
 
-- M1.1（計算コア基盤）を実装中。**ユーザーの指示なしに、指示された範囲を超える実装・依存パッケージ導入・フレームワーク初期化を始めない。**
-- 実装に着手するときは [specs/001-kick-prototype/tasks.md](specs/001-kick-prototype/tasks.md) の順に、1 タスクずつ進める。
+- M1.3（点接触ソルバー）を実装中。**ユーザーの指示なしに、指示された範囲を超える実装・依存パッケージ導入・フレームワーク初期化を始めない。**
+- 実装は [specs/001-kick-prototype/tasks.md](specs/001-kick-prototype/tasks.md) の順に 1 タスクずつ進め、完了したら結果欄を書く。変更後は `npm run check` を通す。
 
 ## 正本
 
-| 対象 | 正本 |
-|---|---|
-| 物理モデル（数式・記号・座標系・単位・パラメータ表） | [docs/05-physics-model.md](docs/05-physics-model.md) |
-| 検証項目（VER / VAL）・許容誤差・独立検証の手順（IV） | [docs/06-validation.md](docs/06-validation.md) |
-| アーキテクチャ・API・依存ルール | [docs/04-architecture.md](docs/04-architecture.md) |
-| ロードマップ・成熟度 | [docs/03-roadmap.md](docs/03-roadmap.md) |
-| 要求（US / FR / NFR） | [docs/02-requirements.md](docs/02-requirements.md) |
-| 未決事項（OQ）・必要な実測データ（D） | [docs/research/references-and-open-questions.md](docs/research/references-and-open-questions.md) |
-| Phase 1 受入条件（AC） | [specs/001-kick-prototype/spec.md](specs/001-kick-prototype/spec.md) |
-| AI エージェントの運用（検索の除外、Codex への依頼、Git、クラウドでの作業） | [docs/ai-workflow.md](docs/ai-workflow.md) |
-
 数式や一覧を他の文書へ複製せず、正本へリンクする。
 
-## 役割分担
-
-| 担当 | 役割 |
+| 対象 | 正本 |
 |---|---|
-| 人間（開発者） | 最終的な設計判断と承認 |
-| Claude Code（主担当） | 設計の具体化、実装、リファクタリング、テストの実装 |
-| Codex（独立検証担当） | 物理モデル・数式・数値計算・テストの妥当性の検証。結果を報告し、実装コードは原則として直接変更しない |
+| 物理モデル（数式・座標系・単位・パラメータ表） | [docs/05-physics-model.md](docs/05-physics-model.md) |
+| 検証項目（VER / VAL）・許容誤差・独立検証の手順 | [docs/06-validation.md](docs/06-validation.md) |
+| アーキテクチャ・API・依存ルール | [docs/04-architecture.md](docs/04-architecture.md) |
+| 要求・ロードマップ | [docs/02-requirements.md](docs/02-requirements.md)、[docs/03-roadmap.md](docs/03-roadmap.md) |
+| 未決事項（OQ）・実測データ（D） | [docs/research/references-and-open-questions.md](docs/research/references-and-open-questions.md) |
+| Phase 1 受入条件・タスク | [specs/001-kick-prototype/](specs/001-kick-prototype/) |
+| AI エージェントの運用（Codex への依頼、Git、クラウド） | [docs/ai-workflow.md](docs/ai-workflow.md) |
 
-**独立検証の原則**（手順の正本は [docs/06-validation.md §9](docs/06-validation.md)）：
+## 役割と独立検証
 
-- 重要な物理機能（06 §9.4 の対象）は、仕様確定 → Codex による独立導出 → Claude Code による実装 → Codex による照合 → 根拠に基づく差異の解決、の順で進める。
-- Codex の独立導出は、実装コードとテストを見ずに仕様だけから行う。
-- Claude Code は、対象機能の照合が終わるまで `verification/independent/` の導出資料を参照しない。
-- 差異は物理法則・解析解・実測などの根拠で解決する。AI 同士の多数決で判断しない。
-- 独立検証の結果は実装側のテストと区別して管理する。AI による検証は正しさの保証ではなく、自動テストと実測検証を併用する。
-
-## Code Review Rules
-
-PR のコードレビュー（Codex の GitHub 連携など）で確認する観点。指摘は日本語で書く。PR レビューは通常のコード品質の確認であり、独立検証の照合（06 §9 の手順 4）の代わりにはならない。
-
-### 重大（P0 として扱う）
-
-- `packages/physics-core` が `three`、DOM、WebGL、ブラウザ API、UI フレームワーク、その他の外部パッケージを import している、または `package.json` に `dependencies` を持つ（ルール 1・9）。
-- Physics Core に物理的根拠のない補正（キック種別ごとのスピン付与、軌道の後付け補正、目標への吸い寄せなど）が入っている（ルール 2）。
-- 物理の時間刻みが描画 FPS や再生速度に依存している（ルール 5）。
-- 物理モデル・API・受入条件を変えたのに、正本文書（05・06・04・spec）と対応する VER テストが同じ PR で更新されていない（ルール 6）。
-
-### 重要（P1 として扱う）
-
-- 座標系・四元数の規約（ADR-0005：y 上向きの右手系、`[x, y, z, w]`、Hamilton 積、物体 → ワールドの能動回転、角速度はワールド座標）と矛盾する式・テスト。
-- Core の入出力が SI 単位でない（km/h・rpm・度は表示層だけ、ルール 4）。
-- 未決定のパラメータや許容誤差に、根拠のない値が「仮置き」の明記なしで入っている（ルール 7・8）。
-- 想定内の入力エラーを例外で投げている（`SimResult` のエラー値で返す、04 §6）。NaN・無限大・ゼロ除算の可能性がある縮退条件の見落とし（05 §7.3〜7.5）。
-- テストが期待値を実装から写しただけで、解析解・恒等式・保存則などの独立した根拠を持たない。
-- 承認されていない依存パッケージの追加（ADR-0004）。
-
-### 対象外
-
-- `verification/independent/` 配下の導出資料の内容（独立検証の手順で扱う）。
-- 文体・書式だけの指摘。
+- 人間：最終判断と承認。Claude Code：設計の具体化・実装・テスト。Codex：物理モデル・数値計算の独立検証（実装コードは原則変更しない）。
+- 重要な物理機能は、仕様確定 → Codex の独立導出 → 実装 → Codex の照合 → 根拠に基づく差異の解決、の順で進める（[06 §9](docs/06-validation.md)）。
+- Claude Code は、対象機能の照合が終わるまで `verification/independent/` を読まない（検索でも除外する）。
+- 差異は物理法則・解析解・実測などの根拠で解決し、AI 同士の多数決で決めない。
 
 ## ルール
 
-1. **Physics Core の独立**：`packages/physics-core` は Three.js、DOM、WebGL、ブラウザ API、UI フレームワークを import しない。Three.js 型との変換は `apps/web` 側のアダプタで行う。
-2. **物理的根拠のない補正をしない**：キック種別ごとのスピン付与、軌道の後付け補正、目標への吸い寄せなどを Physics Core に入れない。結果は接触条件と物理モデルから計算する。
-3. **軌道を主入力にしない**：飛距離・カーブ量・打ち出し角を直接指定する操作を主操作として作らない。
-4. **SI 単位**：Core の入出力は SI（m, kg, s, N, rad）。km/h・rpm・度などへの変換は表示層だけで行う。
-5. **時間の分離**：物理の時間刻みは描画 FPS から独立させる。再生速度の変更で計算結果を変えない。
-6. **仕様変更時は文書とテストを同時に更新**：モデル・API・受入条件を変えたら、正本文書と対応するテスト（VER ID）を同じ変更で更新する。設計判断は `docs/decisions/` に ADR を追加する。
-7. **断定しない・捏造しない**：未決定事項は「未決定」「暫定」「候補」と書く。確認していない文献・著者・数値・URL・検証結果を書かない。パラメータには出典と確からしさを付ける（[05 §10](docs/05-physics-model.md)）。
-8. **許容誤差を根拠なく決め打ちしない**：根拠がなければ [06](docs/06-validation.md) に未決定として残す。仮の値を使う場合は「仮置き」と明記する。
-9. **依存を勝手に追加しない**：npm パッケージ等の追加は事前にユーザーの承認を得て、理由を文書に残す。Physics Core のランタイム依存は原則ゼロ。
-10. **Phase の範囲を守る**：有限時間接触、変形、面接触、FEM などを Phase 1 の必須事項に紛れ込ませない。
-11. **既存内容を壊さない**：上書きや大幅な改変の前に既存の内容を確認する。無関係なファイルは変更しない。
+1. **Physics Core の独立**：`packages/physics-core` は Three.js、DOM、WebGL、ブラウザ API、UI フレームワーク、外部パッケージを import しない。
+2. **物理的根拠のない補正をしない**：キック種別ごとのスピン付与、軌道の後付け補正、目標への吸い寄せなどを Core に入れない。
+3. **軌道を主入力にしない**：飛距離・カーブ量・打ち出し角を直接指定する操作を主操作にしない。
+4. **SI 単位**：Core の入出力は SI。km/h・rpm・度への変換は表示層だけ。
+5. **時間の分離**：物理の時間刻みは描画 FPS・再生速度から独立させる。
+6. **仕様と同時に更新**：モデル・API・受入条件を変えたら、正本文書と対応する VER テストを同じ変更で更新する。設計判断は `docs/decisions/` に ADR を追加する。
+7. **断定しない・捏造しない**：未決定は「未決定」「暫定」「候補」と書く。確認していない文献・数値・URL・検証結果を書かない。パラメータには出典と確からしさを付ける。
+8. **許容誤差を根拠なく決め打ちしない**：根拠がなければ未決定として残し、仮の値は「仮置き」と明記する。
+9. **依存を勝手に追加しない**：パッケージの追加は事前にユーザーの承認を得る。Core のランタイム依存は原則ゼロ。
+10. **Phase の範囲を守る**：有限時間接触・変形・面接触・FEM などを Phase 1 に紛れ込ませない。
+11. **既存内容を壊さない**：大幅な改変の前に既存の内容を確認する。無関係なファイルは変更しない。
 12. 文書は日本語で書く（コード識別子・規格名は英語でよい）。
 
-## コマンド
+## Code Review Rules
 
-リポジトリのルートで実行する（Node 24 / npm 11 で確認）。
+PR レビュー（Codex の GitHub 連携など）の観点のうち、リポジトリ全体に共通するもの。指摘は日本語で書く。Physics Core 固有の観点は [packages/physics-core/AGENTS.md](packages/physics-core/AGENTS.md) にある。PR レビューは独立検証の照合（06 §9 の手順 4）の代わりにはならない。
 
-| 目的 | コマンド |
-|---|---|
-| セットアップ | `npm install`（`package-lock.json` に従う。CI では `npm ci`） |
-| 型検査 | `npm run typecheck`（`tsc -b`） |
-| テスト | `npm test`（Vitest、全ワークスペース） |
-| Core の依存境界の検査 | `npm run check:boundary`（VER-S05） |
-| 上記 3 つをまとめて実行 | `npm run check` |
-
-ビルド（`apps/web` の静的ビルド）は T1.4-01 で追記する。
+- P0：物理モデル・API・受入条件を変えたのに、正本文書（05・06・04・spec）と対応する VER テストが同じ PR で更新されていない（ルール 6）。
+- P1：未決定のパラメータや許容誤差に、根拠のない値が「仮置き」の明記なしで入っている（ルール 7・8）。承認されていない依存パッケージの追加（ルール 9、ADR-0004）。
+- 対象外：`verification/independent/` 配下の導出資料の内容（独立検証の手順で扱う）。文体・書式だけの指摘。

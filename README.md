@@ -88,6 +88,20 @@ KickDynamics は、キックの物理現象を解明・再現することを目�
 
 初期の合意事項は [soccer_kick_simulator_docs_prompt.md](soccer_kick_simulator_docs_prompt.md)（引き継ぎプロンプト）に記録されています。以後の正本は上表の各文書です。
 
+## 開発コマンド
+
+リポジトリのルートで実行する（Node 22 / 24、npm で確認）。
+
+| 目的 | コマンド |
+|---|---|
+| セットアップ | `npm install`（`package-lock.json` に従う。CI では `npm ci`） |
+| 型検査 | `npm run typecheck`（`tsc -b`） |
+| テスト | `npm test`（Vitest、全ワークスペース） |
+| Core の依存境界の検査 | `npm run check:boundary`（VER-S05） |
+| 上記 3 つをまとめて実行 | `npm run check` |
+
+ビルド（`apps/web` の静的ビルド）は T1.4-01 で追記する。
+
 ## 開発体制
 
 Claude Code が設計の具体化・実装・テストを、Codex が物理モデルと数値計算の独立検証を担当し、開発者が最終判断を行います。役割は [AGENTS.md](AGENTS.md)、独立検証の手順は [docs/06-validation.md](docs/06-validation.md) §9 を参照してください。

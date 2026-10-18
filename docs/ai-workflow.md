@@ -45,7 +45,7 @@
 
 - `git add -A` や `git add .` を使わず、追加するパスを明示する（Codex が作業中のファイルを誤ってコミットしないため）。
 - `.github/workflows/` を変更する push には、`gh` の認証に `workflow` スコープが必要。
-- PR では CI（`npm run check`）と Codex の自動レビュー（AGENTS.md の「Code Review Rules」）が動く。
+- PR では CI（`npm run check`）と Codex の自動レビューが動く。レビューの観点は、ルートの AGENTS.md（全体に共通）と `packages/physics-core/AGENTS.md`（Core 固有）の「Code Review Rules」に置く。Codex のレビューは、変更したファイルに最も近い AGENTS.md の「Code Review Rules」を使う。
 
 ## 4. クラウドでの作業
 
