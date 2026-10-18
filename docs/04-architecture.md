@@ -48,7 +48,7 @@ tools/validation/             # 候補：検証スクリプトとレポート生
 ```
 
 - ワークスペースは **npm workspaces** で管理する（決定：[ADR-0004](decisions/0004-npm-workspaces-and-initial-dependencies.md)、OQ-16）。ルートの `package.json` に `"workspaces": ["apps/*", "packages/*"]` を置き、`package-lock.json` をコミットする。承認済みの依存パッケージも ADR-0004 を参照。
-- パッケージ名（例：`@kick-dynamics/physics-core`）は未決定。
+- パッケージ名：Core は `@kick-dynamics/physics-core`（暫定、T1.1-02）。Core の `exports` はビルドせずに `src/index.ts` を指す（Lab は Vite で、テストは Vitest で直接 TypeScript を読む）。
 
 ## 4. 依存ルール
 
@@ -66,6 +66,7 @@ flowchart TD
   - Core の `tsconfig` の `lib` に `DOM` を含めない（DOM の型を使うと型検査で失敗する）。
   - Core の `package.json` に `dependencies` を持たない。
   - import 文の検査（lint ルール、または簡単なスクリプト）。lint ツールの導入は依存の追加にあたるため、採否はユーザーの承認後に決める。
+- 採用した強制方法（T1.1-03）：上記の `lib`・`dependencies` に加え、依存を追加しないスクリプト `packages/physics-core/scripts/check-boundary.mjs`（`npm run check:boundary`）で、`src/` の import 指定子が相対パスだけであることを検査する（`three`、`node:` 組み込みモジュールなど外部への参照をすべて禁止）。
 
 ## 5. データフロー
 
@@ -96,7 +97,7 @@ flowchart LR
 ```ts
 type Vec3 = readonly [number, number, number];
 type Quat = readonly [number, number, number, number]; // [x, y, z, w]（ADR-0005）
-type Mat3 = readonly [number, number, number, number, number, number, number, number, number]; // 行・列の並び順は M1.1 で決める
+type Mat3 = readonly [number, number, number, number, number, number, number, number, number]; // 行優先：要素 (i, j) は m[3 * i + j]（決定、T1.1-05）
 
 interface RigidBodyState {
   position: Vec3;        // m（ワールド座標、重心）
@@ -174,7 +175,7 @@ type SimResult<T> = { ok: true; value: T } | { ok: false; error: SimError };
 
 - 想定内の入力エラー（離反方向の足速度、範囲外のパラメータなど）は例外ではなく `SimResult` のエラー値で返す。プログラムの誤りは例外でよい。
 - `ParameterSet` は値とメタデータ（単位・出典・確からしさ・適用条件）を持つ。Core の計算は値のみを使い、メタデータはそのまま結果に含めて UI と出力へ渡す。
-- 各力項の ON/OFF とモデル選択（定数 `C_D` か関数かなど）は `ParameterSet` または `SimulationSettings` に含める（どちらに置くかは M1.2 で決める）。
+- 各力項の ON/OFF とモデル選択（定数 `C_D` か関数かなど）は `SimulationSettings` 側（`FlightForceSettings`）に置き、物理定数（$g$、$\rho$、$\eta$、風速）は `FlightEnvironment` として渡す。どちらもパイプライン（T1.5-01）で `ParameterSet` の値から組み立てる（暫定、T1.2-01、`packages/physics-core/src/flight/types.ts`）。
 - 空力係数を関数で与える場合、関数は $(Re, S)$ を受け取り、有限の値を返す。$C_D$・$C_M$ は非負、$C_L$ の符号は [05 §7.4](05-physics-model.md) の規約に従う。関数が範囲外の値・NaN・無限大を返した場合や、入力が係数の定義域外の場合は、値を補正・切り詰めせずに `SimResult` のエラーとして返す。
 
 ## 7. 物理時間と描画時間
