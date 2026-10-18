@@ -7,7 +7,13 @@ import { expect } from 'vitest';
 
 export const TOL_A = { relative: 1e-12, absolute: 1e-12 } as const;
 
-export function expectClose(actual: number, expected: number, tol = TOL_A): void {
+/** |a − b| ≤ absolute + relative |b| の判定幅（06 §3）。 */
+export interface Tolerance {
+  readonly relative: number;
+  readonly absolute: number;
+}
+
+export function expectClose(actual: number, expected: number, tol: Tolerance = TOL_A): void {
   const bound = tol.absolute + tol.relative * Math.abs(expected);
   const error = Math.abs(actual - expected);
   if (!(error <= bound)) {
@@ -15,7 +21,7 @@ export function expectClose(actual: number, expected: number, tol = TOL_A): void
   }
 }
 
-export function expectAllClose(actual: readonly number[], expected: readonly number[], tol = TOL_A): void {
+export function expectAllClose(actual: readonly number[], expected: readonly number[], tol: Tolerance = TOL_A): void {
   expect(actual.length).toBe(expected.length);
   for (let i = 0; i < expected.length; i++) {
     expectClose(actual[i]!, expected[i]!, tol);

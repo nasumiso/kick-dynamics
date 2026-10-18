@@ -394,13 +394,15 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 | 打ち出し角（垂直） | $\theta = \operatorname{atan2}\!\left(v_y^+, \sqrt{(v_x^+)^2 + (v_z^+)^2}\right)$ |
 | 打ち出し方向（水平） | $\psi = \operatorname{atan2}(v_z^+, v_x^+)$（右が正） |
 | スピン量 | 衝突直後の $\vert \boldsymbol\omega^+\vert $。表示は rpm |
-| スピン成分 | 衝突直後の速度方向に基づく正規直交基底 $\mathbf e_1 = \hat{\mathbf v}$、$\mathbf e_2 = (\hat{\mathbf v}\times\hat{\mathbf y})/\vert \hat{\mathbf v}\times\hat{\mathbf y}\vert $、$\mathbf e_3 = \mathbf e_2\times\mathbf e_1$ への射影。$\omega_{\text{gyro}} = \boldsymbol\omega\cdot\mathbf e_1$（進行方向軸まわり）、$\omega_{\text{back}} = \boldsymbol\omega\cdot\mathbf e_2$（正がバックスピン）、$\omega_{\text{side}} = \boldsymbol\omega\cdot\mathbf e_3$（正のとき、マグヌス力は進行方向に対して左向き）。$\hat{\mathbf v}$ が鉛直に近い場合は定義できないため「定義不能」とする |
+| スピン成分 | 衝突直後の速度方向に基づく正規直交基底 $\mathbf e_1 = \hat{\mathbf v}$、$\mathbf e_2 = (\hat{\mathbf v}\times\hat{\mathbf y})/\vert \hat{\mathbf v}\times\hat{\mathbf y}\vert $、$\mathbf e_3 = \mathbf e_2\times\mathbf e_1$ への射影。$\omega_{\text{gyro}} = \boldsymbol\omega\cdot\mathbf e_1$（進行方向軸まわり）、$\omega_{\text{back}} = \boldsymbol\omega\cdot\mathbf e_2$（正がバックスピン）、$\omega_{\text{side}} = \boldsymbol\omega\cdot\mathbf e_3$（正のとき、マグヌス力は進行方向に対して左向き）。$\hat{\mathbf v}$ が鉛直に近い場合は定義できないため「定義不能」とする（判定：$\lvert\hat{\mathbf v}\times\hat{\mathbf y}\rvert \le \varepsilon_{\text{vert}}$、または $\mathbf v^+ = \mathbf 0$。$\varepsilon_{\text{vert}}$ は P-27、仮置き、T1.2-09） |
 | 最高到達点 | 最初の接地までのボール中心の高さ $y$ の最大値 |
 | キャリー | 初期のボール中心と、最初の接地時のボール中心との水平距離 |
 | 着地点 | 最初の接地時のボール中心の $(x, z)$ |
 | 横ずれ | 着地点の $z$ |
 | 飛行時間 | 足との衝突から最初の接地までの時間 |
 | 総距離 | 停止位置までの水平距離（転がりを実装した場合） |
+
+実装（暫定、T1.2-09、`packages/physics-core/src/metrics/flight-metrics.ts`）：衝突直後の状態は軌道の最初のサンプルとする（VER-S02）。最高到達点は、サンプルの最大値に加えて、$v_y$ が正から 0 以下に変わる区間を位置と速度の 3 次エルミート補間で補って求める（誤差は $O(\Delta t^4)$、真空中の放物運動では厳密）。「最初の接地」には飛翔の開始時刻の接地（§7.7 の「初期状態」）を含めない。接地がない場合（最大時間で終了）は、飛行時間・着地点・キャリー・横ずれを「なし」とし、最高到達点は軌道の終わりまでの最大値とする。
 
 表示名（「左回転」など）や表示単位は UI で決める。定義そのものは本表を正本とする。
 
@@ -448,6 +450,7 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 | P-25 | $\varepsilon_t$ | 接線速度がほぼ 0 とみなす閾値（$\lvert\mathbf u_t^-\rvert$ に対する、§6.8） | m/s | 未決定 | 未決定 | 数値上の閾値。M1.3 |
 | P-26 | $\varepsilon_\phi$ | $\phi$ の基準軸を切り替える閾値（$\hat{\mathbf y}$ の射影の長さに対する、§6.2） | — | 未決定 | 未決定 | 数値上の閾値。M1.3 |
 | P-24 | $\varepsilon_\omega$ | 無回転の判定閾値（$\lvert\boldsymbol\omega\rvert$ に対する、§7.5 (c)） | rad/s | $10^{-6}$ | 仮置き | 数値上の閾値、$\varepsilon_\omega > 0$（T1.2-06）。根拠：$\hat{\boldsymbol\omega}$ の正規化でのゼロ除算を避ける目的だけの値。$10^{-6}$ rad/s は約 $10^{-5}$ rpm で、表示・測定値に影響しない。定数 $C_M$ では閾値の境界でトルクが不連続に 0 になる（§7.4 の定数 $C_L$ と同じ性質）。物理的な根拠はない |
+| P-27 | $\varepsilon_{\text{vert}}$ | スピン成分を定義不能とする閾値（$\lvert\hat{\mathbf v}\times\hat{\mathbf y}\rvert$ に対する、§9） | — | $10^{-6}$ | 仮置き | 数値上の閾値（T1.2-09）。根拠：$\lvert\hat{\mathbf v}\times\hat{\mathbf y}\rvert = \cos\theta$ で、$10^{-6}$ は打ち出し角が鉛直から約 $6\times10^{-5}$ 度以内。基底 $\mathbf e_2$ の正規化の分母が丸め誤差の水準まで小さくなることを避ける目的だけの値。物理的な根拠はない。§9 に閾値の記載がなかったため追加した（承認待ち） |
 
 - 値を変更したら、確からしさ・出典・適用条件を同時に更新する。
 - UI のデフォルト値として「仮置き」の値を使う場合も、本表に値と「仮置き」の区分を記録する。

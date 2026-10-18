@@ -33,3 +33,6 @@ export { simulateFlightRun, terminateOnGroundContact } from './flight/ground-eve
 export type { FlightRun } from './flight/ground-events';
 export { simulateFlight, stateAt, toTrajectory } from './flight/trajectory';
 export type { Trajectory } from './flight/trajectory';
+
+export { computeFlightMetrics, spinComponents } from './metrics/flight-metrics';
+export type { FlightMetrics, MetricsSettings, SpinComponents } from './metrics/flight-metrics';
