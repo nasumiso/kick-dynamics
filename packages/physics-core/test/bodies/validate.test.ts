@@ -54,3 +54,20 @@ describe('validation of physical parameters', () => {
     expect(isSymmetricPositiveDefinite(boxInertia(1.2, [0.26, 0.1, 0.08]))).toBe(true);
   });
 });
+
+describe('validation of extreme but finite parameters (PR #7 review)', () => {
+  it('rejects inertia tensors whose determinant or inverse overflows', () => {
+    expect(isSymmetricPositiveDefinite([1e200, 0, 0, 0, 1e200, 0, 0, 0, 1e200])).toBe(false); // det = ∞
+    expect(isSymmetricPositiveDefinite([1e-110, 0, 0, 0, 1e-110, 0, 0, 0, 1e-110])).toBe(false); // det = 0（アンダーフロー）
+    expect(isSymmetricPositiveDefinite([1e-200, 0, 0, 0, 1, 0, 0, 0, 1])).toBe(true);
+    expect(isSymmetricPositiveDefinite([1e-310, 0, 0, 0, 1e5, 0, 0, 0, 1e5])).toBe(false); // 逆行列が ∞
+    const huge = { ...foot, inertiaBody: [1e200, 0, 0, 0, 1e200, 0, 0, 0, 1e200] as const };
+    const r = solveImpact(setup, { ...contactParams(0.5, 0.3), foot: huge }, 'finite-mass');
+    expect(!r.ok && r.error.code).toBe('invalid-parameter');
+  });
+
+  it('rejects a ball whose moment of inertia overflows', () => {
+    const r = solveImpact(setup, { ...contactParams(0.5, 0.3), ball: { ...ball, mass: 1e300, radius: 1e10 } }, 'kinematic-wall');
+    expect(!r.ok && r.error.code).toBe('invalid-parameter');
+  });
+});

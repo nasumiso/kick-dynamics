@@ -87,6 +87,12 @@ export function simulateFlightRun(
     const stepped = rk4Step(state, dt, ball, environment, settings);
     if (!stepped.ok) return stepped;
     let next = stepped.value;
+    if (heightAboveContact(state, ball) <= 0 && heightAboveContact(next, ball) < 0 && next.linearVelocity[1] <= 0) {
+      // 地面上（h ≤ 0）から始まったステップで、ボールが地面の下へ進んだ：処理後の滞空がステップより短い反発などで、
+      // 再接地を検出できなかった（05 §7.7 の制約。開始で h > 0 という検出条件を満たさない）。黙って続けずにエラーにする。
+      // 転がりへの移行（05 §8.1 の v_rest、e_g v_rest ≥ g Δt/2）は T1.3-08 で扱う。
+      return fail('unsupported-model', `the ball went below the ground in the step starting at t = ${start} s without a detectable ground contact (rolling transition is T1.3-08)`);
+    }
 
     if (heightAboveContact(state, ball) > 0 && heightAboveContact(next, ball) <= 0) {
       let lo = 0;

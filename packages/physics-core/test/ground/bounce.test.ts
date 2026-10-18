@@ -86,7 +86,8 @@ describe('ground bounce as the flight ground-contact handler', () => {
 
   it('bounces at the start time when the ball leaves the impact moving into the ground (05 §8.3)', () => {
     const start: RigidBodyState = { position: [0, ball.radius, 0], orientation: IDENTITY_QUAT, linearVelocity: [15, -2, 1], angularVelocity: [0, 0, 20] };
-    const r = simulateFlight(start, ball, environment, settings, groundBounceHandler(ball, coefficients(0.5, 0.4)));
+    // 反発が Δt より短くなる手前で止める（05 §7.7）：開始時の反発後 v_y = 1 m/s、0.204 s に接地。
+    const r = simulateFlight(start, ball, environment, { ...settings, maxTime: 0.3 }, groundBounceHandler(ball, coefficients(0.5, 0.4)));
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const t = r.value;
@@ -118,3 +119,15 @@ describe('ground bounce as the flight ground-contact handler', () => {
   });
 });
 
+
+describe('rebound shorter than the remaining step (PR #7 review)', () => {
+  it('returns unsupported-model instead of letting the ball sink below the ground', () => {
+    // 開始時に v_y = −1、e_g = 0.001：反発後の v_y = 0.001 m/s、滞空 2 v_y / g ≈ 2e-4 s < Δt = 0.005 s。
+    const settings: FlightSimulationSettings = {
+      timeStep: 0.005, maxTime: 1, eventTimeTolerance: 1e-9, forces: { ...allOff, gravity: true }, thresholds,
+    };
+    const start: RigidBodyState = { position: [0, ball.radius, 0], orientation: IDENTITY_QUAT, linearVelocity: [3, -1, 0], angularVelocity: [0, 0, 0] };
+    const r = simulateFlight(start, ball, environment, settings, groundBounceHandler(ball, coefficients(0.001, 0)));
+    expect(!r.ok && r.error.code).toBe('unsupported-model');
+  });
+});
