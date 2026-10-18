@@ -170,6 +170,24 @@ describe('ground events: other cases', () => {
     expect(r.ok && r.value.samples).toHaveLength(51);
   });
 
+  it('ends at the first grid time k Δt ≥ maxTime, even near an integer multiple of Δt (IV-04-C I-D01)', () => {
+    const end = (maxTime: number, dt: number) => {
+      const r = simulateFlightRun(body([0, 1, 0], [5, 0, 0]), ball, environment, { ...settings(dt, maxTime), forces: allOff });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.value.events.at(-1)!;
+    };
+    // 1 + 5e-10 s は 1 s の格子を超えるので、次の格子 2 s まで進む（以前は 1 s で早く終了していた）。
+    expect(end(1 + 5e-10, 1)).toMatchObject({ type: 'max-time', time: 2 });
+    // maxTime = 6 × 0.1 = 0.6000000000000001 のとき maxTime / Δt = 6.000000000000001 だが、6 × 0.1 ≥ maxTime なので
+    // 6 ステップで終わる（丸め誤差で余分な 1 ステップを足さない）。
+    expect(end(6 * 0.1, 0.1)).toMatchObject({ type: 'max-time', sampleIndex: 6 });
+    // 0.3 / 0.1 = 2.9999999999999996 でも、3 × 0.1 ≥ 0.3 となる 3 ステップで終わる。
+    expect(end(0.3, 0.1)).toMatchObject({ type: 'max-time', sampleIndex: 3 });
+    expect(end(2, 0.01)).toMatchObject({ type: 'max-time', time: 2, sampleIndex: 200 });
+    // maxTime が Δt より短くても 1 ステップは進む。
+    expect(end(1e-6, 0.01)).toMatchObject({ type: 'max-time', time: 0.01, sampleIndex: 1 });
+  });
+
   it('reports rolling (v_y ≤ 0 on the ground after processing) as not yet supported', () => {
     const r = simulateFlightRun(body([0, ball.radius, 0], [10, 5, 0]), ball, environment, settings(0.01, 3), reflect(0));
     expect(!r.ok && r.error.code).toBe('unsupported-model');

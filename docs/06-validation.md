@@ -26,7 +26,7 @@ VER に合格しても、モデルが実物を再現していることにはな�
 |---|---|---|---|
 | TOL-A | 代数的な恒等式・保存則・閉形式との比較（丸め誤差のみが生じるもの） | 倍精度の丸め誤差の大きさと演算の規模から決める。相対誤差と絶対誤差を併用し、$\lvert a-b\rvert \le \text{abs} + \text{rel}\,\lvert b\rvert$ で判定する | **仮置き**：rel = abs = $10^{-12}$（機械イプシロン約 $2.2\times10^{-16}$ × 演算規模 × 余裕。大きさ 1 程度の量を想定。`packages/physics-core/test/tolerance.ts`、T1.1-04） |
 | TOL-B | 時間積分を含む比較 | 絶対値よりも**収束次数**で評価する：刻みを半分にしたとき、誤差が積分法の理論次数 $p$ に応じて約 $2^p$ 分の 1 になること | 判定幅は未決定（M1.2）。**仮置き**：観測した収束次数が理論次数 $p$ から ±0.5 以内（`packages/physics-core/test/flight/drag.test.ts`、T1.2-03） |
-| TOL-C | イベント検出（接地時刻など） | 求根の打ち切り条件と時間刻みから決める | **仮置き**：二分法の打ち切り幅 $\delta_t = 10^{-9}$ s（05 §7.7）。接地時刻は区間の右端なので、真の時刻 $t_{\text{true}}$ に対して $t_{\text{true}} - a \le t^{*} \le t_{\text{true}} + \delta_t + a$（$a$ は TOL-A の絶対誤差 $10^{-12}$ s）で判定する。$\delta_t$ の根拠：10 s 程度までの時刻の浮動小数点の分解能（約 $2\times10^{-15}$ s）より十分大きく、地面への食い込み $\lvert v_y\rvert\delta_t$ は 30 m/s で約 $3\times10^{-8}$ m、反復回数は Δt = 0.005 s で 23 回。物理的な根拠はない（`packages/physics-core/test/flight/ground-events.test.ts`、T1.2-07） |
+| TOL-C | イベント検出（接地時刻など） | 求根の打ち切り条件と時間刻みから決める | 適用は真空中の接地時刻（VER-F08）に限る。非真空では積分誤差（高さの誤差 / 下降速度）が加わる（IV-04-C の I-H03、未決定）。**仮置き**：二分法の打ち切り幅 $\delta_t = 10^{-9}$ s（05 §7.7）。接地時刻は区間の右端なので、真の時刻 $t_{\text{true}}$ に対して $t_{\text{true}} - a \le t^{*} \le t_{\text{true}} + \delta_t + a$（$a$ は TOL-A の絶対誤差 $10^{-12}$ s）で判定する。$\delta_t$ の根拠：10 s 程度までの時刻の浮動小数点の分解能（約 $2\times10^{-15}$ s）より十分大きく、地面への食い込み $\lvert v_y\rvert\delta_t$ は 30 m/s で約 $3\times10^{-8}$ m、反復回数は Δt = 0.005 s で 23 回。物理的な根拠はない（`packages/physics-core/test/flight/ground-events.test.ts`、T1.2-07） |
 | TOL-D | 実測との比較 | 測定の不確かさとモデルの想定する精度から決める | 未決定（データ入手後） |
 
 テストで仮の値を使う場合は、テストコードと本書の両方に「仮置き」と明記する。
@@ -54,7 +54,7 @@ VER に合格しても、モデルが実物を再現していることにはな�
 | VER-F02 | 時間刻みの収束 | 抗力 ON。軌道の途中で閾値（05 §7.3〜7.5 の $\varepsilon$、$\varepsilon_v$、$\varepsilon_\omega$）による切り替えや地面イベントが起きない条件で行う（3 次元の一般的な条件では閉形式の解がないため、非常に細かい刻みの解、VER-F05 の円運動、または 1 次元で抗力のみ（重力の有無を含む）の閉形式の解を基準とする） | 刻みを半分にしたときの誤差の減少率が積分法の次数と整合 | TOL-B | 1 |
 | VER-F03 | 抗力による散逸 | 抗力のみ ON、重力 ON | 連続系では力学的エネルギーが単調に減少する。数値解では、各ステップでのエネルギーの増加が丸め誤差の範囲を超えず、エネルギーの減少量と抗力の仕事（数値積分）の差が刻みに応じて小さくなる | 増加の判定は TOL-A、減少量の一致は TOL-B | 1 |
 | VER-F04 | 終端速度 | 重力と抗力のみ ON、定数 $C_D > 0$、初速 0 または鉛直下向き、評価は $\lvert\mathbf v_r\rvert > \varepsilon_v$ の範囲 | 速さが $v_t = \sqrt{2mg/(\rho A C_D)}$ に漸近 | TOL-B | 1 |
-| VER-F05 | マグヌス力は仕事をしない | 重力・抗力・回転減衰 OFF、定数 $C_L$、$\boldsymbol\omega\perp\mathbf v$ | 速さが一定で、半径 $r = 2m/(\rho A C_L)$ の円運動 | TOL-B | 1 |
+| VER-F05 | マグヌス力は仕事をしない | 重力・抗力・回転減衰 OFF、定数 $C_L > 0$、$\rho > 0$、$\boldsymbol\omega\perp\mathbf v$、$\mathbf v \ne \mathbf 0$、$\boldsymbol\omega \ne \mathbf 0$（負の $C_L$ では旋回の向きが逆で、半径は $\lvert C_L\rvert$ で決まる。$C_L = 0$ では直線運動。IV-03-C の F-D02 を受けて前提を追加、2026-10-18） | 速さが一定で、半径 $r = 2m/(\rho A C_L)$ の円運動 | TOL-B | 1 |
 | VER-F06 | 空力の縮退 | $\boldsymbol\omega = \mathbf 0$、$\boldsymbol\omega\parallel\mathbf v$、$\lvert\mathbf v_r\rvert \le \varepsilon_v$、05 §7.5 (c) で $\lvert\boldsymbol\omega\rvert \le \varepsilon_\omega$ | 05 §7.3〜7.5 の規則どおり該当する力・トルクが $\mathbf 0$ で、ゼロ除算・NaN が起きない | 厳密 | 1 |
 | VER-F07 | 鏡映対称性 | $xy$ 平面に関して入力を鏡映（$z\to -z$、角速度は $(\omega_x,\omega_y,\omega_z)\to(-\omega_x,-\omega_y,\omega_z)$） | 軌道が鏡映される | TOL-A | 1 |
 | VER-F08 | 接地時刻の検出 | 真空中の放物運動 | 検出した接地時刻・位置が解析解と一致（05 §7.7 の二分法の打ち切り幅を含めて評価） | TOL-C | 1 |

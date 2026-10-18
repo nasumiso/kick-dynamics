@@ -44,8 +44,7 @@ export function simulateFlightRun(
   const valid = validate(settings);
   if (!valid.ok) return valid;
   const dt = settings.timeStep;
-  // maxTime / Δt が丸め誤差でわずかに整数を超えても、余分な 1 ステップを足さない。
-  const steps = Math.max(1, Math.ceil(maxTimeRatio(settings.maxTime, dt)));
+  const steps = stepsUntil(settings.maxTime, dt);
   const maxIterations = Math.max(0, Math.ceil(Math.log2(dt / settings.eventTimeTolerance)));
   const samples: FlightSample[] = [{ time: 0, state: initial }];
   const events: FlightEvent[] = [];
@@ -129,8 +128,14 @@ export function simulateFlightRun(
   return ok({ samples, events });
 }
 
-function maxTimeRatio(maxTime: number, dt: number): number {
-  const ratio = maxTime / dt;
-  const nearest = Math.round(ratio);
-  return Math.abs(ratio - nearest) <= 1e-9 * Math.max(1, nearest) ? nearest : ratio;
+/**
+ * 時刻の格子 t_k = k Δt で、最初に t_k ≥ maxTime となる k（1 以上）。
+ * maxTime / Δt の丸め誤差で 1 ステップ多くならないよう、候補 k の前の格子時刻 (k − 1) Δt を実際に比べる
+ * （IV-04-C の I-D01 を受けて、許容幅で整数に丸める方式から変更、2026-10-18）。
+ */
+function stepsUntil(maxTime: number, dt: number): number {
+  let k = Math.max(1, Math.ceil(maxTime / dt));
+  while (k > 1 && (k - 1) * dt >= maxTime) k--;
+  while (k * dt < maxTime) k++;
+  return k;
 }
