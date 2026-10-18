@@ -4,7 +4,7 @@ import { angularMomentum, ballInertia, inertiaWorld, kineticEnergy, linearMoment
 import type { BallParams, RigidBodyState } from '../bodies/types';
 import { validateBall, validateFoot } from '../bodies/validate';
 import { mulVec, solve } from '../math/mat3';
-import { add, addScaled, cross, dot, length, normalize, scale, sub, type Vec3 } from '../math/vec3';
+import { add, addScaled, cross, dot, isFiniteVec3, length, normalize, scale, sub, type Vec3 } from '../math/vec3';
 import { fail, ok, type SimResult } from '../result';
 import { contactMatrix, finiteInertia, KINEMATIC_INERTIA, type ImpactInertia } from './k-matrix';
 import type { ContactParameters, FootModel, ImpactRegime, ImpactResult, ImpactSetup, ImpactWarning } from './types';
@@ -14,6 +14,13 @@ import type { ContactParameters, FootModel, ImpactRegime, ImpactResult, ImpactSe
  * 滑り方向の反転は |u⁻| に対して、この比率を超えたときだけ警告する（丸め誤差で警告しないため）。
  */
 export const DIAGNOSTIC_RELATIVE_TOLERANCE = 1e-9;
+
+/** 衝突直前の状態のすべての値（位置・姿勢・速度・角速度・接触点・法線）が有限か。 */
+export function isFiniteSetup(setup: ImpactSetup): boolean {
+  const states = [setup.ball, setup.foot];
+  return states.every((s) => isFiniteVec3(s.position) && isFiniteVec3(s.linearVelocity) && isFiniteVec3(s.angularVelocity) && s.orientation.every(Number.isFinite))
+    && isFiniteVec3(setup.contactPoint) && isFiniteVec3(setup.contactNormal);
+}
 
 /** 接触点の速度 v + ω × r（05 §6.3）。 */
 export function pointVelocity(state: RigidBodyState, arm: Vec3): Vec3 {
@@ -70,6 +77,7 @@ export function solveContact(
   if (!valid.ok) return valid;
   const ballValid = validateBall(ballParams);
   if (!ballValid.ok) return ballValid;
+  if (!isFiniteSetup(setup)) return fail('invalid-input', 'impact setup contains a non-finite value');
   const n = normalize(setup.contactNormal);
   const ballArm = sub(setup.contactPoint, setup.ball.position);
   const footArm = sub(setup.contactPoint, setup.foot.position);

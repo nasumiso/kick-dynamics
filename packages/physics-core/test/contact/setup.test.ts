@@ -3,7 +3,7 @@
 // 足の姿勢は回転として（変換したベクトルで）比べる。ε_φ は 05 §10.2 の仮置き（P-26）。
 import { describe, expect, it } from 'vitest';
 import { buildImpactSetup } from '../../src/contact/setup';
-import { pointVelocity } from '../../src/contact/solver';
+import { pointVelocity, solveImpact } from '../../src/contact/solver';
 import type { KickInput } from '../../src/contact/types';
 import { rotate } from '../../src/math/quat';
 import { addScaled, cross, dot, length, normalize, scale, sub, type Vec3 } from '../../src/math/vec3';
@@ -148,5 +148,18 @@ describe('roll reference threshold validation (PR #7 review)', () => {
     const alongX: KickInput = { ...base, contactDirection: [-1, 0, 0], footContactPointVelocity: [10, 0, 0] };
     expect(buildImpactSetup(alongY, { ...geometry, rollReferenceThreshold: 0 }).ok).toBe(true);
     expect(buildImpactSetup(alongX, { ...geometry, rollReferenceThreshold: 0.999999 }).ok).toBe(true);
+  });
+});
+
+describe('overflow of the derived impact state (PR #7 review)', () => {
+  it('returns invalid-input when ω_A × r_A overflows, and solveImpact rejects non-finite setups', () => {
+    const hugeFoot = { ...foot, shape: { kind: 'box' as const, dimensions: [0.26, 0.1, 1e300] as const } };
+    const r = buildImpactSetup({ ...base, contactDirection: [-1, 0, 0], footContactLocation: [0, 0], footContactPointVelocity: [10, 0, 0], footAngularVelocity: [0, 1e300, 0] },
+      { ...geometry, foot: hugeFoot });
+    expect(!r.ok && r.error.code).toBe('invalid-input');
+    const s = build(base);
+    const broken = { ...s, foot: { ...s.foot, linearVelocity: [Number.POSITIVE_INFINITY, 0, 0] as const } };
+    const impact = solveImpact(broken, { ball, foot, restitution: 0.5, friction: 0.3, tangentialSpeedThreshold: 1e-9 }, 'finite-mass');
+    expect(!impact.ok && impact.error.code).toBe('invalid-input');
   });
 });

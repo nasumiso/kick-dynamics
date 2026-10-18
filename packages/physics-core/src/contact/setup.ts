@@ -5,6 +5,7 @@ import { fromColumns } from '../math/mat3';
 import { fromMat3, IDENTITY_QUAT } from '../math/quat';
 import { add, addScaled, cross, dot, isFiniteVec3, length, normalize, scale, sub, UNIT_X, UNIT_Y, type Vec3 } from '../math/vec3';
 import { fail, ok, type SimResult } from '../result';
+import { isFiniteSetup } from './solver';
 import type { ImpactGeometryParameters, ImpactSetup, KickInput } from './types';
 
 /** v を接触平面（n に垂直な平面）へ射影したベクトル v − (v·n) n。 */
@@ -78,5 +79,9 @@ export function buildImpactSetup(input: KickInput, params: ImpactGeometryParamet
     linearVelocity: sub(input.footContactPointVelocity, cross(input.footAngularVelocity, footArm)),
     angularVelocity: input.footAngularVelocity,
   };
+  // 入力が有限でも、極端な値の組み合わせ（寸法と角速度など）では派生した状態が桁あふれしうる。
+  if (!isFiniteSetup({ ball, foot, contactPoint, contactNormal: n })) {
+    return fail('invalid-input', 'derived impact state is not finite (overflow from extreme input values)');
+  }
   return ok({ ball, foot, contactPoint, contactNormal: n });
 }
