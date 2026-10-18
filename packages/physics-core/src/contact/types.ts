@@ -43,4 +43,13 @@ export interface ImpactDiagnostics {
   /** 接触点の相対速度 u（ボール − 足）の衝突前後 m/s */
   readonly relativeVelocityBefore: Vec3;
   readonly relativeVelocityAfter: Vec3;
+  /** 滑りの解で使った滑り方向 t̂（固着・離反、μ = 0 の滑りでは null） */
+  readonly slidingDirection: Vec3 | null;
+  readonly warnings: readonly ImpactWarning[];
 }
+
+/**
+ * 衝突の警告（05 §6.8）。結果は返し、補正はしない。
+ * - tangent-direction-approximated：|u_t⁻| ≤ ε_t なのに固着解が摩擦円錐を外れたため、t̂ = −J*_t/|J*_t| を近似として使った
+ */
+export type ImpactWarning = 'tangent-direction-approximated';

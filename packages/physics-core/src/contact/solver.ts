@@ -6,7 +6,7 @@ import { mulVec, solve } from '../math/mat3';
 import { add, addScaled, cross, dot, length, normalize, scale, sub, type Vec3 } from '../math/vec3';
 import { fail, ok, type SimResult } from '../result';
 import { contactMatrix, finiteInertia, KINEMATIC_INERTIA, type ImpactInertia } from './k-matrix';
-import type { ContactParameters, FootModel, ImpactRegime, ImpactResult, ImpactSetup } from './types';
+import type { ContactParameters, FootModel, ImpactRegime, ImpactResult, ImpactSetup, ImpactWarning } from './types';
 
 /** 接触点の速度 v + ω × r（05 §6.3）。 */
 export function pointVelocity(state: RigidBodyState, arm: Vec3): Vec3 {
@@ -51,7 +51,7 @@ export function solveImpact(setup: ImpactSetup, params: ContactParameters, model
   if (unBefore >= 0) {
     return ok({
       impulse: [0, 0, 0], regime: 'separating', ballAfter: setup.ball, footAfter: setup.foot,
-      diagnostics: { relativeVelocityBefore: uBefore, relativeVelocityAfter: uBefore },
+      diagnostics: { relativeVelocityBefore: uBefore, relativeVelocityAfter: uBefore, slidingDirection: null, warnings: [] },
     });
   }
 
@@ -65,6 +65,11 @@ export function solveImpact(setup: ImpactSetup, params: ContactParameters, model
 
   let impulse: Vec3;
   let regime: ImpactRegime;
+  let slidingDirection: Vec3 | null = null;
+  const warnings: ImpactWarning[] = [];
+  const unsolvable = (reason: string) => fail<ImpactResult>('impact-unsolvable', reason, {
+    relativeVelocityBefore: uBefore, contactMatrix: K, stickImpulse,
+  });
   if (jnStick >= 0 && length(jtStick) <= mu * jnStick) {
     // 3. 固着。
     impulse = stickImpulse;
@@ -75,11 +80,32 @@ export function solveImpact(setup: ImpactSetup, params: ContactParameters, model
     impulse = scale(n, (-(1 + e) * unBefore) / denominator);
     regime = 'slide';
   } else {
-    return fail('unsupported-model', 'friction (μ > 0) is not implemented yet (T1.3-03)');
+    // 4. 滑り：J = j_n (n − μ t̂)、j_n = −(1 + e) u_n⁻ / (nᵀ K (n − μ t̂))。
+    const utBefore = sub(uBefore, scale(n, unBefore));
+    const utSpeed = length(utBefore);
+    let t: Vec3;
+    if (utSpeed > params.tangentialSpeedThreshold) {
+      t = scale(utBefore, 1 / utSpeed);
+    } else {
+      // 接線速度がほぼ 0 なのに固着解が摩擦円錐を外れる（K の連成による）：−J*_t の向きを近似として使う。
+      const jtLength = length(jtStick);
+      if (!(jtLength > 0)) return unsolvable('sliding direction is undefined: |u_t⁻| ≤ ε_t and J*_t = 0');
+      t = scale(jtStick, -1 / jtLength);
+      warnings.push('tangent-direction-approximated');
+    }
+    const direction = addScaled(n, t, -mu);
+    const denominator = dot(n, mulVec(K, direction));
+    if (!(denominator > 0)) return unsolvable(`nᵀ K (n − μ t̂) = ${denominator} ≤ 0`);
+    impulse = scale(direction, (-(1 + e) * unBefore) / denominator);
+    regime = 'slide';
+    slidingDirection = t;
   }
 
   const ballAfter = applyImpulse(setup.ball, ballBody, ballArm, impulse);
   const footAfter = applyImpulse(setup.foot, footBody, footArm, scale(impulse, -1));
   const uAfter = sub(pointVelocity(ballAfter, ballArm), pointVelocity(footAfter, footArm));
-  return ok({ impulse, regime, ballAfter, footAfter, diagnostics: { relativeVelocityBefore: uBefore, relativeVelocityAfter: uAfter } });
+  return ok({
+    impulse, regime, ballAfter, footAfter,
+    diagnostics: { relativeVelocityBefore: uBefore, relativeVelocityAfter: uAfter, slidingDirection, warnings },
+  });
 }

@@ -1,6 +1,6 @@
 # 001 キックプロトタイプ（Phase 1）タスク
 
-> 状態：Draft（2026-10-18）。T0 は完了。M1.1 は完了。M1.2 は IV-03-R / IV-04-R まで完了（判断保留の事項は IV-03-R / IV-04-R の結果欄に記録）。M1.3 は T1.3-02 まで完了。
+> 状態：Draft（2026-10-18）。T0 は完了。M1.1 は完了。M1.2 は IV-03-R / IV-04-R まで完了（判断保留の事項は IV-03-R / IV-04-R の結果欄に記録）。M1.3 は T1.3-03 まで完了。
 > 計画は [plan.md](plan.md)、受入条件は [spec.md](spec.md)、検証項目と独立検証の手順は [06-validation.md](../../docs/06-validation.md) を参照してください。
 
 ## 使い方
@@ -266,10 +266,11 @@
 - 完了確認：VER-C01、C02、C03、C04、C09、C13 のテストが合格する。
 - 結果（2026-10-18）：`src/contact/types.ts`・`solver.ts` の `solveImpact`（05 §6.8 の手順 1〜3 と、$\mu = 0$ の滑りの解 $\mathbf J = j_n\mathbf n$）。$\mu > 0$ で固着解が摩擦円錐を外れる場合は T1.3-03 まで `unsupported-model`。VER-C01 のため、無限質量の足（`kinematic-wall`）もここで扱う。$e \notin [0, 1]$、$\mu < 0$、非有限の値は `invalid-parameter`。`test/contact/frictionless.test.ts` で VER-C01・C02（$e$ = 0, 0.5, 0.8, 1）、C03（正面と偏心）、C04（偏心、運動エネルギーの差を閉形式と比較）、C09（有限・無限質量）、C13（離反と接線方向だけの運動）に合格。C04 は $\mathbf K$ の連成を含む偏心の構成で、運動エネルギーの合計の差から求めるため、許容誤差は TOL-A より緩い rel = abs = 1e-10（仮置き。差を取ることによる桁落ちのため）。`solveImpact` の戻り値は `SimResult`（04 §6 に記録）。
 
-### [ ] T1.3-03 摩擦（固着／滑り）
+### [x] T1.3-03 摩擦（固着／滑り）
 - 担当：Claude Code
 - 依存：T1.3-02
 - 完了確認：VER-C10、C11 のテストが合格する。
+- 結果（2026-10-18）：`solveImpact` に 05 §6.8 の手順 4 の滑りの解を追加（$\hat{\mathbf t} = \mathbf u_t^-/\lvert\mathbf u_t^-\rvert$、$\lvert\mathbf u_t^-\rvert \le \varepsilon_t$ なら $-\mathbf J^{*}_t/\lvert\mathbf J^{*}_t\rvert$ で近似して警告 `tangent-direction-approximated`、分母が 0 以下または $\mathbf J^{*}_t = \mathbf 0$ なら `impact-unsolvable` のエラーに $\mathbf u^-$・$\mathbf K$・$\mathbf J^{*}$ を付ける）。`test/contact/friction.test.ts` で VER-C10（有限・無限質量、$\mu$ = 0.05, 0.3, 2、固着と滑りの両方、近似の警告）と VER-C11（無限質量の足で閉形式と一致、境界の前後と $\mu \to 0$ で差が比例して小さくなる）に合格。**仮置き**：$\varepsilon_t = 10^{-9}$ m/s（P-25、根拠は 05 §10.2）、VER-C11 の判定方法（06 §4.3）。**未確認**：`impact-unsolvable` に至る自然な構成は、結合を強くした人工的な足でも探索で見つからず（分母が負になる向きでは固着解が先に採用された）、このエラーの経路はテストで通していない。IV-01-C の照合で確認する。
 
 ### [ ] T1.3-04 無限質量モード
 - 担当：Claude Code
