@@ -103,7 +103,7 @@ VER に合格しても、モデルが実物を再現していることにはな�
 | VER-C18 | エネルギー増加の検出 | 法線と接線が連成し、代数解で $\Delta T > 0$ となる構成 | 結果が返り（エラーにしない）、エネルギー増加の警告が付く。補正されていない | 厳密（警告の有無） | 1 |
 | VER-C15 | 行列 K の性質 | 任意 | 対称・正定値。ボール部分が 05 §6.5 の閉形式と一致 | TOL-A | 1 |
 | VER-C16 | 無限質量での並進系のエネルギー | 無限質量、$\boldsymbol\omega_A = \mathbf 0$ | 足とともに並進する系から見たボールの運動エネルギー（並進＋回転）が増加せず、診断の $\Delta T$ と一致する。地上系でのボールのエネルギー増加は警告されない | TOL-A | 1 |
-| VER-C17 | 接触幾何の整合 | `buildImpactSetup` | 足の接触面（$+z_b$ 面）の法線が $\mathbf n$ と一致し、$\mathbf x_A = \mathbf p - \mathbf r_A$、$\vert \mathbf d\vert  = 1$。$\phi = 0$ の姿勢が 05 §6.2 の基準と一致。重心速度が $\mathbf v_A = \mathbf v_A^{p} - \boldsymbol\omega_A\times\mathbf r_A$ を満たし、接触点の速度が入力の $\mathbf v_A^{p}$ に戻る。姿勢は回転として比較する（$q$ と $-q$ を区別しない）。$\varepsilon_\phi$ による基準軸の切り替えの両側で、それぞれの基準と一致する。05 §6.2 の入力の検証の各場合にエラーが返る | TOL-A（エラーの有無は厳密） | 1 |
+| VER-C17 | 接触幾何の整合 | `buildImpactSetup` | 足の接触面（$+z_b$ 面）の法線が $\mathbf n$ と一致し、$\mathbf x_A = \mathbf p - \mathbf r_A$、$\vert \mathbf d\vert  = 1$。$\phi = 0$ の姿勢が 05 §6.2 の基準と一致。重心速度が $\mathbf v_A = \mathbf v_A^{p} - \boldsymbol\omega_A\times\mathbf r_A$ を満たし、接触点の速度が入力の $\mathbf v_A^{p}$ に戻る。姿勢は回転として比較する（$q$ と $-q$ を区別しない）。$\varepsilon_\phi$ による基準軸の切り替えの両側で、それぞれの基準と一致する。05 §6.2 の入力の検証の各場合にエラーが返る | TOL-A（エラーの有無は厳密）。ただし $\varepsilon_\phi$ の直上（$\hat{\mathbf y}$ の射影の長さ $\ell$ が小さい場合）は、射影の打ち消し合いで姿勢の誤差が機械イプシロン $/\ell$ 程度に増えるため、絶対誤差 $64\,\epsilon_{\text{mach}}/\ell$ で判定する（**仮置き**。係数 64 は演算の規模による余裕。IV-02-C の I02-H01、2026-10-18） | 1 |
 
 ### 4.4 接地
 

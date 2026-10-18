@@ -7,7 +7,8 @@
 import { describe, expect, it } from 'vitest';
 import { pointVelocity, solveImpact } from '../../src/contact/solver';
 import type { FootModel, ImpactResult, ImpactSetup } from '../../src/contact/types';
-import { fromAxisAngle } from '../../src/math/quat';
+import { boxInertia } from '../../src/bodies/dynamics';
+import { fromAxisAngle, IDENTITY_QUAT } from '../../src/math/quat';
 import { add, dot, length, normalize, scale, sub, type Vec3 } from '../../src/math/vec3';
 import { expectAllClose, expectClose, TOL_A } from '../tolerance';
 import { ball, contactParams, makeSetup } from './fixtures';
@@ -110,5 +111,43 @@ describe('VER-C11 continuity (uncoupled, tangentially isotropic case)', () => {
     const gap = (mu: number) => length(sub(ballVelocity(mu), frictionless));
     const ratio = gap(1e-3 * criticalMu) / gap(1e-5 * criticalMu);
     expect(Math.abs(ratio / 100 - 1)).toBeLessThan(0.1);
+  });
+});
+
+describe('VER-C09 unsolvable configuration (05 §6.8, example from IV-01-C)', () => {
+  // 極端な合成入力（実物の足の値ではない）：ボール m = R = 1、κ = 2/3。足 m_A = 1/2、L = (1/5, 8, 1/2)、
+  // n = +z、恒等姿勢、r_A = (−1/20, 15/4, 1/4)（+z_b 面の内部）、接触点の速度 (−50, 250, 1)、e = 1、μ = 10√26/3。
+  // 固着解は摩擦円錐の外で、滑りの解の分母 nᵀK(n − μ t̂) は厳密に −6149/7453 < 0 になる。
+  it('returns impact-unsolvable with u⁻, K and J* and no post-impact state', () => {
+    const unitBall = { mass: 1, radius: 1, inertiaCoefficient: 2 / 3 };
+    const dims: Vec3 = [0.2, 8, 0.5];
+    const thinFoot = { mass: 0.5, inertiaBody: boxInertia(0.5, dims), shape: { kind: 'box' as const, dimensions: dims } };
+    const ballCenter: Vec3 = [0, 1, 0];
+    const contactPoint: Vec3 = [0, 1, -1]; // p = x_B − R n、n = +z
+    const footArm: Vec3 = [-0.05, 3.75, 0.25];
+    const setup: ImpactSetup = {
+      ball: { position: ballCenter, orientation: IDENTITY_QUAT, linearVelocity: [0, 0, 0], angularVelocity: [0, 0, 0] },
+      foot: { position: sub(contactPoint, footArm), orientation: IDENTITY_QUAT, linearVelocity: [-50, 250, 1], angularVelocity: [0, 0, 0] },
+      contactPoint,
+      contactNormal: [0, 0, 1],
+    };
+    const r = solveImpact(setup, {
+      ball: unitBall, foot: thinFoot, restitution: 1, friction: (10 * Math.sqrt(26)) / 3, tangentialSpeedThreshold: 1e-9,
+    }, 'finite-mass');
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.error.code).toBe('impact-unsolvable');
+    expect(r.error.message).toContain(String(-6149 / 7453).slice(0, 8));
+    const details = r.error.details!;
+    expectAllClose(details['relativeVelocityBefore'] as Vec3, [50, -250, -1]);
+    const stick = details['stickImpulse'] as Vec3;
+    // IV-01 の独立導出による区間：−4 < J*_x < −3、55 < J*_y < 56、3 < J*_z < 3.1。
+    expect(stick[0]).toBeGreaterThan(-4);
+    expect(stick[0]).toBeLessThan(-3);
+    expect(stick[1]).toBeGreaterThan(55);
+    expect(stick[1]).toBeLessThan(56);
+    expect(stick[2]).toBeGreaterThan(3);
+    expect(stick[2]).toBeLessThan(3.1);
+    expect(details['contactMatrix']).toHaveLength(9);
   });
 });

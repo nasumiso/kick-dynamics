@@ -106,3 +106,28 @@ describe('VER-C17 impact geometry from the kick input', () => {
     }
   });
 });
+
+describe('VER-C17 normalization of extreme directions (IV-02-C I02-D01)', () => {
+  // 有限で長さが 0 でない d は、成分の大きさによらず同じ向きとして扱う（05 §6.2）。
+  for (const [label, scaleFactor] of [['near the largest double', Number.MAX_VALUE], ['subnormal', Number.MIN_VALUE]] as const) {
+    it(`returns the unit normal for d = s (−1, −1, 0) with s ${label}`, () => {
+      const s = build({ ...base, contactDirection: [-scaleFactor, -scaleFactor, 0], footContactPointVelocity: [1, 1, 0] });
+      expectAllClose(s.contactNormal, [Math.SQRT1_2, Math.SQRT1_2, 0]);
+      expectClose(length(sub(s.contactPoint, s.ball.position)), ball.radius);
+    });
+  }
+});
+
+describe('VER-C17 accuracy just above the ε_φ switch (IV-02-C I02-H01)', () => {
+  // 基準軸 ŷ − (ŷ·n) n は n ≈ ŷ で打ち消し合い、長さ ℓ = |ŷ − (ŷ·n) n| で割るため、姿勢の誤差は
+  // 機械イプシロン / ℓ 程度に増える（06 §4.3 VER-C17 の許容誤差の注記）。ℓ = sin θ。
+  for (const theta of [1.001e-6, 1.01e-6, 2e-6, 1e-5]) {
+    it(`keeps the pose within the conditioned bound ~ ε_mach/ℓ (θ = ${theta})`, () => {
+      const nT: Vec3 = [Math.sin(theta), Math.cos(theta), 0];
+      const s = build({ ...base, contactDirection: scale(nT, -1), footRollAboutNormal: 0, footContactPointVelocity: scale(nT, 10) });
+      const bound = { relative: 0, absolute: (64 * Number.EPSILON) / Math.sin(theta) };
+      expectAllClose(rotate(s.foot.orientation, [0, 0, 1]), nT, bound);
+      expectAllClose(rotate(s.foot.orientation, [0, 1, 0]), [-Math.cos(theta), Math.sin(theta), 0], bound);
+    });
+  }
+});

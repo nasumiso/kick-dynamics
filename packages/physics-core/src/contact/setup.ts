@@ -12,6 +12,17 @@ function projectOntoPlane(v: Vec3, n: Vec3): Vec3 {
 }
 
 /**
+ * 長さが 0 でない有限のベクトルの向き（単位ベクトル）。成分の最大絶対値で先に割ってから正規化するため、
+ * 成分が倍精度の最大値付近（ノルムが桁あふれする）や非正規化数（ノルムが丸められる）でも正しい向きを返す
+ * （IV-02-C の I02-D01 を受けて変更、2026-10-18）。
+ */
+function unitDirection(v: Vec3): Vec3 {
+  const largest = Math.max(Math.abs(v[0]), Math.abs(v[1]), Math.abs(v[2]));
+  // 1/largest を掛けると、非正規化数では逆数が桁あふれするため、各成分を割る。
+  return normalize([v[0] / largest, v[1] / largest, v[2] / largest]);
+}
+
+/**
  * 足の物体座標の軸（ワールド座標）。z_b = n、φ = 0 で y_b は ŷ の射影の向き（射影の長さが ε_φ 以下なら x̂ の射影）、
  * φ は n まわりの右ねじの向き、x_b = y_b × z_b（05 §6.2）。
  */
@@ -38,7 +49,7 @@ export function buildImpactSetup(input: KickInput, params: ImpactGeometryParamet
     return fail('invalid-input', `contact location (${sx}, ${sy}) is outside the contact face (|s_x| < ${lx / 2}, |s_y| < ${ly / 2})`);
   }
 
-  const d = normalize(input.contactDirection);
+  const d = unitDirection(input.contactDirection);
   const n = scale(d, -1);
   const ballCenter: Vec3 = [0, params.ball.radius, 0];
   const contactPoint = addScaled(ballCenter, d, params.ball.radius);
