@@ -50,12 +50,14 @@ KickDynamics は、キックの物理現象を解明・再現することを目�
 | 領域 | 方針 | 状態 |
 |---|---|---|
 | 実行環境 | デスクトップブラウザ先行、静的ホスティング。スマホは将来検討 | 暫定採用（[ADR-0001](docs/decisions/0001-browser-first.md)） |
-| 言語・ビルド | TypeScript / Vite | 暫定採用 |
-| 3D 描画 | Three.js（初期は WebGLRenderer） | 暫定採用 |
+| ワークスペース | npm workspaces（`package-lock.json` で依存を固定） | 採用（[ADR-0004](docs/decisions/0004-npm-workspaces-and-initial-dependencies.md)） |
+| 言語・ビルド | TypeScript / Vite | 採用（導入承認済み 2026-10-18、ADR-0004） |
+| 3D 描画 | Three.js（初期は WebGLRenderer） | 採用（導入承認済み 2026-10-18、ADR-0004） |
+| 座標系 | 右手系・y 上向き、四元数は `[x, y, z, w]` | 採用（[ADR-0005](docs/decisions/0005-coordinate-and-quaternion-conventions.md)） |
 | UI | 素の HTML/CSS ＋ 軽量コントロール。React 等は必須としない | 暫定採用（ライブラリは未決定） |
 | 物理計算 | 独自の TypeScript 製 Physics Core。汎用剛体エンジンに衝突モデルの中核を委ねない | 暫定採用（[ADR-0002](docs/decisions/0002-independent-physics-core.md)） |
 | 初期接触モデル | 有限質量の剛体足 × 剛体球の瞬間点接触。無限質量の動く壁を比較基準に併置 | 暫定採用（[ADR-0003](docs/decisions/0003-finite-mass-initial-contact.md)） |
-| 自動テスト | Vitest | 候補 |
+| 自動テスト | Vitest | 採用（導入承認済み 2026-10-18、ADR-0004） |
 | 高速化 | Rust/WASM 等への差し替えは、計測で必要性が確認された場合に検討 | 未決定 |
 
 ## ドキュメント索引
@@ -81,6 +83,8 @@ KickDynamics は、キックの物理現象を解明・再現することを目�
 - [ADR-0001 ブラウザ先行](docs/decisions/0001-browser-first.md) — Accepted (provisional)
 - [ADR-0002 描画から独立した Physics Core](docs/decisions/0002-independent-physics-core.md) — Accepted (provisional)
 - [ADR-0003 初期接触モデルに有限質量の剛体足を採用](docs/decisions/0003-finite-mass-initial-contact.md) — Accepted (provisional)
+- [ADR-0004 npm workspaces と初期の依存パッケージ](docs/decisions/0004-npm-workspaces-and-initial-dependencies.md) — Accepted
+- [ADR-0005 座標系と四元数の規約](docs/decisions/0005-coordinate-and-quaternion-conventions.md) — Accepted
 
 初期の合意事項は [soccer_kick_simulator_docs_prompt.md](soccer_kick_simulator_docs_prompt.md)（引き継ぎプロンプト）に記録されています。以後の正本は上表の各文書です。
 

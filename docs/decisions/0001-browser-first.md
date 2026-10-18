@@ -22,7 +22,7 @@
 
 - 良い点：インストール不要で共有しやすい。サーバーが不要。Three.js の資料が多い。
 - 注意点：JavaScript の計算性能の上限がある（必要なら Web Worker や WASM を検討、[ADR-0002](0002-independent-physics-core.md)）。JS エンジン間で初等関数の末尾の桁が異なりうるため、ブラウザ間のビット単位の再現性は保証しない。
-- 依存パッケージ（Vite、TypeScript、Three.js、テストランナー）の導入は、M1.1 着手時にユーザーの承認を得て行う。
+- 依存パッケージ（Vite、TypeScript、Three.js、テストランナー）の導入は、M1.1 着手時にユーザーの承認を得て行う（2026-10-18 に承認済み：[ADR-0004](0004-npm-workspaces-and-initial-dependencies.md)）。
 
 ## Alternatives
 

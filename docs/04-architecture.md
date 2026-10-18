@@ -47,7 +47,7 @@ packages/physics-core/        # KickDynamics Core
 tools/validation/             # 候補：検証スクリプトとレポート生成
 ```
 
-- ワークスペースの管理方法（npm workspaces、pnpm workspaces など）は未決定（[OQ-16](research/references-and-open-questions.md)）。
+- ワークスペースは **npm workspaces** で管理する（決定：[ADR-0004](decisions/0004-npm-workspaces-and-initial-dependencies.md)、OQ-16）。ルートの `package.json` に `"workspaces": ["apps/*", "packages/*"]` を置き、`package-lock.json` をコミットする。承認済みの依存パッケージも ADR-0004 を参照。
 - パッケージ名（例：`@kick-dynamics/physics-core`）は未決定。
 
 ## 4. 依存ルール
@@ -90,13 +90,13 @@ flowchart LR
 
 ## 6. Core 公開 API 草案
 
-> **草案**。名前・形・データ表現は M1.1 で確定する。以下は方針を示すための型スケッチであり、実装ではない。
+> **草案**。名前と細部は M1.1 で確定する。以下は方針を示すための型スケッチであり、実装ではない。
+> データ表現は決定済み（OQ-15、2026-10-18）：API の `Vec3`・`Quat`・`Mat3` は readonly のタプル、時系列の `Trajectory` は `Float64Array`。積分ループ内部の表現は、計測で必要と分かった場合に限って最適化する（API の形は変えない）。
 
 ```ts
-// データ表現は未決定（OQ-15）。以下はタプル案。
 type Vec3 = readonly [number, number, number];
-type Quat = readonly [number, number, number, number]; // 成分順（w 先頭か末尾か）は未決定
-type Mat3 = readonly [number, number, number, number, number, number, number, number, number];
+type Quat = readonly [number, number, number, number]; // [x, y, z, w]（ADR-0005）
+type Mat3 = readonly [number, number, number, number, number, number, number, number, number]; // 行・列の並び順は M1.1 で決める
 
 interface RigidBodyState {
   position: Vec3;        // m（ワールド座標、重心）
@@ -107,17 +107,17 @@ interface RigidBodyState {
 
 interface BallParams { mass: number; radius: number; inertiaCoefficient: number } // 05 §5.1
 interface FootParams { mass: number; inertiaBody: Mat3; shape: FootShape }       // 05 §5.2
-type FootShape = { kind: 'box'; halfExtents: Vec3 }; // 形状の種類は OQ-01 で決定
+type FootShape = { kind: 'box'; dimensions: Vec3 }; // [L_x, L_y, L_z] m。接触面は +z_b 面（05 §5.2）
 
 type FootModel = 'finite-mass' | 'kinematic-wall';
 
-// UI の入力を物理的に整合した衝突直前状態へ変換する前の入力。自由度は OQ-03 で決定。
+// UI の入力を物理的に整合した衝突直前状態へ変換する前の入力。各項目の定義は 05 §6.2 の表。
 interface KickInput {
-  contactDirection: Vec3;     // ボール中心 → 接触点の単位ベクトル d（05 §6.2）
-  footRollAboutNormal: number; // 接触法線まわりの足の回転角 rad
-  footContactLocation: readonly [number, number]; // 足の接触面上の接触位置 m
-  footVelocity: Vec3;         // m/s（定義は OQ-03）
-  footAngularVelocity: Vec3;  // rad/s（既定 0）
+  contactDirection: Vec3;              // d：ボール中心 → 接触点の単位ベクトル
+  footRollAboutNormal: number;         // φ：接触法線まわりの足の回転角 rad
+  footContactLocation: readonly [number, number]; // (s_x, s_y)：接触面上の接触位置 m
+  footContactPointVelocity: Vec3;      // v_A^p：接触点での足の速度 m/s
+  footAngularVelocity: Vec3;           // ω_A：rad/s（既定 0）
   footModel: FootModel;
 }
 
@@ -227,4 +227,4 @@ verification/                 # 予定（未作成）
 
 ## 12. 未決定事項
 
-OQ-11（座標系）、OQ-12（積分法・刻み）、OQ-15（データ表現）、OQ-16（ワークスペース）、OQ-17（UI ライブラリ）、OQ-18（実行スレッド）、OQ-19（出力形式）。詳細は [research/references-and-open-questions.md](research/references-and-open-questions.md)。
+OQ-12（積分法・刻み）、OQ-17（UI ライブラリ）、OQ-18（実行スレッド）、OQ-19（出力形式）。OQ-11（座標系）、OQ-15（データ表現）、OQ-16（ワークスペース）は決定済み。詳細は [research/references-and-open-questions.md](research/references-and-open-questions.md)。

@@ -11,7 +11,7 @@
   - $1\ \mathrm{m/s} = 3.6\ \mathrm{km/h}$
   - $\mathrm{rpm} = |\boldsymbol\omega| \cdot 60 / (2\pi)$（$|\boldsymbol\omega|$ は rad/s）
 
-## 2. 座標系（暫定、[OQ-11](research/references-and-open-questions.md)）
+## 2. 座標系（決定：[ADR-0005](decisions/0005-coordinate-and-quaternion-conventions.md)）
 
 - **ワールド座標系 W**：右手系。
   - 原点：初期のボール中心の真下の地面上の点
@@ -20,11 +20,13 @@
   - $+z = \hat{\mathbf x} \times \hat{\mathbf y}$：$+x$ を向いて立ったときの右手側
 - **地面**：平面 $y = 0$（Phase 1 は水平・平坦）。
 - **物体座標系**：ボール（B）と足（A）それぞれの重心を原点とし、剛体に固定。
-- **姿勢**：単位四元数 $q$ で表し、物体座標 → ワールド座標の回転を表す。対応する回転行列を $\mathbf R(q)$ とする。四元数の成分順・積の規約は M1.1 で確定する。
+- **姿勢**：単位四元数 $q$ で表し、物体座標 → ワールド座標の回転（能動回転）を表す：$\mathbf v_W = q\otimes\mathbf v_B\otimes q^{*}$。対応する回転行列を $\mathbf R(q)$ とする。
+  - 積 $\otimes$ は Hamilton の定義に従う。
+  - 成分の並びは $q = [x, y, z, w]$（ベクトル部が先、スカラー部 $w$ が最後。Three.js と同じ）。
 - **角速度**：API 上はワールド座標で表す。
 - **慣性テンソル**：物体座標で定義し、ワールド座標では $\mathbf I_W = \mathbf R \mathbf I_{\text{body}} \mathbf R^{\mathsf T}$。
 
-y 軸を上向きにする案は、Three.js の既定と一致させて変換の誤りを減らすことを狙った**暫定案**。z 軸上向きを採る場合は本書を正本として更新する。
+y 軸を上向きとし、四元数の成分順を Three.js に合わせたのは、描画との変換の誤りを減らすため。物理の文献で多い z 上向きや $[w, x, y, z]$ の順の式を参照するときは、読み替えに注意する（ADR-0005）。
 
 ## 3. 記号
 
@@ -39,6 +41,10 @@ y 軸を上向きにする案は、Three.js の既定と一致させて変換の
 | $\mathbf d$ | ボール中心 → 接触点の単位ベクトル（$\mathbf d = -\mathbf n$） | — |
 | $\mathbf r_A,\ \mathbf r_B$ | 各重心 → 接触点のベクトル | m |
 | $\mathbf u,\ u_n,\ \mathbf u_t$ | 接触点での相対速度（ボール − 足）とその法線・接線成分 | m/s |
+| $\mathbf v_A^{p}$ | 接触点での足の速度（キック入力の「足の速度」） | m/s |
+| $L_x,\ L_y,\ L_z$ | 足（直方体）の寸法（物体座標の各軸方向の長さ） | m |
+| $\phi$ | 接触法線まわりの足の回転角 | rad |
+| $(s_x,\ s_y)$ | 足の接触面上の接触位置 | m |
 | $\mathbf J,\ j_n,\ \mathbf J_t$ | ボールに加わる衝撃量とその法線・接線成分 | N·s |
 | $\mathbf K$ | 衝撃量 → 相対速度変化の行列 | 1/kg |
 | $e,\ \mu$ | 足–ボール間の反発係数・摩擦係数 | — |
@@ -75,7 +81,15 @@ Phase 1 では、衝突前の足の運動（スイング）は計算せず、衝
 ### 5.2 足
 
 - 有限質量の 3D 剛体：質量 $m_A$、物体座標での慣性テンソル $\mathbf I_A^{\text{body}}$（3×3 対称正定値）、姿勢 $q_A$、重心位置 $\mathbf x_A$、速度 $\mathbf v_A$、角速度 $\boldsymbol\omega_A$。
-- 幾何形状は簡略化する。候補：直方体、楕円体、カプセル、平面の接触面 ＋ 重心オフセット（[OQ-01](research/references-and-open-questions.md)）。
+- 幾何形状は**一様密度の直方体**とする（決定：[OQ-01](research/references-and-open-questions.md)、2026-10-18）。
+  - 物体座標の原点は直方体の中心（＝重心）、軸 $x_b, y_b, z_b$ は直方体の辺に平行。寸法を $L_x, L_y, L_z$ とする。
+  - 物体座標での慣性テンソル：
+    $$
+    \mathbf I_A^{\text{body}} = \frac{m_A}{12}\,\mathrm{diag}\!\left(L_y^2 + L_z^2,\ L_x^2 + L_z^2,\ L_x^2 + L_y^2\right)
+    $$
+  - **接触面は $+z_b$ 面に固定する**。どの面が足のどの部位（足甲・内側など）に当たるかは定めない（Phase 3 で扱う）。
+  - 接触は $+z_b$ 面の内部で起こるものとし、辺・角での接触は Phase 1 の対象外とする。
+  - 質量・寸法の値（仮置き）は M1.3 開始前に決める（[OQ-02](research/references-and-open-questions.md)、tasks T0-08）。
 - Phase 1 の接触計算に必要なのは、接触点での足表面の法線、接触点の位置（$\mathbf r_A$）、質量、慣性テンソルだけである。形状の詳細（曲率など）は Phase 3 で扱う。
 - 足首・膝・股関節の拘束、筋力、関節剛性は扱わない（§11）。
 
@@ -97,8 +111,20 @@ Phase 1 では、衝突前の足の運動（スイング）は計算せず、衝
   - 法線 $\mathbf n$ まわりの回転（1 自由度）
   - 足の表面上のどこで接触するか（2 自由度。$\mathbf r_A$ を決める）
 - 足の重心位置は $\mathbf x_A = \mathbf p - \mathbf r_A$ で決まる。
-- UI 上でこれらの自由度をどう表現するかは未決定（[OQ-03](research/references-and-open-questions.md)）。
-- **接触の成立条件**：$u_n^- < 0$（接触点で互いに近づいている）。$u_n^- \ge 0$ の場合、衝突は起きず衝撃量は $\mathbf 0$ とする（Core はその旨を結果で返す）。
+
+**キック入力の自由度**（決定：[OQ-03](research/references-and-open-questions.md) のパラメータ化、2026-10-18。UI での表現は M1.4 の試作で決める）：
+
+| 入力 | 自由度 | 定義 |
+|---|---|---|
+| 接触方向 $\mathbf d$ | 2 | ボール中心 → 接触点の単位ベクトル。$\mathbf n = -\mathbf d$ |
+| 法線まわりの回転角 $\phi$ | 1 | 足の接触面（$+z_b$ 面）の外向き法線を $\mathbf n$ に合わせた上での、$\mathbf n$ まわりの回転。$\phi = 0$ は「$y_b$ が、ワールドの $+\hat{\mathbf y}$ を接触平面（$\mathbf n$ に垂直な平面）へ射影した向きと一致する」姿勢。$\mathbf n$ が $\hat{\mathbf y}$ とほぼ平行な場合は、$+\hat{\mathbf x}$ の射影を基準に使う。回転の正の向きは $\mathbf n$ まわりの右ねじの向き |
+| 接触面上の接触位置 $(s_x, s_y)$ | 2 | $+z_b$ 面の中心を原点とした、$x_b$・$y_b$ 方向の位置。既定は $(0, 0)$。$\vert s_x\vert  < L_x/2$、$\vert s_y\vert  < L_y/2$。物体座標では $\mathbf r_A^{\text{body}} = (s_x,\ s_y,\ L_z/2)$ |
+| 接触点での足の速度 $\mathbf v_A^{p}$ | 3 | 衝突直前に、足の接触点が動いている速度（ワールド座標） |
+| 足の角速度 $\boldsymbol\omega_A$ | 3 | ワールド座標。既定は $\mathbf 0$ |
+
+- 足の重心速度は $\mathbf v_A = \mathbf v_A^{p} - \boldsymbol\omega_A\times\mathbf r_A$ で求める（$\boldsymbol\omega_A = \mathbf 0$ なら $\mathbf v_A = \mathbf v_A^{p}$）。
+- 足の姿勢 $q_A$ は、$\mathbf n$ と $\phi$ から一意に決まる。
+- **接触の成立条件**：$u_n^- < 0$（接触点で互いに近づいている）。ボールが静止している Phase 1 の初期状態では、$\mathbf v_A^{p}\cdot\mathbf n > 0$ と同値。$u_n^- \ge 0$ の場合、衝突は起きず衝撃量は $\mathbf 0$ とする（Core はその旨を結果で返す）。
 - 足とボール・地面との幾何学的な干渉（めり込み）は、Phase 1 では物理計算で扱わない（表示上の警告は候補）。
 
 ### 6.3 接触点の相対速度
@@ -251,7 +277,7 @@ m\,\dot{\mathbf v} = m\mathbf g + \mathbf F_D + \mathbf F_M,\qquad
 \dot q = \tfrac12\,(0, \boldsymbol\omega)\otimes q
 $$
 
-$\otimes$ は四元数の積（$\boldsymbol\omega$ はワールド座標）。四元数の微分の式の形は、M1.1 で確定する成分順・積の規約に合わせて正本を更新する。
+$\otimes$ は Hamilton の四元数積、$(0, \boldsymbol\omega)$ は純虚四元数で、成分順 $[x, y, z, w]$ では $\hat{\boldsymbol\omega} = [\omega_x, \omega_y, \omega_z, 0]$ と書く（$\boldsymbol\omega$ はワールド座標、§2）。
 
 ### 7.2 重力
 
@@ -338,8 +364,8 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 | 初速 | 足との衝突直後のボール速度 $\mathbf v^+$ の大きさ |
 | 打ち出し角（垂直） | $\theta = \operatorname{atan2}\!\left(v_y^+, \sqrt{(v_x^+)^2 + (v_z^+)^2}\right)$ |
 | 打ち出し方向（水平） | $\psi = \operatorname{atan2}(v_z^+, v_x^+)$（右が正） |
-| スピン量 | 衝突直後の $|\boldsymbol\omega^+|$。表示は rpm |
-| スピン成分 | 衝突直後の速度方向に基づく正規直交基底 $\mathbf e_1 = \hat{\mathbf v}$、$\mathbf e_2 = (\hat{\mathbf v}\times\hat{\mathbf y})/|\hat{\mathbf v}\times\hat{\mathbf y}|$、$\mathbf e_3 = \mathbf e_2\times\mathbf e_1$ への射影。$\omega_{\text{gyro}} = \boldsymbol\omega\cdot\mathbf e_1$（進行方向軸まわり）、$\omega_{\text{back}} = \boldsymbol\omega\cdot\mathbf e_2$（正がバックスピン）、$\omega_{\text{side}} = \boldsymbol\omega\cdot\mathbf e_3$（正のとき、マグヌス力は進行方向に対して左向き）。$\hat{\mathbf v}$ が鉛直に近い場合は定義できないため「定義不能」とする |
+| スピン量 | 衝突直後の $\vert \boldsymbol\omega^+\vert $。表示は rpm |
+| スピン成分 | 衝突直後の速度方向に基づく正規直交基底 $\mathbf e_1 = \hat{\mathbf v}$、$\mathbf e_2 = (\hat{\mathbf v}\times\hat{\mathbf y})/\vert \hat{\mathbf v}\times\hat{\mathbf y}\vert $、$\mathbf e_3 = \mathbf e_2\times\mathbf e_1$ への射影。$\omega_{\text{gyro}} = \boldsymbol\omega\cdot\mathbf e_1$（進行方向軸まわり）、$\omega_{\text{back}} = \boldsymbol\omega\cdot\mathbf e_2$（正がバックスピン）、$\omega_{\text{side}} = \boldsymbol\omega\cdot\mathbf e_3$（正のとき、マグヌス力は進行方向に対して左向き）。$\hat{\mathbf v}$ が鉛直に近い場合は定義できないため「定義不能」とする |
 | 最高到達点 | 最初の接地までのボール中心の高さ $y$ の最大値 |
 | キャリー | 初期のボール中心と、最初の接地時のボール中心との水平距離 |
 | 着地点 | 最初の接地時のボール中心の $(x, z)$ |
@@ -370,8 +396,8 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 | P-02 | $R$ | ボール半径 | m | 外周 0.68–0.70 m からの換算（$R = C/2\pi$） | 規格値（一次情報未照合） | 同上。外周の範囲から換算 |
 | P-03 | $\kappa$ | ボール慣性係数 | — | 未決定（参照：2/5、2/3） | 未決定 | §5.1、OQ-06 |
 | P-04 | $m_A$ | 足の質量 | kg | 未決定 | 未決定 | 実装時は「仮置き」とする。OQ-02 |
-| P-05 | $\mathbf I_A^{\text{body}}$ | 足の慣性テンソル | kg·m² | 未決定 | 未決定 | 形状（OQ-01）と質量から一様密度で計算する案。OQ-02 |
-| P-06 | — | 足形状の寸法 | m | 未決定 | 未決定 | OQ-01 |
+| P-05 | $\mathbf I_A^{\text{body}}$ | 足の慣性テンソル | kg·m² | P-04・P-06 から §5.2 の直方体の式で計算 | 未決定 | 一様密度の仮定。OQ-02 |
+| P-06 | $L_x,\ L_y,\ L_z$ | 足（直方体）の寸法 | m | 未決定 | 未決定 | 形状は直方体に決定（§5.2）。値は OQ-02、T0-08 |
 | P-07 | $e$ | 足–ボールの反発係数 | — | 未決定 | 未決定 | 衝突速度・内圧に依存する可能性。OQ-04 |
 | P-08 | $\mu$ | 足–ボールの摩擦係数 | — | 未決定 | 未決定 | 靴の材質・湿潤に依存する可能性。OQ-05 |
 | P-09 | $g$ | 重力加速度 | m/s² | 9.80665 | 定義値 | 標準重力。地域差は無視 |
@@ -418,4 +444,4 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 
 ## 14. 未決定事項
 
-本書に関係する未決定事項：OQ-01〜OQ-12、OQ-23。一覧は [research/references-and-open-questions.md](research/references-and-open-questions.md) を正本とする。
+本書に関係する未決定事項：OQ-02、OQ-03（UI での表現）、OQ-04〜OQ-10、OQ-12、OQ-23。OQ-01（足の形状）と OQ-11（座標系）は決定済み。一覧は [research/references-and-open-questions.md](research/references-and-open-questions.md) を正本とする。
