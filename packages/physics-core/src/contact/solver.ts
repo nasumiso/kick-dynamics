@@ -1,7 +1,7 @@
 // 瞬間点接触のソルバー（docs/05-physics-model.md §6.3〜6.9）。
 // Newton の反発係数（法線）と Coulomb 摩擦（接線）の代数解。
 import { angularMomentum, ballInertia, inertiaWorld, kineticEnergy, linearMomentum, type MassProperties } from '../bodies/dynamics';
-import type { RigidBodyState } from '../bodies/types';
+import type { BallParams, RigidBodyState } from '../bodies/types';
 import { mulVec, solve } from '../math/mat3';
 import { add, addScaled, cross, dot, length, normalize, scale, sub, type Vec3 } from '../math/vec3';
 import { fail, ok, type SimResult } from '../result';
@@ -28,7 +28,14 @@ function applyImpulse(state: RigidBodyState, body: ImpactInertia, arm: Vec3, imp
   };
 }
 
-function validate(params: ContactParameters): SimResult<void> {
+/** 反発・摩擦の係数と ε_t（足–ボールでは P-07・P-08、地面では P-15・P-16、共通の P-25）。 */
+export interface ContactCoefficients {
+  readonly restitution: number;
+  readonly friction: number;
+  readonly tangentialSpeedThreshold: number;
+}
+
+function validate(params: ContactCoefficients): SimResult<void> {
   const { restitution: e, friction: mu, tangentialSpeedThreshold: epsT } = params;
   if (!(Number.isFinite(e) && e >= 0 && e <= 1)) return fail('invalid-parameter', `restitution must be in [0, 1] (${e})`);
   if (!(Number.isFinite(mu) && mu >= 0)) return fail('invalid-parameter', `friction must be finite and non-negative (${mu})`);
@@ -41,16 +48,26 @@ function validate(params: ContactParameters): SimResult<void> {
  * 想定内の失敗（係数の範囲外、解けない構成）は SimResult のエラーで返す（04 §6）。
  */
 export function solveImpact(setup: ImpactSetup, params: ContactParameters, model: FootModel): SimResult<ImpactResult> {
+  const footMassProperties: MassProperties | null = model === 'kinematic-wall'
+    ? null
+    : { mass: params.foot.mass, inertiaWorld: inertiaWorld(params.foot.inertiaBody, setup.foot.orientation) };
+  return solveContact(setup, params.ball, footMassProperties, params);
+}
+
+/**
+ * ボールと相手の物体（setup.foot。有限質量なら footMassProperties、運動学的な物体なら null）の瞬間点接触を解く。
+ * 足との衝突（solveImpact）と、地面との衝突（無限質量で静止した物体、05 §8.1）で共通に使う。
+ */
+export function solveContact(
+  setup: ImpactSetup, ballParams: BallParams, footMassProperties: MassProperties | null, params: ContactCoefficients,
+): SimResult<ImpactResult> {
   const valid = validate(params);
   if (!valid.ok) return valid;
   const n = normalize(setup.contactNormal);
   const ballArm = sub(setup.contactPoint, setup.ball.position);
   const footArm = sub(setup.contactPoint, setup.foot.position);
-  const ballBody = finiteInertia(params.ball.mass, ballInertia(params.ball));
-  const ballMassProperties: MassProperties = { mass: params.ball.mass, inertiaWorld: ballInertia(params.ball) };
-  const footMassProperties: MassProperties | null = model === 'kinematic-wall'
-    ? null
-    : { mass: params.foot.mass, inertiaWorld: inertiaWorld(params.foot.inertiaBody, setup.foot.orientation) };
+  const ballBody = finiteInertia(ballParams.mass, ballInertia(ballParams));
+  const ballMassProperties: MassProperties = { mass: ballParams.mass, inertiaWorld: ballInertia(ballParams) };
   const footBody = footMassProperties === null ? KINEMATIC_INERTIA : finiteInertia(footMassProperties.mass, footMassProperties.inertiaWorld);
   const momenta = (ballState: RigidBodyState, footState: RigidBodyState) => footMassProperties === null ? null : {
     momentum: add(linearMomentum(ballMassProperties, ballState), linearMomentum(footMassProperties, footState)),
@@ -131,7 +148,7 @@ export function solveImpact(setup: ImpactSetup, params: ContactParameters, model
   const kineticEnergyChange = 0.5 * dot(impulse, add(uBefore, uAfter));
   const energyScale = 0.5 * length(impulse) * (length(uBefore) + length(uAfter));
   const footTranslatesOnly = length(setup.foot.angularVelocity) === 0;
-  if ((model === 'finite-mass' || footTranslatesOnly) && kineticEnergyChange > DIAGNOSTIC_RELATIVE_TOLERANCE * energyScale) {
+  if ((footMassProperties !== null || footTranslatesOnly) && kineticEnergyChange > DIAGNOSTIC_RELATIVE_TOLERANCE * energyScale) {
     warnings.push('energy-increase');
   }
   if (slidingDirection !== null) {

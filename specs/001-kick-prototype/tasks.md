@@ -1,6 +1,6 @@
 # 001 キックプロトタイプ（Phase 1）タスク
 
-> 状態：Draft（2026-10-18）。T0 は完了。M1.1 は完了。M1.2 は IV-03-R / IV-04-R まで完了（判断保留の事項は IV-03-R / IV-04-R の結果欄に記録）。M1.3 は T1.3-06 まで完了。
+> 状態：Draft（2026-10-18）。T0 は完了。M1.1 は完了。M1.2 は IV-03-R / IV-04-R まで完了（判断保留の事項は IV-03-R / IV-04-R の結果欄に記録）。M1.3 は T1.3-07 まで完了（T1.3-08 は OQ-09 の値の決定待ち、照合 IV-01-C / IV-02-C / IV-05-C は未実施）。
 > 計画は [plan.md](plan.md)、受入条件は [spec.md](spec.md)、検証項目と独立検証の手順は [06-validation.md](../../docs/06-validation.md) を参照してください。
 
 ## 使い方
@@ -292,11 +292,12 @@
 - 完了確認：VER-C17 のテストが合格する。離反方向の入力でエラー値が返る。
 - 結果（2026-10-18）：`src/contact/setup.ts`（`buildImpactSetup`、`footAxes`）と `src/math/quat.ts` の `fromMat3`（回転行列 → 四元数、対角成分の最大を使う方式。VER-M03 のテストを追加）。`KickInput` と `ImpactGeometryParameters` を `src/contact/types.ts` に追加。`test/contact/setup.test.ts` で VER-C17（接触点と法線、+z_b 面の法線 = n、$\mathbf x_A = \mathbf p - \mathbf r_A$、$\mathbf v_A = \mathbf v_A^p - \boldsymbol\omega_A\times\mathbf r_A$ と接触点の速度、$\phi = 0$ の基準と右ねじの回転、$\varepsilon_\phi$ の境界の両側、入力の検証の各エラー：`invalid-input`・`separating-input`）に合格。**仮置き**：$\varepsilon_\phi = 10^{-6}$（P-26、根拠は 05 §10.2）。接触の成立条件は閾値なし（$\mathbf v_A^p\cdot\mathbf n > 0$）のため、接線方向だけの入力のテストは $\mathbf v_A^p\cdot\mathbf n$ が厳密に 0 になる構成で行った。Core の公開 API（`index.ts`）に接触ソルバー・接触幾何を追加。
 
-### [ ] T1.3-07 地面バウンド
+### [x] T1.3-07 地面バウンド
 - 担当：Claude Code
 - 内容：地面を無限質量の静止剛体として同じソルバーを使う。衝突直後に $v_y^+ < 0$ の場合の処理（05 §8.3）を含む。
 - 依存：T1.3-04, T1.2-07
 - 完了確認：VER-G01、G02 のテストが合格する。
+- 結果（2026-10-18）：ソルバーの本体を `solveContact`（ボールと、有限質量または運動学的な相手）として `solveImpact` から切り出し、`src/ground/bounce.ts` の `solveGroundBounce`・`groundBounceHandler` から使う。`test/ground/bounce.test.ts` で VER-G01（4 通りの $e_g$・$\mu_g$）、VER-G02（回転なし・バックスピン・トップスピン・サイドとジャイロ、各 3 通りの係数で 05 §6.8 の閉形式と TOL-A で一致、固着と滑りの両方、エネルギーは増えない）、05 §8.3（開始時に $v_y < 0$ なら開始時刻にバウンド）、飛翔と組み合わせた連続バウンド（真空・摩擦なしで $n$ 回目の後の $v_y = e_g^n v_y$）に合格。**未実装**：転がりへの移行（$\lvert u_n^-\rvert \le v_{\text{rest}}$、05 §8.1）は T1.3-08 の範囲（OQ-09 の値が未決定）。それまでは、バウンドが Δt より短くなると接地を見落としうる（05 §7.7 の制約。IV-04-C の I-H01 と同じ）ため、パイプライン（T1.5-01）では最大時間を短めに取るか、T1.3-08 を先に行う必要がある。$e_g$・$\mu_g$ はテスト用の任意の値。
 
 ### [ ] T1.3-08 転がりと停止（目標・優先度は調整可）
 - 担当：Claude Code
