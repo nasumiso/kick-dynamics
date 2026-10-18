@@ -4,6 +4,7 @@ import { angularMomentum, ballInertia, inertiaWorld, kineticEnergy, linearMoment
 import type { BallParams, RigidBodyState } from '../bodies/types';
 import { validateBall, validateFoot, validateMassProperties } from '../bodies/validate';
 import { mulVec, solve } from '../math/mat3';
+import { norm as quatNorm, normalize as normalizeQuat } from '../math/quat';
 import { add, addScaled, cross, dot, isFiniteVec3, length, normalize, scale, sub, type Vec3 } from '../math/vec3';
 import { fail, ok, type SimResult } from '../result';
 import { contactMatrix, finiteInertia, KINEMATIC_INERTIA, type ImpactInertia } from './k-matrix';
@@ -60,9 +61,16 @@ export function solveImpact(setup: ImpactSetup, params: ContactParameters, model
     const footValid = validateFoot(params.foot);
     if (!footValid.ok) return footValid;
   }
-  const footMassProperties: MassProperties | null = model === 'kinematic-wall'
-    ? null
-    : { mass: params.foot.mass, inertiaWorld: inertiaWorld(params.foot.inertiaBody, setup.foot.orientation) };
+  let footMassProperties: MassProperties | null = null;
+  if (model === 'finite-mass') {
+    // 姿勢 q の回転は q / |q| の回転と同じ（q v q⁻¹）なので、単位でない有限の四元数は正規化して使う。
+    // |q| が 0 または有限でない場合は回転を表さないため、入力エラーとする。
+    const orientationNorm = quatNorm(setup.foot.orientation);
+    if (!(Number.isFinite(orientationNorm) && orientationNorm > 0)) {
+      return fail('invalid-input', `foot orientation must be a finite non-zero quaternion (norm ${orientationNorm})`);
+    }
+    footMassProperties = { mass: params.foot.mass, inertiaWorld: inertiaWorld(params.foot.inertiaBody, normalizeQuat(setup.foot.orientation)) };
+  }
   return solveContact(setup, params.ball, footMassProperties, params);
 }
 

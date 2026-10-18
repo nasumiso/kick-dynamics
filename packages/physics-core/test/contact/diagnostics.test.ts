@@ -139,3 +139,23 @@ describe('slip reversal warning (05 §6.8 step 5)', () => {
     expect(r.diagnostics.warnings).toContain('slip-reversal');
   });
 });
+
+describe('foot orientation that is not a unit quaternion (PR #7 review)', () => {
+  it('uses q / |q| for a finite non-zero quaternion (q v q⁻¹ does not depend on |q|)', () => {
+    const q = eccentric.foot.orientation;
+    const scaled: ImpactSetup = { ...eccentric, foot: { ...eccentric.foot, orientation: [3 * q[0], 3 * q[1], 3 * q[2], 3 * q[3]] } };
+    const expected = solve(eccentric, 0.7, 0.4);
+    const actual = solve(scaled, 0.7, 0.4);
+    expectAllClose(actual.impulse, expected.impulse);
+    expectAllClose(actual.ballAfter.angularVelocity, expected.ballAfter.angularVelocity);
+  });
+
+  it.each([
+    ['zero', [0, 0, 0, 0]],
+    ['overflowing norm', [Number.MAX_VALUE, Number.MAX_VALUE, 0, 0]],
+  ] as const)('returns invalid-input for a %s quaternion', (_, orientation) => {
+    const r = solveImpact({ ...eccentric, foot: { ...eccentric.foot, orientation: [...orientation] } }, contactParams(0.7, 0.4), 'finite-mass');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe('invalid-input');
+  });
+});
