@@ -77,11 +77,12 @@
 - 完了確認：依存のインストールと型検査のコマンドがエラーなく完了する。
 - 結果（2026-10-18）：ルートに `package.json`（workspaces）、`tsconfig.base.json`、`tsconfig.json`、`vitest.config.ts` を追加。`typescript` 7.0.2、`vitest` 5.0.5 を導入し `package-lock.json` で固定。`npm install` と `npm run typecheck` が成功。`npm test` はワークスペースがまだないため「No projects were found」で失敗する（T1.1-02 で解消）。
 
-### [ ] T1.1-02 `packages/physics-core` の雛形とテストランナー
+### [x] T1.1-02 `packages/physics-core` の雛形とテストランナー
 - 担当：Claude Code
 - 内容：`tsconfig` の `lib` に DOM を含めない。
 - 依存：T1.1-01
 - 完了確認：サンプルテスト 1 件が Node 上で合格する。`document` を参照する仮のコードが型エラーになることを確かめてから削除する。
+- 結果（2026-10-18）：パッケージ名は `@kick-dynamics/physics-core`（暫定）、`exports` は `src/index.ts` を直接指す。`tsconfig` の `lib` は `ES2022` のみ・`types` は空。`document` を参照する仮のコードで TS2584 になることを確認して削除した。サンプルテスト 1 件が合格。
 
 ### [ ] T1.1-03 依存境界の検査
 - 担当：Claude Code

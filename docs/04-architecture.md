@@ -48,7 +48,7 @@ tools/validation/             # 候補：検証スクリプトとレポート生
 ```
 
 - ワークスペースは **npm workspaces** で管理する（決定：[ADR-0004](decisions/0004-npm-workspaces-and-initial-dependencies.md)、OQ-16）。ルートの `package.json` に `"workspaces": ["apps/*", "packages/*"]` を置き、`package-lock.json` をコミットする。承認済みの依存パッケージも ADR-0004 を参照。
-- パッケージ名（例：`@kick-dynamics/physics-core`）は未決定。
+- パッケージ名：Core は `@kick-dynamics/physics-core`（暫定、T1.1-02）。Core の `exports` はビルドせずに `src/index.ts` を指す（Lab は Vite で、テストは Vitest で直接 TypeScript を読む）。
 
 ## 4. 依存ルール
 

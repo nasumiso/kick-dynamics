@@ -4,9 +4,17 @@
     "composite": false,
     "declaration": false,
     "noEmit": true,
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "types": []
   },
-  "include": ["vitest.config.ts"],
-  "references": []
+  "include": [
+    "vitest.config.ts"
+  ],
+  "references": [
+    {
+      "path": "./packages/physics-core"
+    }
+  ]
 }
