@@ -1,7 +1,7 @@
 // 飛翔中にボールに働く力とトルク（docs/05-physics-model.md §7.2〜7.6）。
 import type { BallParams, RigidBodyState } from '../bodies/types';
 import { gravityVector } from '../frames';
-import { add, length, scale, sub, ZERO, type Vec3 } from '../math/vec3';
+import { add, cross, length, scale, sub, ZERO, type Vec3 } from '../math/vec3';
 import { fail, ok, type SimResult } from '../result';
 import type { CoefficientModel, DegeneracyThresholds, FlightEnvironment, FlightForceSettings, ForceAndTorque } from './types';
 
@@ -11,7 +11,10 @@ export interface AeroContext {
   readonly speed: number;
   /** Re = ρ |v_r| (2R) / η */
   readonly reynolds: number;
-  /** S = R |ω| / |v_r|（|ω| と |ω_⊥| のどちらで定義するかは未決定、05 §7.6。暫定で |ω|） */
+  /**
+   * S = R |ω| / |v_r|。|ω| と |ω_⊥| のどちらで定義するかは未決定（05 §7.6）で、暫定で |ω| を使う。
+   * C_L・C_D・C_M を関数で与える場合も、この S で評価する（05 §7.4、暫定）。
+   */
   readonly spinParameter: number;
 }
 
@@ -39,6 +42,24 @@ export function dragForce(
   return ok(scale(context.relativeVelocity, -0.5 * environment.airDensity * area * cd.value * context.speed));
 }
 
+/**
+ * マグヌス力 F_M = ½ ρ A C_L |v_r|² (ω × v_r)/|ω × v_r|（05 §7.4）。
+ * |ω × v_r| ≤ ε のときは 0 とし、係数を評価しない。C_L の符号は制限しない（暫定。負の C_L を許すかは
+ * 未決定、05 §7.4。マグヌス力は向きによらず仕事をしないため、符号でエネルギーが増えることはない）。
+ */
+export function magnusForce(
+  context: AeroContext, angularVelocity: Vec3, ball: BallParams, environment: FlightEnvironment,
+  coefficient: CoefficientModel, threshold: number,
+): SimResult<Vec3> {
+  const axis = cross(angularVelocity, context.relativeVelocity);
+  const axisLength = length(axis);
+  if (axisLength <= threshold) return ok(ZERO);
+  const cl = evaluateCoefficient(coefficient, context, 'C_L', false);
+  if (!cl.ok) return cl;
+  const area = Math.PI * ball.radius * ball.radius;
+  return ok(scale(axis, (0.5 * environment.airDensity * area * cl.value * context.speed * context.speed) / axisLength));
+}
+
 /** 状態 state のボールに働く力とトルク（ワールド座標）。 */
 export function computeForces(
   state: RigidBodyState,
@@ -49,9 +70,6 @@ export function computeForces(
 ): SimResult<ForceAndTorque> {
   // 未実装のモデルは、状態によらず先にエラーにする（黙って無視しない）。
   // 線形の回転減衰（05 §7.5 (b)）は |v_r| によらず働くため、ゼロ速度の早期終了より前に判定する。
-  if (forces.magnus.enabled) {
-    return fail('unsupported-model', 'Magnus force is not implemented yet (T1.2-05)');
-  }
   if (forces.spinDecay.kind !== 'none') {
     return fail('unsupported-model', 'spin decay is not implemented yet (T1.2-06)');
   }
@@ -76,6 +94,11 @@ export function computeForces(
     const drag = dragForce(context, ball, environment, forces.drag.coefficient);
     if (!drag.ok) return drag;
     force = add(force, drag.value);
+  }
+  if (forces.magnus.enabled) {
+    const magnus = magnusForce(context, state.angularVelocity, ball, environment, forces.magnus.coefficient, thresholds.magnus);
+    if (!magnus.ok) return magnus;
+    force = add(force, magnus.value);
   }
   return ok({ force, torque });
 }

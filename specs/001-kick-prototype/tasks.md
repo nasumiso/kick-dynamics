@@ -1,6 +1,6 @@
 # 001 キックプロトタイプ（Phase 1）タスク
 
-> 状態：Draft（2026-10-18）。T0 は T0-08 を除き完了。M1.1 は完了。M1.2 は T1.2-04 まで完了。
+> 状態：Draft（2026-10-18）。T0 は T0-08 を除き完了。M1.1 は完了。M1.2 は T1.2-05 まで完了。
 > 計画は [plan.md](plan.md)、受入条件は [spec.md](spec.md)、検証項目と独立検証の手順は [06-validation.md](../../docs/06-validation.md) を参照してください。
 
 ## 使い方
@@ -170,10 +170,11 @@
 - 完了確認：VER-F02 のテストが合格し、得られた収束次数を 06 に記録している。$\Delta t$ の候補値を OQ-12 に記録している。
 - 結果（2026-10-18）：`test/flight/convergence.test.ts`（重力＋抗力の 3 次元の斜方投射 2 条件、基準は最小の刻みの 1/64 の刻みの解）。観測した収束次数は 3.95〜4.03 で、06 §4.2 に記録した。Δt が約 0.002 s を下回ると誤差が丸め誤差（位置で約 1e-13 m）に達するため、自動テストは Δt = 0.04〜0.005 s で判定する（TOL-B の判定幅は T1.2-03 の仮置きのまま）。**Δt の候補 0.005 s を暫定**として OQ-12・05 P-18（仮置き）に記録した。精度は制約にならず、地面イベントの見落とし・$v_{\text{rest}}$ の条件・計算量に余裕を持たせた値。マグヌス力・回転減衰・$Re$ 依存の係数を含めた確認と Δt の確定は未決定（IV-04-C の照合後）。
 
-### [ ] T1.2-05 マグヌス力
+### [x] T1.2-05 マグヌス力
 - 担当：Claude Code
 - 依存：T1.2-02
 - 完了確認：VER-F05、VER-F06、VER-F07、VER-F10 のテストが合格する。
+- 結果（2026-10-18）：`src/flight/forces.ts` の `magnusForce`、`test/flight/magnus.test.ts`。VER-F05（円運動の厳密解に位置が 4 次で収束、速さの誤差は 4 次以上で減少）、F06（$\boldsymbol\omega = \mathbf 0$、$\boldsymbol\omega \parallel \mathbf v_r$（丸め誤差を含む）、$\lvert\mathbf v_r\rvert \le \varepsilon_v$、風速との相対速度で 0。係数を評価しない）、F07（重力＋抗力＋マグヌス、定数 $C_L$ と $S$ に比例する $C_L$ の 2 通り、全ステップで TOL-A）、F10（符号）に合格。**仮置き**：$\varepsilon = 10^{-9}$ m/s²（P-21）、$\varepsilon_v = 10^{-6}$ m/s（P-23）。根拠は丸め誤差と力の大きさの見積もりで、05 §10.2 に記録した。**暫定**：$C_L$ の関数には $\lvert\boldsymbol\omega\rvert$ による $S$ を渡す（$\lvert\boldsymbol\omega_\perp\rvert$ を使うかは未決定、OQ-07）。負の $C_L$ は拒否しない（未決定、05 §7.4）。VER-F06 のうち §7.5 (c) の $\lvert\boldsymbol\omega\rvert \le \varepsilon_\omega$ の場合は、回転減衰を実装する T1.2-06 で確かめる。$C_L$・$C_D$ はテスト用の任意の値。
 
 ### [ ] T1.2-06 回転減衰と姿勢の積分
 - 担当：Claude Code

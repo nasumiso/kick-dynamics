@@ -78,6 +78,8 @@ VER に合格しても、モデルが実物を再現していることにはな�
 - 自動テストは、丸め誤差の影響を避けて Δt = 0.04〜0.005 s で次数を判定する（TOL-B の判定幅は仮置き）。
 - マグヌス力・回転減衰を含む条件での収束は、それぞれ VER-F05・F11・F13 で確かめる。
 
+**縮退判定の閾値**：VER-F02〜F13 のテストは、05 §10.2 の仮置きの値（P-21 $\varepsilon$、P-23 $\varepsilon_v$、P-24 $\varepsilon_\omega$）を使う（`packages/physics-core/test/flight/fixtures.ts`）。VER-F06 は、$\boldsymbol\omega \parallel \mathbf v_r$ で外積に丸め誤差が残る場合も $\varepsilon$ によって $\mathbf F_M = \mathbf 0$ になることを含めて確かめる（T1.2-05）。
+
 ### 4.3 接触（足–ボール）
 
 | ID | 内容 | 前提 | 期待される関係 | 許容誤差 | Phase |

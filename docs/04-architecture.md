@@ -176,7 +176,7 @@ type SimResult<T> = { ok: true; value: T } | { ok: false; error: SimError };
 - 想定内の入力エラー（離反方向の足速度、範囲外のパラメータなど）は例外ではなく `SimResult` のエラー値で返す。プログラムの誤りは例外でよい。
 - `ParameterSet` は値とメタデータ（単位・出典・確からしさ・適用条件）を持つ。Core の計算は値のみを使い、メタデータはそのまま結果に含めて UI と出力へ渡す。
 - 各力項の ON/OFF とモデル選択（定数 `C_D` か関数かなど）は `SimulationSettings` 側（`FlightForceSettings`）に置き、物理定数（$g$、$\rho$、$\eta$、風速）は `FlightEnvironment` として渡す。どちらもパイプライン（T1.5-01）で `ParameterSet` の値から組み立てる（暫定、T1.2-01、`packages/physics-core/src/flight/types.ts`）。
-- 空力係数を関数で与える場合、関数は $(Re, S)$ を受け取り、有限の値を返す。$C_D$・$C_M$ は非負、$C_L$ の符号は [05 §7.4](05-physics-model.md) の規約に従う。関数が範囲外の値・NaN・無限大を返した場合や、入力が係数の定義域外の場合は、値を補正・切り詰めせずに `SimResult` のエラーとして返す。
+- 空力係数を関数で与える場合、関数は $(Re, S)$ を受け取り、有限の値を返す。$C_D$・$C_M$ は非負、$C_L$ の符号は [05 §7.4](05-physics-model.md) の規約に従う（負の $C_L$ も拒否しない。暫定、T1.2-05）。関数が範囲外の値・NaN・無限大を返した場合や、入力が係数の定義域外の場合は、値を補正・切り詰めせずに `SimResult` のエラーとして返す。
 
 ## 7. 物理時間と描画時間
 

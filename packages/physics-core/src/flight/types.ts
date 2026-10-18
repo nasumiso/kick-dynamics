@@ -23,7 +23,7 @@ export interface FlightForceSettings {
   readonly spinDecay: SpinDecayModel;
 }
 
-/** 縮退判定の閾値（05 §7.3〜7.5、P-21・P-23・P-24）。値は未決定のため既定値を持たない。 */
+/** 縮退判定の閾値（05 §7.3〜7.5、P-21・P-23・P-24）。値は仮置き（05 §10.2）で、Core は既定値を持たない。 */
 export interface DegeneracyThresholds {
   /** ε：|ω × v_r| に対する閾値 m/s² */
   readonly magnus: number;

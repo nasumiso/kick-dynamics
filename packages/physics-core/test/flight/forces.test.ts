@@ -56,9 +56,7 @@ describe('flight force model interface', () => {
   });
 
   it('reports not-yet-implemented models instead of silently ignoring them', () => {
-    const magnus = computeForces(state, ball, environment, { ...off, magnus: { ...off.magnus, enabled: true } }, thresholds);
     const decay = computeForces(state, ball, environment, { ...off, spinDecay: { kind: 'linear', coefficient: 1e-4 } }, thresholds);
-    expect(!magnus.ok && magnus.error.code).toBe('unsupported-model');
     expect(!decay.ok && decay.error.code).toBe('unsupported-model');
   });
 

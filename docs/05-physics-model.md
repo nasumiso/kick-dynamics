@@ -316,10 +316,10 @@ $$
 $$
 
 - $C_L$ のモデル候補：定数、$S$ の関数、測定表の補間（[OQ-07](research/references-and-open-questions.md)）。
-- この形では $\boldsymbol\omega$ の $\mathbf v_r$ に平行な成分は力の向きに寄与しない。$C_L$ を $|\boldsymbol\omega|$ と $|\boldsymbol\omega_\perp|$（$\mathbf v_r$ に垂直な成分）のどちらで評価するかは未決定。
+- この形では $\boldsymbol\omega$ の $\mathbf v_r$ に平行な成分は力の向きに寄与しない。$C_L$ を $|\boldsymbol\omega|$ と $|\boldsymbol\omega_\perp|$（$\mathbf v_r$ に垂直な成分）のどちらで評価するかは未決定。実装は暫定で、§7.6 の $S$（$|\boldsymbol\omega|$ による定義）を係数の関数に渡す（T1.2-05。係数データの出典が決まったら、その定義に合わせる、OQ-07）。
 - $\varepsilon$ はゼロ除算を避けるための閾値で、$\varepsilon > 0$（値は M1.2 で決める、P-21）。$\lvert\mathbf v_r\rvert \le \varepsilon_v$ の場合は §7.3 の規則が先に適用される。
 - **定数 $C_L$ の制約**：$C_L$ を定数（$\neq 0$）とすると、$\lvert\boldsymbol\omega\rvert$ が小さくても力の大きさは $\tfrac12\rho A C_L\lvert\mathbf v_r\rvert^2$ のままで、$\boldsymbol\omega \to \mathbf 0$ や $\boldsymbol\omega \parallel \mathbf v_r$ に近づいても小さくならず、閾値 $\varepsilon$ の境界で不連続に 0 へ跳ぶ。このため、定数 $C_L$ は検証用（VER-F05、F10 など）と位置づけ、キックの計算には $\boldsymbol\omega \to \mathbf 0$ で $C_L \to 0$ となるモデル（例：$S$ に比例する形。係数の値と適用範囲は未決定、OQ-07）を候補とする。
-- 係数の符号：通常向きの揚力を $C_L > 0$ と定義する。負の $C_L$ を許すかは未決定。
+- 係数の符号：通常向きの揚力を $C_L > 0$ と定義する。負の $C_L$ を許すかは未決定。実装は暫定で、有限であれば符号を制限しない（マグヌス力は符号によらず仕事をしないため、エネルギーを供給しない。T1.2-05）。
 - 符号の確認：$+x$ 方向に飛ぶボールのバックスピンは $\boldsymbol\omega \parallel +\hat{\mathbf z}$ で、$\hat{\mathbf z}\times\hat{\mathbf x} = +\hat{\mathbf y}$ より上向きの力になる（VER-F10）。
 
 ### 7.5 回転減衰
@@ -442,9 +442,9 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 | P-18 | $\Delta t$ | 物理の時間刻み | s | 候補 0.005 | 仮置き | 収束試験（VER-F02、06 §4.2 の記録）で精度は制約にならないことを確認し、他の制約に余裕を持たせた暫定の候補（T1.2-04）。確定は OQ-12 |
 | P-19 | $v_{\text{rest}},\ v_{\text{stop}},\ \omega_{\text{stop}}$ | 転がり移行・停止の閾値 | m/s, rad/s | 未決定 | 未決定 | $e_g v_{\text{rest}} \ge g\Delta t/2$ の条件あり（§7.7）。OQ-09 |
 | P-20 | $\mathbf w$ | 風速 | m/s | $\mathbf 0$ | 仮定 | Phase 1 は無風 |
-| P-21 | $\varepsilon$ | マグヌス力の縮退判定の閾値（$\lvert\boldsymbol\omega\times\mathbf v_r\rvert$ に対する） | m/s² 相当 | 未決定 | 未決定 | 数値上の閾値、$\varepsilon > 0$。M1.2 |
+| P-21 | $\varepsilon$ | マグヌス力の縮退判定の閾値（$\lvert\boldsymbol\omega\times\mathbf v_r\rvert$ に対する） | m/s² 相当 | $10^{-9}$ | 仮置き | 数値上の閾値、$\varepsilon > 0$（T1.2-05）。根拠：$\boldsymbol\omega \parallel \mathbf v_r$ のときの外積の丸め誤差は $\lvert\boldsymbol\omega\rvert\lvert\mathbf v_r\rvert$ の機械イプシロン（約 $2.2\times10^{-16}$）倍の数倍で、$\lvert\boldsymbol\omega\rvert \le 10^3$ rad/s・$\lvert\mathbf v_r\rvert \le 10^2$ m/s の範囲では $10^{-10}$ 未満。これより大きく、力の向きの計算に意味がある最小の大きさとして選んだ。物理的な根拠はない |
 | P-22 | $C_M$ | 空力トルク係数（§7.5 (c)） | — | 未決定 | 未決定 | $C_M \ge 0$。OQ-08 |
-| P-23 | $\varepsilon_v$ | ゼロ速度の判定閾値（$\lvert\mathbf v_r\rvert$ に対する） | m/s | 未決定 | 未決定 | 数値上の閾値、$\varepsilon_v > 0$。M1.2 |
+| P-23 | $\varepsilon_v$ | ゼロ速度の判定閾値（$\lvert\mathbf v_r\rvert$ に対する） | m/s | $10^{-6}$ | 仮置き | 数値上の閾値、$\varepsilon_v > 0$（T1.2-05）。根拠：抗力は $\lvert\mathbf v_r\rvert^2$ に比例し 0 で連続なので、閾値以下で 0 とすることによる力の差は $\tfrac12\rho A C_D\varepsilon_v^2$（$C_D \le 1$ で約 $2\times10^{-14}$ N）で無視できる。$S$ の分母が 0 に近づくことを避ける目的だけの値。物理的な根拠はない |
 | P-25 | $\varepsilon_t$ | 接線速度がほぼ 0 とみなす閾値（$\lvert\mathbf u_t^-\rvert$ に対する、§6.8） | m/s | 未決定 | 未決定 | 数値上の閾値。M1.3 |
 | P-26 | $\varepsilon_\phi$ | $\phi$ の基準軸を切り替える閾値（$\hat{\mathbf y}$ の射影の長さに対する、§6.2） | — | 未決定 | 未決定 | 数値上の閾値。M1.3 |
 | P-24 | $\varepsilon_\omega$ | 無回転の判定閾値（$\lvert\boldsymbol\omega\rvert$ に対する、§7.5 (c)） | rad/s | 未決定 | 未決定 | 数値上の閾値、$\varepsilon_\omega > 0$。M1.2 |
