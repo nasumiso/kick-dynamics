@@ -24,8 +24,15 @@ export type {
 } from './params/parameter-set';
 
 export type {
-  CoefficientModel, DegeneracyThresholds, FlightEnvironment, FlightForceSettings, FlightSettings, ForceAndTorque,
-  SpinDecayModel,
+  CoefficientModel, DegeneracyThresholds, FlightEnvironment, FlightEvent, FlightForceSettings, FlightSample, FlightSettings,
+  FlightSimulationSettings, ForceAndTorque, GroundContact, GroundContactHandler, GroundContactResponse, SpinDecayModel,
 } from './flight/types';
 export { computeForces } from './flight/forces';
 export { integrateFixedSteps, rk4Step } from './flight/integrator';
+export { simulateFlightRun, terminateOnGroundContact } from './flight/ground-events';
+export type { FlightRun } from './flight/ground-events';
+export { simulateFlight, stateAt, toTrajectory } from './flight/trajectory';
+export type { Trajectory } from './flight/trajectory';
+
+export { computeFlightMetrics, spinComponents } from './metrics/flight-metrics';
+export type { FlightMetrics, MetricsSettings, SpinComponents } from './metrics/flight-metrics';

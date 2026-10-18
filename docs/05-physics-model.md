@@ -316,10 +316,10 @@ $$
 $$
 
 - $C_L$ のモデル候補：定数、$S$ の関数、測定表の補間（[OQ-07](research/references-and-open-questions.md)）。
-- この形では $\boldsymbol\omega$ の $\mathbf v_r$ に平行な成分は力の向きに寄与しない。$C_L$ を $|\boldsymbol\omega|$ と $|\boldsymbol\omega_\perp|$（$\mathbf v_r$ に垂直な成分）のどちらで評価するかは未決定。
+- この形では $\boldsymbol\omega$ の $\mathbf v_r$ に平行な成分は力の向きに寄与しない。$C_L$ を $|\boldsymbol\omega|$ と $|\boldsymbol\omega_\perp|$（$\mathbf v_r$ に垂直な成分）のどちらで評価するかは未決定。実装は暫定で、§7.6 の $S$（$|\boldsymbol\omega|$ による定義）を係数の関数に渡す（T1.2-05。係数データの出典が決まったら、その定義に合わせる、OQ-07）。
 - $\varepsilon$ はゼロ除算を避けるための閾値で、$\varepsilon > 0$（値は M1.2 で決める、P-21）。$\lvert\mathbf v_r\rvert \le \varepsilon_v$ の場合は §7.3 の規則が先に適用される。
 - **定数 $C_L$ の制約**：$C_L$ を定数（$\neq 0$）とすると、$\lvert\boldsymbol\omega\rvert$ が小さくても力の大きさは $\tfrac12\rho A C_L\lvert\mathbf v_r\rvert^2$ のままで、$\boldsymbol\omega \to \mathbf 0$ や $\boldsymbol\omega \parallel \mathbf v_r$ に近づいても小さくならず、閾値 $\varepsilon$ の境界で不連続に 0 へ跳ぶ。このため、定数 $C_L$ は検証用（VER-F05、F10 など）と位置づけ、キックの計算には $\boldsymbol\omega \to \mathbf 0$ で $C_L \to 0$ となるモデル（例：$S$ に比例する形。係数の値と適用範囲は未決定、OQ-07）を候補とする。
-- 係数の符号：通常向きの揚力を $C_L > 0$ と定義する。負の $C_L$ を許すかは未決定。
+- 係数の符号：通常向きの揚力を $C_L > 0$ と定義する。負の $C_L$ を許すかは未決定。実装は暫定で、有限であれば符号を制限しない（マグヌス力は符号によらず仕事をしないため、エネルギーを供給しない。T1.2-05）。
 - 符号の確認：$+x$ 方向に飛ぶボールのバックスピンは $\boldsymbol\omega \parallel +\hat{\mathbf z}$ で、$\hat{\mathbf z}\times\hat{\mathbf x} = +\hat{\mathbf y}$ より上向きの力になる（VER-F10）。
 
 ### 7.5 回転減衰
@@ -329,6 +329,7 @@ $$
 - (a) なし：$\boldsymbol\tau_{\text{aero}} = \mathbf 0$。実装検証の基準として必ず用意する。
 - (b) 線形：$\boldsymbol\tau_{\text{aero}} = -c_\omega\,\boldsymbol\omega$。$c_\omega$ は有次元（kg·m²/s）で、$c_\omega \ge 0$。
 - (c) 無次元トルク係数：$\boldsymbol\tau_{\text{aero}} = -\tfrac12\,\rho\,A\,R\,C_M\,|\mathbf v_r|^2\,\hat{\boldsymbol\omega}$（$C_M \ge 0$、無次元。$S$、$Re$ の関数の候補）。$\hat{\boldsymbol\omega} = \boldsymbol\omega/\lvert\boldsymbol\omega\rvert$ は $\lvert\boldsymbol\omega\rvert > \varepsilon_\omega$ のときだけ評価し、$\lvert\boldsymbol\omega\rvert \le \varepsilon_\omega$ または $\lvert\mathbf v_r\rvert \le \varepsilon_v$ のときは $\boldsymbol\tau_{\text{aero}} = \mathbf 0$ とする。$\varepsilon_\omega > 0$、値は M1.2 で決める（P-24）
+  - **既知の限界**（定数 $C_M$、2026-10-18）：トルクの大きさが $\lvert\boldsymbol\omega\rvert$ によらないため、1 ステップでの減速量 $\sim \Delta t\,\lvert\boldsymbol\tau\rvert/I_B$ と同程度まで $\lvert\boldsymbol\omega\rvert$ が小さくなると、RK4 の中間段で $\hat{\boldsymbol\omega}$ の向きが反転し、更新後の $\boldsymbol\omega$ がわずかに逆向きになりうる（連続系では回転軸は反転しない）。逆向きの残りは、その減速量の程度以下。例えば $C_M = 0.01$、$\lvert\mathbf v_r\rvert = 30$ m/s、$\Delta t = 0.005$ s では約 0.03 rad/s 以下（見積もり）。補正はせず、定数 $C_M$ は §7.4 の定数 $C_L$ と同じく検証用と位置づける。$C_M$ が $S$ に比例する場合は、$\lvert\mathbf v_r\rvert$ が一定ならトルクが $\boldsymbol\omega$ に比例し（§7.5 (b) と同じ形）、RK4 の 1 ステップの増幅率 $1 - z + z^2/2 - z^3/6 + z^4/24$（$z$ は減衰率 × Δt）は実数の $z$ で常に正なので反転しない。一般の $C_M(S)$ では、$\lvert\boldsymbol\omega\rvert \to 0$ で $C_M \to 0$ となるだけでは反転しないとは限らず（反例：$C_M = S^{0.1}$ で刻みが大きい場合、IV-03-C の F-D01）、刻みが十分小さいことが必要である（Codex のレビュー指摘、人間の判断により既知の限界として記録。記述は IV-03-R で修正、2026-10-18）
 
 ### 7.6 無次元数
 
@@ -352,7 +353,7 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
   - 重複の防止：バウンド処理後の状態は $h \le 0$ から始まるため、次のステップの開始で $h > 0$ という条件を満たさず、同じ接地を二重に検出しない。
   - 制約：判定はステップの両端だけで行うため、最初の接触を捉えられると保証できるのは、ステップ内で $h$ の符号が 1 回だけ変わる場合に限る。1 ステップの間に $h$ が負になって正に戻る（地面をかすめる）場合や、複数回交差する場合は検出できないか、最初の接触にならないことがある。$\Delta t$ を決める際に、この見落としが起こりうる速度域を確認する。
   - 離地と再接地が同じステップ内で起きる場合（ごく小さなバウンド）の見落としを避けるため、転がりへの移行の閾値 $v_{\text{rest}}$（§8.1）に $e_g\,v_{\text{rest}} \ge g\,\Delta t/2$ という条件を課す（$e_g > 0$ の場合）。これにより、転がりへ移らずにバウンドしたボールの滞空時間は、重力だけの近似で $\Delta t$ 以上になる。
-- 終了条件：停止（§8.2）、最大シミュレーション時間、領域外。
+- 終了条件：停止（§8.2）、最大シミュレーション時間、領域外（領域の定義は未決定、[OQ-25](research/references-and-open-questions.md)。決まるまでは実装しない）。
 - $\Delta t$ は描画 FPS と独立に、収束試験（VER-F02）の結果から決める。
 
 ### 7.8 適用限界
@@ -394,13 +395,15 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 | 打ち出し角（垂直） | $\theta = \operatorname{atan2}\!\left(v_y^+, \sqrt{(v_x^+)^2 + (v_z^+)^2}\right)$ |
 | 打ち出し方向（水平） | $\psi = \operatorname{atan2}(v_z^+, v_x^+)$（右が正） |
 | スピン量 | 衝突直後の $\vert \boldsymbol\omega^+\vert $。表示は rpm |
-| スピン成分 | 衝突直後の速度方向に基づく正規直交基底 $\mathbf e_1 = \hat{\mathbf v}$、$\mathbf e_2 = (\hat{\mathbf v}\times\hat{\mathbf y})/\vert \hat{\mathbf v}\times\hat{\mathbf y}\vert $、$\mathbf e_3 = \mathbf e_2\times\mathbf e_1$ への射影。$\omega_{\text{gyro}} = \boldsymbol\omega\cdot\mathbf e_1$（進行方向軸まわり）、$\omega_{\text{back}} = \boldsymbol\omega\cdot\mathbf e_2$（正がバックスピン）、$\omega_{\text{side}} = \boldsymbol\omega\cdot\mathbf e_3$（正のとき、マグヌス力は進行方向に対して左向き）。$\hat{\mathbf v}$ が鉛直に近い場合は定義できないため「定義不能」とする |
+| スピン成分 | 衝突直後の速度方向に基づく正規直交基底 $\mathbf e_1 = \hat{\mathbf v}$、$\mathbf e_2 = (\hat{\mathbf v}\times\hat{\mathbf y})/\vert \hat{\mathbf v}\times\hat{\mathbf y}\vert $、$\mathbf e_3 = \mathbf e_2\times\mathbf e_1$ への射影。$\omega_{\text{gyro}} = \boldsymbol\omega\cdot\mathbf e_1$（進行方向軸まわり）、$\omega_{\text{back}} = \boldsymbol\omega\cdot\mathbf e_2$（正がバックスピン）、$\omega_{\text{side}} = \boldsymbol\omega\cdot\mathbf e_3$（正のとき、マグヌス力は進行方向に対して左向き）。$\hat{\mathbf v}$ が鉛直に近い場合は定義できないため「定義不能」とする（判定：$\lvert\hat{\mathbf v}\times\hat{\mathbf y}\rvert \le \varepsilon_{\text{vert}}$、または $\mathbf v^+ = \mathbf 0$。$\varepsilon_{\text{vert}}$ は P-27、仮置き、T1.2-09） |
 | 最高到達点 | 最初の接地までのボール中心の高さ $y$ の最大値 |
 | キャリー | 初期のボール中心と、最初の接地時のボール中心との水平距離 |
 | 着地点 | 最初の接地時のボール中心の $(x, z)$ |
 | 横ずれ | 着地点の $z$ |
 | 飛行時間 | 足との衝突から最初の接地までの時間 |
 | 総距離 | 停止位置までの水平距離（転がりを実装した場合） |
+
+実装（暫定、T1.2-09、`packages/physics-core/src/metrics/flight-metrics.ts`）：衝突直後の状態は軌道の最初のサンプルとする（VER-S02）。最高到達点は、サンプルの最大値に加えて、$v_y$ が正から 0 以下に変わる区間を位置と速度の 3 次エルミート補間で補って求める（誤差は $O(\Delta t^4)$、真空中の放物運動では厳密）。「最初の接地」には飛翔の開始時刻の地面上の処理（§7.7 の「初期状態」。イベント種別は `start-on-ground`）を含めない（決定、2026-10-18）。接地がない場合（最大時間で終了）は、飛行時間・着地点・キャリー・横ずれを「なし」とし、最高到達点は軌道の終わりまでの最大値とする。
 
 表示名（「左回転」など）や表示単位は UI で決める。定義そのものは本表を正本とする。
 
@@ -439,15 +442,16 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 | P-15 | $e_g$ | 地面の反発係数 | — | 未決定 | 未決定 | 地面の種類に依存。OQ-09 |
 | P-16 | $\mu_g$ | 地面の摩擦係数 | — | 未決定 | 未決定 | OQ-09 |
 | P-17 | $\mu_r$ | 転がり抵抗係数 | — | 未決定 | 未決定 | OQ-09 |
-| P-18 | $\Delta t$ | 物理の時間刻み | s | 未決定 | 未決定 | 収束試験で決める。OQ-12 |
+| P-18 | $\Delta t$ | 物理の時間刻み | s | 候補 0.005 | 仮置き | 収束試験（VER-F02、06 §4.2 の記録）で精度は制約にならないことを確認し、他の制約に余裕を持たせた暫定の候補（T1.2-04）。確定は OQ-12 |
 | P-19 | $v_{\text{rest}},\ v_{\text{stop}},\ \omega_{\text{stop}}$ | 転がり移行・停止の閾値 | m/s, rad/s | 未決定 | 未決定 | $e_g v_{\text{rest}} \ge g\Delta t/2$ の条件あり（§7.7）。OQ-09 |
 | P-20 | $\mathbf w$ | 風速 | m/s | $\mathbf 0$ | 仮定 | Phase 1 は無風 |
-| P-21 | $\varepsilon$ | マグヌス力の縮退判定の閾値（$\lvert\boldsymbol\omega\times\mathbf v_r\rvert$ に対する） | m/s² 相当 | 未決定 | 未決定 | 数値上の閾値、$\varepsilon > 0$。M1.2 |
+| P-21 | $\varepsilon$ | マグヌス力の縮退判定の閾値（$\lvert\boldsymbol\omega\times\mathbf v_r\rvert$ に対する） | m/s² 相当 | $10^{-9}$ | 仮置き | 数値上の閾値、$\varepsilon > 0$（T1.2-05）。根拠：$\boldsymbol\omega \parallel \mathbf v_r$ のときの外積の丸め誤差は $\lvert\boldsymbol\omega\rvert\lvert\mathbf v_r\rvert$ の機械イプシロン（約 $2.2\times10^{-16}$）倍の数倍で、$\lvert\boldsymbol\omega\rvert \le 10^3$ rad/s・$\lvert\mathbf v_r\rvert \le 10^2$ m/s の範囲では $10^{-10}$ 未満。これより大きく、力の向きの計算に意味がある最小の大きさとして選んだ。物理的な根拠はない |
 | P-22 | $C_M$ | 空力トルク係数（§7.5 (c)） | — | 未決定 | 未決定 | $C_M \ge 0$。OQ-08 |
-| P-23 | $\varepsilon_v$ | ゼロ速度の判定閾値（$\lvert\mathbf v_r\rvert$ に対する） | m/s | 未決定 | 未決定 | 数値上の閾値、$\varepsilon_v > 0$。M1.2 |
+| P-23 | $\varepsilon_v$ | ゼロ速度の判定閾値（$\lvert\mathbf v_r\rvert$ に対する） | m/s | $10^{-6}$ | 仮置き | 数値上の閾値、$\varepsilon_v > 0$（T1.2-05）。根拠：抗力は $\lvert\mathbf v_r\rvert^2$ に比例し 0 で連続なので、閾値以下で 0 とすることによる力の差は $\tfrac12\rho A C_D\varepsilon_v^2$（$C_D \le 1$ で約 $2\times10^{-14}$ N）で無視できる。$S$ の分母が 0 に近づくことを避ける目的だけの値。物理的な根拠はない |
 | P-25 | $\varepsilon_t$ | 接線速度がほぼ 0 とみなす閾値（$\lvert\mathbf u_t^-\rvert$ に対する、§6.8） | m/s | 未決定 | 未決定 | 数値上の閾値。M1.3 |
 | P-26 | $\varepsilon_\phi$ | $\phi$ の基準軸を切り替える閾値（$\hat{\mathbf y}$ の射影の長さに対する、§6.2） | — | 未決定 | 未決定 | 数値上の閾値。M1.3 |
-| P-24 | $\varepsilon_\omega$ | 無回転の判定閾値（$\lvert\boldsymbol\omega\rvert$ に対する、§7.5 (c)） | rad/s | 未決定 | 未決定 | 数値上の閾値、$\varepsilon_\omega > 0$。M1.2 |
+| P-24 | $\varepsilon_\omega$ | 無回転の判定閾値（$\lvert\boldsymbol\omega\rvert$ に対する、§7.5 (c)） | rad/s | $10^{-6}$ | 仮置き | 数値上の閾値、$\varepsilon_\omega > 0$（T1.2-06）。根拠：$\hat{\boldsymbol\omega}$ の正規化でのゼロ除算を避ける目的だけの値。$10^{-6}$ rad/s は約 $10^{-5}$ rpm で、表示・測定値に影響しない。定数 $C_M$ では閾値の境界でトルクが不連続に 0 になる（§7.4 の定数 $C_L$ と同じ性質）。物理的な根拠はない |
+| P-27 | $\varepsilon_{\text{vert}}$ | スピン成分を定義不能とする閾値（$\lvert\hat{\mathbf v}\times\hat{\mathbf y}\rvert$ に対する、§9） | — | $10^{-6}$ | 仮置き | 数値上の閾値（T1.2-09）。根拠：$\lvert\hat{\mathbf v}\times\hat{\mathbf y}\rvert = \cos\theta$ で、$10^{-6}$ は打ち出し角が鉛直から約 $6\times10^{-5}$ 度以内。基底 $\mathbf e_2$ の正規化の分母が丸め誤差の水準まで小さくなることを避ける目的だけの値。物理的な根拠はない。§9 に閾値の記載がなかったため追加した（追加と値の仮置きを承認、2026-10-18） |
 
 - 値を変更したら、確からしさ・出典・適用条件を同時に更新する。
 - UI のデフォルト値として「仮置き」の値を使う場合も、本表に値と「仮置き」の区分を記録する。
@@ -479,4 +483,4 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 
 ## 14. 未決定事項
 
-本書に関係する未決定事項：OQ-02、OQ-03（UI での表現）、OQ-04〜OQ-10、OQ-12、OQ-23。OQ-01（足の形状）と OQ-11（座標系）は決定済み。一覧は [research/references-and-open-questions.md](research/references-and-open-questions.md) を正本とする。
+本書に関係する未決定事項：OQ-02、OQ-03（UI での表現）、OQ-04〜OQ-10、OQ-12、OQ-23、OQ-25。OQ-01（足の形状）と OQ-11（座標系）は決定済み。一覧は [research/references-and-open-questions.md](research/references-and-open-questions.md) を正本とする。

@@ -7,6 +7,7 @@ export interface SimError {
 
 export type SimErrorCode =
   | 'invalid-coefficient'
+  | 'invalid-setting'
   | 'unsupported-model';
 
 export type SimResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: SimError };

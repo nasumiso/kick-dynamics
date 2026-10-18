@@ -4,7 +4,8 @@ import type { DegeneracyThresholds, FlightEnvironment, FlightForceSettings, Flig
 
 export const ball: BallParams = { mass: 0.43, radius: 0.11, inertiaCoefficient: 2 / 3 };
 export const environment: FlightEnvironment = { gravity: 9.80665, airDensity: 1.225, airViscosity: 1.8e-5, wind: [0, 0, 0] };
-export const thresholds: DegeneracyThresholds = { magnus: 1e-9, zeroSpeed: 1e-9, zeroSpin: 1e-9 };
+// 閾値は 05 §10.2 の仮置きの値（P-21 ε、P-23 ε_v、P-24 ε_ω）。
+export const thresholds: DegeneracyThresholds = { magnus: 1e-9, zeroSpeed: 1e-6, zeroSpin: 1e-6 };
 
 export const allOff: FlightForceSettings = {
   gravity: false,

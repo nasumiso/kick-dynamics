@@ -35,21 +35,22 @@ const phase1Table: ParameterSet = {
   groundRestitution: undetermined('P-15', 'e_g', '—', 'OQ-09'),
   groundFriction: undetermined('P-16', 'μ_g', '—', 'OQ-09'),
   rollingResistance: undetermined('P-17', 'μ_r', '—', 'OQ-09'),
-  timeStep: undetermined('P-18', 'Δt', 's', 'OQ-12'),
+  timeStep: { id: 'P-18', symbol: 'Δt', unit: 's', value: 0.005, confidence: 'provisional', source: '収束試験（VER-F02）に基づく暫定の候補。OQ-12' },
   restThresholds: undetermined('P-19', 'v_rest, v_stop, ω_stop', 'm/s, rad/s', 'OQ-09'),
   wind: { id: 'P-20', symbol: 'w', unit: 'm/s', value: [0, 0, 0], confidence: 'assumption', source: 'Phase 1 は無風' },
-  magnusThreshold: undetermined('P-21', 'ε', 'm/s²', 'M1.2'),
+  magnusThreshold: { id: 'P-21', symbol: 'ε', unit: 'm/s²', value: 1e-9, confidence: 'provisional', source: '丸め誤差の見積もり（T1.2-05）' },
   torqueCoefficient: undetermined('P-22', 'C_M', '—', 'OQ-08'),
-  zeroSpeedThreshold: undetermined('P-23', 'ε_v', 'm/s', 'M1.2'),
-  zeroSpinThreshold: undetermined('P-24', 'ε_ω', 'rad/s', 'M1.2'),
+  zeroSpeedThreshold: { id: 'P-23', symbol: 'ε_v', unit: 'm/s', value: 1e-6, confidence: 'provisional', source: '力の大きさの見積もり（T1.2-05）' },
+  zeroSpinThreshold: { id: 'P-24', symbol: 'ε_ω', unit: 'rad/s', value: 1e-6, confidence: 'provisional', source: '正規化のゼロ除算の回避（T1.2-06）' },
   tangentialSpeedThreshold: undetermined('P-25', 'ε_t', 'm/s', 'M1.3'),
   rollReferenceThreshold: undetermined('P-26', 'ε_φ', '—', 'M1.3'),
+  verticalLaunchThreshold: { id: 'P-27', symbol: 'ε_vert', unit: '—', value: 1e-6, confidence: 'provisional', source: 'スピン成分の定義不能の判定（T1.2-09）' },
 };
 
 describe('ParameterSet', () => {
   it('covers every parameter ID of 05 §10.2 exactly once', () => {
     const ids = Object.values(phase1Table).map((entry) => entry.id).sort();
-    const expected = Array.from({ length: 26 }, (_, i) => `P-${String(i + 1).padStart(2, '0')}`);
+    const expected = Array.from({ length: 27 }, (_, i) => `P-${String(i + 1).padStart(2, '0')}`);
     expect(ids).toEqual(expected);
   });
 

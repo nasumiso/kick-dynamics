@@ -3,7 +3,9 @@
 // 配置（暫定、T1.2-01）：各力項の ON/OFF とモデルの選択は SimulationSettings 側（本ファイルの
 // FlightForceSettings）に置き、物理定数（g、ρ、η、風速）は FlightEnvironment として渡す。
 // どちらも、パイプライン（T1.5-01）で ParameterSet の値から組み立てる。
+import type { RigidBodyState } from '../bodies/types';
 import type { Vec3 } from '../math/vec3';
+import type { SimResult } from '../result';
 
 /** 空力係数のモデル：定数、または (Re, S) の関数（05 §7.3〜7.6、04 §6）。 */
 export type CoefficientModel =
@@ -23,7 +25,7 @@ export interface FlightForceSettings {
   readonly spinDecay: SpinDecayModel;
 }
 
-/** 縮退判定の閾値（05 §7.3〜7.5、P-21・P-23・P-24）。値は未決定のため既定値を持たない。 */
+/** 縮退判定の閾値（05 §7.3〜7.5、P-21・P-23・P-24）。値は仮置き（05 §10.2）で、Core は既定値を持たない。 */
 export interface DegeneracyThresholds {
   /** ε：|ω × v_r| に対する閾値 m/s² */
   readonly magnus: number;
@@ -50,6 +52,68 @@ export interface FlightSettings {
   readonly timeStep: number;
   readonly forces: FlightForceSettings;
   readonly thresholds: DegeneracyThresholds;
+}
+
+/** 地面イベントを含む飛翔の設定（05 §7.7）。 */
+export interface FlightSimulationSettings extends FlightSettings {
+  /** 最大シミュレーション時間 s。最初に時刻 k Δt ≥ maxTime となるステップで終了する */
+  readonly maxTime: number;
+  /** δ_t：接地時刻を求める二分法の打ち切り幅 s（05 §7.7。値は仮置き、06 §3 の TOL-C） */
+  readonly eventTimeTolerance: number;
+}
+
+/** 地面との接触（05 §7.7）。state は y を R に射影した後の状態。 */
+export interface GroundContact {
+  /** 接地時刻 t* s */
+  readonly time: number;
+  readonly state: RigidBodyState;
+  /** 飛翔の開始時に h ≤ 0 かつ v_y ≤ 0 だった場合（05 §7.7 の「初期状態」、§8.3） */
+  readonly atStart: boolean;
+}
+
+/** 接地の処理の結果：飛翔を終える、または処理後の状態から飛翔を続ける。 */
+export type GroundContactResponse =
+  | { readonly kind: 'terminate' }
+  | { readonly kind: 'continue'; readonly state: RigidBodyState };
+
+/**
+ * 接地の処理（05 §8 のバウンドなど）。M1.2 では既定で最初の接地で終了する。
+ * バウンドは T1.3-07 で、この形の処理として与える（暫定、04 §6）。
+ */
+export type GroundContactHandler = (contact: GroundContact) => SimResult<GroundContactResponse>;
+
+/**
+ * 飛翔中のイベント。sampleIndex は、イベントの時刻の状態を表すサンプルの添字
+ * （接地では処理の前の状態。処理の後に飛翔を続ける場合は sampleIndex + 1 が処理の後の状態）。
+ *
+ * - ground-contact：ステップ内で検出した接地（05 §7.7）。
+ * - start-on-ground：飛翔の開始時に h ≤ 0 かつ v_y ≤ 0 で、開始時刻に地面上の処理（§8.3、§8.2）を行ったこと。
+ *   05 §7.7 は開始時刻を接地イベントとして扱わないため、ground-contact とは別の種別にする（決定、2026-10-18）。
+ */
+export type FlightEvent =
+  | {
+    readonly type: 'ground-contact';
+    readonly time: number;
+    readonly sampleIndex: number;
+    /** 二分法の反復回数 */
+    readonly bisectionIterations: number;
+    /** y を R に射影したことによる位置エネルギーの変化 m g (R − y) J（05 §7.7） */
+    readonly projectionEnergy: number;
+    readonly response: GroundContactResponse['kind'];
+  }
+  | {
+    readonly type: 'start-on-ground';
+    readonly time: number;
+    readonly sampleIndex: number;
+    readonly projectionEnergy: number;
+    readonly response: GroundContactResponse['kind'];
+  }
+  | { readonly type: 'max-time'; readonly time: number; readonly sampleIndex: number };
+
+/** 時刻つきの状態。 */
+export interface FlightSample {
+  readonly time: number;
+  readonly state: RigidBodyState;
 }
 
 /** ボールに働く力とトルク（ワールド座標）。 */
