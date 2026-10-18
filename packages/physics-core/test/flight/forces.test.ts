@@ -61,4 +61,11 @@ describe('flight force model interface', () => {
     expect(!magnus.ok && magnus.error.code).toBe('unsupported-model');
     expect(!decay.ok && decay.error.code).toBe('unsupported-model');
   });
+
+  it('does not skip spin decay for a ball with zero relative speed', () => {
+    // 線形の回転減衰（05 §7.5 (b)）は |v_r| によらず働くため、ゼロ速度でも無視してはいけない。
+    const spinning = { ...state, linearVelocity: [0, 0, 0] as const, angularVelocity: [0, 0, 30] as const };
+    const decay = computeForces(spinning, ball, environment, { ...off, spinDecay: { kind: 'linear', coefficient: 1e-4 } }, thresholds);
+    expect(!decay.ok && decay.error.code).toBe('unsupported-model');
+  });
 });

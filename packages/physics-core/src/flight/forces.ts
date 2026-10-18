@@ -47,12 +47,21 @@ export function computeForces(
   forces: FlightForceSettings,
   thresholds: DegeneracyThresholds,
 ): SimResult<ForceAndTorque> {
+  // 未実装のモデルは、状態によらず先にエラーにする（黙って無視しない）。
+  // 線形の回転減衰（05 §7.5 (b)）は |v_r| によらず働くため、ゼロ速度の早期終了より前に判定する。
+  if (forces.magnus.enabled) {
+    return fail('unsupported-model', 'Magnus force is not implemented yet (T1.2-05)');
+  }
+  if (forces.spinDecay.kind !== 'none') {
+    return fail('unsupported-model', 'spin decay is not implemented yet (T1.2-06)');
+  }
+
   let force: Vec3 = forces.gravity ? scale(gravityVector(environment.gravity), ball.mass) : ZERO;
   const torque: Vec3 = ZERO;
 
   const relativeVelocity = sub(state.linearVelocity, environment.wind);
   const speed = length(relativeVelocity);
-  // ゼロ速度：|v_r| ≤ ε_v のときは空力をすべて 0 とし、係数を評価しない（05 §7.3）。
+  // ゼロ速度：|v_r| ≤ ε_v のときは抗力・マグヌス力・§7.5 (c) のトルクを 0 とし、係数を評価しない（05 §7.3）。
   if (speed <= thresholds.zeroSpeed) {
     return ok({ force, torque });
   }
@@ -67,12 +76,6 @@ export function computeForces(
     const drag = dragForce(context, ball, environment, forces.drag.coefficient);
     if (!drag.ok) return drag;
     force = add(force, drag.value);
-  }
-  if (forces.magnus.enabled) {
-    return fail('unsupported-model', 'Magnus force is not implemented yet (T1.2-05)');
-  }
-  if (forces.spinDecay.kind !== 'none') {
-    return fail('unsupported-model', 'spin decay is not implemented yet (T1.2-06)');
   }
   return ok({ force, torque });
 }
