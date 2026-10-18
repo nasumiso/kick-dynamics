@@ -95,14 +95,15 @@ describe('VER-F12 ground event boundary conditions', () => {
     expectEventTime(contacts[0]!.time, (2 * 5) / g);
   });
 
-  it('handles h ≤ 0 with v_y ≤ 0 at the start time as an on-ground contact (05 §8.3)', () => {
+  it('processes h ≤ 0 with v_y ≤ 0 at the start time without recording a ground-contact event (05 §7.7, §8.3)', () => {
     for (const vy of [-2, 0]) {
       const contacts: GroundContact[] = [];
       const r = run(body([0, ball.radius, 0], [10, vy, 0]), settings(0.01, 3), (c) => { contacts.push(c); return ok({ kind: 'terminate' }); });
       expect(contacts).toHaveLength(1);
       expect(contacts[0]!.time).toBe(0);
       expect(contacts[0]!.atStart).toBe(true);
-      expect(r.events).toEqual([{ type: 'ground-contact', time: 0, sampleIndex: 0, atStart: true, bisectionIterations: 0, projectionEnergy: 0, response: 'terminate' }]);
+      expect(r.events).toEqual([{ type: 'start-on-ground', time: 0, sampleIndex: 0, projectionEnergy: 0, response: 'terminate' }]);
+      expect(groundContacts(r)).toHaveLength(0);
     }
   });
 

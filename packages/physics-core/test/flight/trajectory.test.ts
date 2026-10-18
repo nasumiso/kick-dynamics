@@ -49,8 +49,8 @@ describe('Trajectory output format', () => {
         expect(t.angularVelocity.length).toBe(3 * n);
       });
 
-      it('has non-decreasing time that repeats only at ground-contact events', () => {
-        const contactTimes = new Set(t.events.filter((e) => e.type === 'ground-contact').map((e) => e.time));
+      it('has non-decreasing time that repeats only at ground-contact or start-on-ground events', () => {
+        const contactTimes = new Set(t.events.filter((e) => e.type !== 'max-time').map((e) => e.time));
         expect(t.time[0]).toBe(0);
         for (let i = 1; i < n; i++) {
           expect(t.time[i]!).toBeGreaterThanOrEqual(t.time[i - 1]!);
@@ -62,7 +62,7 @@ describe('Trajectory output format', () => {
         expect(t.events.length).toBeGreaterThan(0);
         for (const event of t.events) {
           expect(t.time[event.sampleIndex]).toBe(event.time);
-          if (event.type === 'ground-contact' && event.response === 'continue') {
+          if (event.type !== 'max-time' && event.response === 'continue') {
             expect(t.time[event.sampleIndex + 1]).toBe(event.time);
             expect(stateAt(t, event.sampleIndex + 1).position[1]).toBe(ball.radius);
           }
@@ -83,6 +83,16 @@ describe('Trajectory output format', () => {
       });
     });
   }
+
+  it('keeps both samples at t = 0 when the flight starts on the ground with v_y < 0', () => {
+    const start: RigidBodyState = { ...initial, linearVelocity: [12, -3, 1] };
+    const r = simulateFlight(start, ball, environment, settings, reflect);
+    if (!r.ok) throw new Error(r.error.message);
+    const t = r.value;
+    expect(t.events[0]).toMatchObject({ type: 'start-on-ground', time: 0, sampleIndex: 0, response: 'continue' });
+    expect([t.time[0], t.time[1]]).toEqual([0, 0]);
+    expect(stateAt(t, 1).linearVelocity[1]).toBeGreaterThan(0);
+  });
 
   it('ends with the first ground contact by default and with max-time when bounces continue', () => {
     expect(trajectory().events.map((e) => e.type)).toEqual(['ground-contact']);

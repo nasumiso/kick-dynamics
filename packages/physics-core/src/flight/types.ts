@@ -85,16 +85,26 @@ export type GroundContactHandler = (contact: GroundContact) => SimResult<GroundC
 /**
  * 飛翔中のイベント。sampleIndex は、イベントの時刻の状態を表すサンプルの添字
  * （接地では処理の前の状態。処理の後に飛翔を続ける場合は sampleIndex + 1 が処理の後の状態）。
+ *
+ * - ground-contact：ステップ内で検出した接地（05 §7.7）。
+ * - start-on-ground：飛翔の開始時に h ≤ 0 かつ v_y ≤ 0 で、開始時刻に地面上の処理（§8.3、§8.2）を行ったこと。
+ *   05 §7.7 は開始時刻を接地イベントとして扱わないため、ground-contact とは別の種別にする（決定、2026-10-18）。
  */
 export type FlightEvent =
   | {
     readonly type: 'ground-contact';
     readonly time: number;
     readonly sampleIndex: number;
-    readonly atStart: boolean;
-    /** 二分法の反復回数（atStart のときは 0） */
+    /** 二分法の反復回数 */
     readonly bisectionIterations: number;
     /** y を R に射影したことによる位置エネルギーの変化 m g (R − y) J（05 §7.7） */
+    readonly projectionEnergy: number;
+    readonly response: GroundContactResponse['kind'];
+  }
+  | {
+    readonly type: 'start-on-ground';
+    readonly time: number;
+    readonly sampleIndex: number;
     readonly projectionEnergy: number;
     readonly response: GroundContactResponse['kind'];
   }

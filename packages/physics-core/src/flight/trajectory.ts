@@ -6,7 +6,7 @@ import { simulateFlightRun, type FlightRun } from './ground-events';
 import type { FlightEnvironment, FlightEvent, FlightSimulationSettings, GroundContactHandler } from './types';
 
 export interface Trajectory {
-  /** s。単調非減少。同じ時刻が続くのは、状態が不連続なイベント（接地の処理の前後）の時刻だけ */
+  /** s。単調非減少。同じ時刻が続くのは、状態が不連続なイベント（ground-contact・start-on-ground の処理の前後）の時刻だけ */
   readonly time: Float64Array;
   /** m、3N */
   readonly position: Float64Array;

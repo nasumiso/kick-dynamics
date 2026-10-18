@@ -15,7 +15,7 @@ import type {
 } from './types';
 
 export interface FlightRun {
-  /** 時刻の順に並んだ状態。接地の時刻には、処理の前（射影の前）と後の 2 つの状態を同じ時刻で含む */
+  /** 時刻の順に並んだ状態。接地（開始時刻の地面上の処理を含む）の時刻には、処理の前（射影の前）と後の 2 つの状態を同じ時刻で含む */
   readonly samples: readonly FlightSample[];
   readonly events: readonly FlightEvent[];
 }
@@ -59,7 +59,9 @@ export function simulateFlightRun(
     const handled = onGroundContact({ time, state: projected, atStart } satisfies GroundContact);
     if (!handled.ok) return handled;
     const response: GroundContactResponse = handled.value;
-    events.push({ type: 'ground-contact', time, sampleIndex, atStart, bisectionIterations, projectionEnergy, response: response.kind });
+    events.push(atStart
+      ? { type: 'start-on-ground', time, sampleIndex, projectionEnergy, response: response.kind }
+      : { type: 'ground-contact', time, sampleIndex, bisectionIterations, projectionEnergy, response: response.kind });
     if (response.kind === 'terminate') return ok(null);
     const after = response.state;
     if (heightAboveContact(after, ball) <= 0 && after.linearVelocity[1] <= 0) {

@@ -68,6 +68,21 @@ describe('VER-S03 metrics of a vacuum projectile', () => {
   });
 });
 
+describe('first landing after a start-on-ground bounce', () => {
+  it('does not count the processing at t = 0 as the first ground contact', () => {
+    // 衝突直後に v_y < 0（05 §8.3）：開始時刻に処理（ここではテスト用の鉛直反射）してから飛ぶ。
+    const reflect: GroundContactHandler = (c) => ok({
+      kind: 'continue', state: { ...c.state, linearVelocity: [c.state.linearVelocity[0], -c.state.linearVelocity[1], c.state.linearVelocity[2]] },
+    });
+    const m = computeFlightMetrics(fly([18, -9, -2.5], [0, 0, 0], {}, 0.01, reflect), metricsSettings);
+    const flightTime = (2 * 9) / g;
+    expect(m.flightTime!).toBeGreaterThanOrEqual(flightTime - TOL_A.absolute);
+    expect(m.flightTime!).toBeLessThanOrEqual(flightTime + EVENT_TIME_TOLERANCE + TOL_A.absolute);
+    // 打ち出しの値は衝突直後（処理の前）の状態から求める。
+    expectClose(m.launchAngle, Math.atan2(-9, Math.hypot(18, 2.5)));
+  });
+});
+
 describe('VER-S03 spin components', () => {
   it('maps (ω_x, ω_y, ω_z) to (gyro, back, side) for a launch along +x', () => {
     // e1 = x̂、e2 = x̂ × ŷ = ẑ、e3 = ẑ × x̂ = ŷ。

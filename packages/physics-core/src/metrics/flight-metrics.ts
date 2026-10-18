@@ -85,8 +85,8 @@ export function computeFlightMetrics(trajectory: Trajectory, settings: MetricsSe
   const v = launch.linearVelocity;
   const horizontalSpeed = Math.hypot(v[0], v[2]);
 
-  // 最初の接地：開始時刻の接地（05 §7.7 の「初期状態」）は含めない（暫定、T1.2-09）。
-  const landing = trajectory.events.find((e) => e.type === 'ground-contact' && !e.atStart);
+  // 最初の接地：開始時刻の地面上の処理（start-on-ground、05 §7.7 の「初期状態」）は含めない（決定、2026-10-18）。
+  const landing = trajectory.events.find((e) => e.type === 'ground-contact');
   const lastIndex = landing ? landing.sampleIndex : trajectory.time.length - 1;
 
   const t = trajectory.time;

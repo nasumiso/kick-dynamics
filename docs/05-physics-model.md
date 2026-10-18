@@ -329,6 +329,7 @@ $$
 - (a) なし：$\boldsymbol\tau_{\text{aero}} = \mathbf 0$。実装検証の基準として必ず用意する。
 - (b) 線形：$\boldsymbol\tau_{\text{aero}} = -c_\omega\,\boldsymbol\omega$。$c_\omega$ は有次元（kg·m²/s）で、$c_\omega \ge 0$。
 - (c) 無次元トルク係数：$\boldsymbol\tau_{\text{aero}} = -\tfrac12\,\rho\,A\,R\,C_M\,|\mathbf v_r|^2\,\hat{\boldsymbol\omega}$（$C_M \ge 0$、無次元。$S$、$Re$ の関数の候補）。$\hat{\boldsymbol\omega} = \boldsymbol\omega/\lvert\boldsymbol\omega\rvert$ は $\lvert\boldsymbol\omega\rvert > \varepsilon_\omega$ のときだけ評価し、$\lvert\boldsymbol\omega\rvert \le \varepsilon_\omega$ または $\lvert\mathbf v_r\rvert \le \varepsilon_v$ のときは $\boldsymbol\tau_{\text{aero}} = \mathbf 0$ とする。$\varepsilon_\omega > 0$、値は M1.2 で決める（P-24）
+  - **既知の限界**（定数 $C_M$、2026-10-18）：トルクの大きさが $\lvert\boldsymbol\omega\rvert$ によらないため、1 ステップでの減速量 $\sim \Delta t\,\lvert\boldsymbol\tau\rvert/I_B$ と同程度まで $\lvert\boldsymbol\omega\rvert$ が小さくなると、RK4 の中間段で $\hat{\boldsymbol\omega}$ の向きが反転し、更新後の $\boldsymbol\omega$ がわずかに逆向きになりうる（連続系では回転軸は反転しない）。逆向きの残りは、その減速量の程度以下。例えば $C_M = 0.01$、$\lvert\mathbf v_r\rvert = 30$ m/s、$\Delta t = 0.005$ s では約 0.03 rad/s 以下（見積もり）。補正はせず、定数 $C_M$ は §7.4 の定数 $C_L$ と同じく検証用と位置づける。$\lvert\boldsymbol\omega\rvert \to 0$ で $C_M \to 0$ となるモデル（例：$S$ に比例）では起きない（Codex のレビュー指摘、人間の判断により既知の限界として記録）
 
 ### 7.6 無次元数
 
@@ -402,7 +403,7 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 | 飛行時間 | 足との衝突から最初の接地までの時間 |
 | 総距離 | 停止位置までの水平距離（転がりを実装した場合） |
 
-実装（暫定、T1.2-09、`packages/physics-core/src/metrics/flight-metrics.ts`）：衝突直後の状態は軌道の最初のサンプルとする（VER-S02）。最高到達点は、サンプルの最大値に加えて、$v_y$ が正から 0 以下に変わる区間を位置と速度の 3 次エルミート補間で補って求める（誤差は $O(\Delta t^4)$、真空中の放物運動では厳密）。「最初の接地」には飛翔の開始時刻の接地（§7.7 の「初期状態」）を含めない（決定、2026-10-18）。接地がない場合（最大時間で終了）は、飛行時間・着地点・キャリー・横ずれを「なし」とし、最高到達点は軌道の終わりまでの最大値とする。
+実装（暫定、T1.2-09、`packages/physics-core/src/metrics/flight-metrics.ts`）：衝突直後の状態は軌道の最初のサンプルとする（VER-S02）。最高到達点は、サンプルの最大値に加えて、$v_y$ が正から 0 以下に変わる区間を位置と速度の 3 次エルミート補間で補って求める（誤差は $O(\Delta t^4)$、真空中の放物運動では厳密）。「最初の接地」には飛翔の開始時刻の地面上の処理（§7.7 の「初期状態」。イベント種別は `start-on-ground`）を含めない（決定、2026-10-18）。接地がない場合（最大時間で終了）は、飛行時間・着地点・キャリー・横ずれを「なし」とし、最高到達点は軌道の終わりまでの最大値とする。
 
 表示名（「左回転」など）や表示単位は UI で決める。定義そのものは本表を正本とする。
 
