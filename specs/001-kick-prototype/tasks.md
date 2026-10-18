@@ -1,6 +1,6 @@
 # 001 キックプロトタイプ（Phase 1）タスク
 
-> 状態：Draft（2026-10-18）。T0 は完了。M1.1 は完了。M1.2 は IV-03-R / IV-04-R まで完了（判断保留の事項は IV-03-R / IV-04-R の結果欄に記録）。
+> 状態：Draft（2026-10-18）。T0 は完了。M1.1 は完了。M1.2 は IV-03-R / IV-04-R まで完了（判断保留の事項は IV-03-R / IV-04-R の結果欄に記録）。M1.3 は T1.3-01 まで完了。
 > 計画は [plan.md](plan.md)、受入条件は [spec.md](spec.md)、検証項目と独立検証の手順は [06-validation.md](../../docs/06-validation.md) を参照してください。
 
 ## 使い方
@@ -254,10 +254,11 @@
 - 完了確認：`verification/independent/IV-05/` に導出資料が保存されている。
 - 結果（2026-10-18）：`verification/independent/IV-05/derivation.md` を作成（Codex、`gpt-6.1-sol`・推論 `high`、`2605bd2` 以降の仕様に基づく）。作成途中の版が T1.1-09 のコミット（`b237763`）に誤って含まれたため、完成版を別のコミットで置き換えた。Claude Code は内容を読んでいない。
 
-### [ ] T1.3-01 行列 K
+### [x] T1.3-01 行列 K
 - 担当：Claude Code
 - 依存：T1.1-08, T0-08
 - 完了確認：VER-C15 のテストが合格する。
+- 結果（2026-10-18）：`src/contact/k-matrix.ts`（`ImpactInertia`、`bodyContactMatrix`、`ballContactMatrix`、`contactMatrix`）。運動学的な物体（無限質量の足・地面）は $1/m$ と $\mathbf I^{-1}$ を 0 とする `KINEMATIC_INERTIA` で表す。`test/contact/k-matrix.test.ts` で VER-C15（偏心した有限質量の足で対称・正定値、ボール部分が閉形式と一致、§6.4 の速度更新から求めた $\Delta\mathbf u$ と $\mathbf K\mathbf J$ が一致、運動学的な足で $\mathbf K = \mathbf K_B$）に合格。足は 05 の仮置きの値（P-04〜P-06）。
 
 ### [ ] T1.3-02 摩擦なしの衝撃（法線方向のみ）
 - 担当：Claude Code
