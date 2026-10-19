@@ -18,7 +18,8 @@ interface SliderSpec {
   readonly unit: string;
   readonly min: number;
   readonly max: number;
-  readonly step: number;
+  /** 'any' は刻みなし（端点を丸めずに入力できる） */
+  readonly step: number | 'any';
   readonly digits: number;
   readonly testId: string;
 }
@@ -61,6 +62,7 @@ export function createKickPanel(initial: KickFormValues, onChange: (values: Kick
   // 接触位置は接触面の内側（|s_x| < L_x/2、|s_y| < L_y/2、05 §6.2）。境界は含まないため 1 mm 内側までとする。
   const sxMax = lx * 500 - 1;
   const syMax = ly * 500 - 1;
+  // 端点（±50 rad/s）を丸めずに入力できるよう、rpm の範囲は換算値のまま使い、刻みを設けない。
   const spinMax = radPerSecToRpm(r.footAngularVelocity.max);
 
   const speedMs = element('span', { class: 'hint' });
@@ -72,7 +74,7 @@ export function createKickPanel(initial: KickFormValues, onChange: (values: Kick
   modelSelect.addEventListener('change', () => update({ footModel: modelSelect.value as FootModel }));
 
   const spinRows = (['x', 'y', 'z'] as const).map((axis, i) => slider(
-    { label: `ω_A ${axis}`, unit: 'rpm', min: -Math.round(spinMax), max: Math.round(spinMax), step: 1, digits: 0, testId: `foot-spin-${axis}` },
+    { label: `ω_A ${axis}`, unit: 'rpm', min: -spinMax, max: spinMax, step: 'any', digits: 1, testId: `foot-spin-${axis}` },
     values.footSpinRpm[i]!,
     (v) => {
       const spin = [...values.footSpinRpm] as [number, number, number];

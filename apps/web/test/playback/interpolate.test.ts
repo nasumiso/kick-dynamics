@@ -16,6 +16,11 @@ describe('intervalAt', () => {
     expect(intervalAt(times, 0.2)).toEqual({ index: 3, alpha: 0 });
   });
 
+  it('uses the last of the repeated samples at the start time (ground handling at t = 0)', () => {
+    expect(intervalAt([0, 0, 0.1, 0.2], 0)).toEqual({ index: 1, alpha: 0 });
+    expect(intervalAt([0, 0, 0, 0.1], -1)).toEqual({ index: 2, alpha: 0 });
+  });
+
   it('clamps times outside the trajectory', () => {
     expect(intervalAt(times, -1)).toEqual({ index: 0, alpha: 0 });
     expect(intervalAt(times, 5)).toEqual({ index: 4, alpha: 0 });

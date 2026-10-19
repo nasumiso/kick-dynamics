@@ -13,7 +13,12 @@ export interface SampleInterval {
  */
 export function intervalAt(times: ArrayLike<number>, t: number): SampleInterval {
   const n = times.length;
-  if (n === 1 || t <= times[0]!) return { index: 0, alpha: 0 };
+  if (n === 1 || t <= times[0]!) {
+    // 先頭の時刻が重複する場合（開始直後の接地処理など）も、同時刻の最後のサンプルを使う。
+    let index = 0;
+    while (index + 1 < n && times[index + 1] === times[0]) index++;
+    return { index, alpha: 0 };
+  }
   if (t >= times[n - 1]!) return { index: n - 1, alpha: 0 };
   let lo = 0;
   let hi = n - 1;
