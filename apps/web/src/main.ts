@@ -1,5 +1,6 @@
 // KickDynamics Lab の起動（T1.4-01〜）。
 import './style.css';
+import * as THREE from 'three';
 import { toThreeQuaternion, toThreeVector } from './adapters/three-adapter';
 import { footPose } from './kick/foot-placement';
 import { inputStatus } from './kick/input-status';
@@ -14,6 +15,9 @@ import { createSceneView } from './render/scene-view';
 import { createContactPanel } from './ui/contact-panel';
 import { createKickPanel } from './ui/kick-panel';
 import { createParameterPanel } from './ui/parameter-panel';
+import { createPlaybackPanel } from './ui/playback-panel';
+import { stubTrajectory } from './playback/stub-trajectory';
+import { applyTrajectoryPose, createTrajectoryLine } from './render/trajectory-view';
 import { STUB_PARAMETER_SET } from './params/stub-parameter-set';
 
 const viewport = document.querySelector<HTMLElement>('#viewport');
@@ -65,3 +69,47 @@ installContactPicker(view.renderer.domElement, view.camera, ball, (d) => {
   render();
 });
 render();
+
+// スタブ軌道の再生（T1.4-09）。再生時刻は描画の時計（performance.now）で進め、物理の時間刻みとは独立。
+const stub = stubTrajectory();
+if (!stub.ok) throw new Error(`stub trajectory failed: ${stub.error.message}`);
+const trajectory = stub.value;
+const duration = trajectory.time[trajectory.time.length - 1]!;
+const line = createTrajectoryLine(trajectory);
+line.visible = false;
+view.scene.add(line);
+let playStart: number | null = null;
+const playback = createPlaybackPanel(
+  () => {
+    applyTrajectoryPose(ball, trajectory, 0);
+    playStart = performance.now();
+    line.visible = true;
+    foot.visible = false;
+    marker.visible = false;
+  },
+  () => {
+    playStart = null;
+    line.visible = false;
+    const back = new THREE.Vector3(0, radius, 0).sub(ball.position);
+    view.camera.position.add(back);
+    view.controls.target.add(back);
+    ball.position.set(0, radius, 0);
+    ball.quaternion.identity();
+    playback.showTime(0, duration);
+    render();
+  },
+);
+panel.insertBefore(playback.root, panel.lastElementChild);
+playback.showTime(0, duration);
+// 再生中はカメラをボールと一緒に平行移動する（視点の向きと距離はユーザーの操作のまま）。
+const previous = new THREE.Vector3();
+view.onFrame(() => {
+  if (playStart === null) return;
+  const t = Math.min((performance.now() - playStart) / 1000, duration);
+  previous.copy(ball.position);
+  applyTrajectoryPose(ball, trajectory, t);
+  const delta = ball.position.clone().sub(previous);
+  view.camera.position.add(delta);
+  view.controls.target.add(delta);
+  playback.showTime(t, duration);
+});

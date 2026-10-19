@@ -169,3 +169,22 @@ table.params tr.attention td {
   background: #23384f;
   color: #a9cdf2;
 }
+
+.buttons {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+button {
+  background: #2d5b9a;
+  color: #ffffff;
+  border: none;
+  border-radius: 3px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #3a6fb8;
+}
