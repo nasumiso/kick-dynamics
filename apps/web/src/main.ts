@@ -2,6 +2,8 @@
 import './style.css';
 import { toThreeQuaternion, toThreeVector } from './adapters/three-adapter';
 import { footPose } from './kick/foot-placement';
+import { inputStatus } from './kick/input-status';
+import { applyFormValues, toFormValues } from './kick/kick-form';
 import { INITIAL_KICK_STATE, toKickInput, type KickState } from './kick/kick-state';
 import { WORKING_BALL, WORKING_FOOT, WORKING_GEOMETRY } from './params/working-values';
 import { createBallMesh } from './render/ball-mesh';
@@ -10,6 +12,7 @@ import { addField } from './render/field';
 import { createFootMesh } from './render/foot-mesh';
 import { createSceneView } from './render/scene-view';
 import { createContactPanel } from './ui/contact-panel';
+import { createKickPanel } from './ui/kick-panel';
 
 const viewport = document.querySelector<HTMLElement>('#viewport');
 const panel = document.querySelector<HTMLElement>('#panel');
@@ -31,6 +34,11 @@ const contactPanel = createContactPanel();
 panel.append(contactPanel.root);
 
 let kick: KickState = INITIAL_KICK_STATE;
+const kickPanel = createKickPanel(toFormValues(kick), (values) => {
+  kick = applyFormValues(kick, values);
+  render();
+});
+panel.append(kickPanel.root);
 
 /** 入力の状態を 3D ビューとパネルに反映する。 */
 function render(): void {
@@ -38,7 +46,10 @@ function render(): void {
   marker.visible = true;
   contactPanel.show(kick.contactDirection);
   // 足の配置（AC-03）：接触面の法線が接触法線と一致するように置く。
-  const pose = footPose(toKickInput(kick), WORKING_GEOMETRY);
+  const input = toKickInput(kick);
+  const status = inputStatus(input, WORKING_GEOMETRY);
+  kickPanel.showStatus(status.message, status.ok);
+  const pose = footPose(input, WORKING_GEOMETRY);
   foot.visible = pose.ok;
   if (pose.ok) {
     toThreeVector(pose.value.position, foot.position);

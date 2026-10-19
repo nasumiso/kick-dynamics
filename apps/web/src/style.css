@@ -23,7 +23,7 @@ body {
 }
 
 #panel {
-  width: 340px;
+  width: 370px;
   flex: none;
   overflow-y: auto;
   padding: 12px 16px;
@@ -61,4 +61,62 @@ body {
 
 .readout dd {
   margin: 0;
+}
+
+.slider-row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) 58px 40px;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.slider-row select {
+  grid-column: 2 / 5;
+  min-width: 0;
+}
+
+.slider-row input[type='range'] {
+  min-width: 0;
+}
+
+.slider-label {
+  color: #c9d1d9;
+}
+
+.number {
+  width: 100%;
+  box-sizing: border-box;
+  background: #11151a;
+  color: #e6e6e6;
+  border: 1px solid #39424c;
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit {
+  color: #9aa4ae;
+}
+
+details summary {
+  cursor: pointer;
+  color: #c9d1d9;
+  margin: 6px 0;
+}
+
+.status {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  border-radius: 3px;
+}
+
+.status.ok {
+  background: #173322;
+  color: #8fe0a8;
+}
+
+.status.error {
+  background: #3a1d1d;
+  color: #ffb3ad;
 }
