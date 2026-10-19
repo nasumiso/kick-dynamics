@@ -44,10 +44,14 @@ function validateGround(ball: BallParams, params: GroundParameters): SimResult<v
   if (!(Number.isFinite(e) && e >= 0 && e <= 1)) return fail('invalid-parameter', `ground restitution must be in [0, 1] (${e})`);
   const nonNegative: Array<[string, number]> = [
     ['ground friction μ_g', mu], ['rolling resistance μ_r', muR], ['tangential speed threshold ε_t', params.tangentialSpeedThreshold],
-    ['rest speed v_rest', params.restSpeed], ['stop speed v_stop', params.stopSpeed], ['stop spin ω_stop', params.stopSpin],
+    ['rest speed v_rest', params.restSpeed],
   ];
   for (const [name, value] of nonNegative) {
     if (!(Number.isFinite(value) && value >= 0)) return fail('invalid-parameter', `${name} must be finite and non-negative (${value})`);
+  }
+  // 停止の判定は |v| < v_stop かつ |ω| < ω_stop（厳密な不等号）なので、0 では静止したボールも停止しない。
+  for (const [name, value] of [['stop speed v_stop', params.stopSpeed], ['stop spin ω_stop', params.stopSpin]] as const) {
+    if (!(Number.isFinite(value) && value > 0)) return fail('invalid-parameter', `${name} must be finite and positive (${value})`);
   }
   if (!(Number.isFinite(params.gravity) && params.gravity > 0)) return fail('invalid-parameter', `gravity must be finite and positive (${params.gravity})`);
   // 純転がりを保つのに必要な静止摩擦力 κ μ_r m g / (1 + κ) が μ_g m g を超える構成は扱わない（05 §8.2、決定 2026-10-19）。

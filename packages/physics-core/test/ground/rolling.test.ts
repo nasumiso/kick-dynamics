@@ -275,7 +275,7 @@ describe('ground parameter validation', () => {
 
   it.each([
     ['restitution', { restitution: 1.1 }], ['friction', { friction: -0.1 }], ['rolling resistance', { rollingResistance: Number.NaN }],
-    ['rest speed', { restSpeed: -1 }], ['stop speed', { stopSpeed: Infinity }], ['stop spin', { stopSpin: -1 }], ['gravity', { gravity: 0 }],
+    ['rest speed', { restSpeed: -1 }], ['stop speed', { stopSpeed: Infinity }], ['zero stop speed', { stopSpeed: 0 }], ['stop spin', { stopSpin: -1 }], ['zero stop spin', { stopSpin: 0 }], ['gravity', { gravity: 0 }],
   ] as const)('rejects an invalid %s', (_, patch) => {
     const r = groundHandler(ball, { ...params, ...patch });
     expect(!r.ok && r.error.code).toBe('invalid-parameter');
