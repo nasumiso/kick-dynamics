@@ -3,7 +3,9 @@ import type { BallParams, RigidBodyState } from '../bodies/types';
 import { gravityVector } from '../frames';
 import { add, cross, length, scale, sub, ZERO, type Vec3 } from '../math/vec3';
 import { fail, ok, type SimResult } from '../result';
-import type { CoefficientModel, DegeneracyThresholds, FlightEnvironment, FlightForceSettings, ForceAndTorque } from './types';
+import type {
+  CoefficientModel, DegeneracyThresholds, FlightEnvironment, FlightForceSettings, ForceAndTorque, SpinCoefficientTable,
+} from './types';
 
 export interface AeroContext {
   /** 相対速度 v_r = v − w */
@@ -18,11 +20,41 @@ export interface AeroContext {
   readonly spinParameter: number;
 }
 
+/**
+ * 折れ線の表が有効か：点が 1 つ以上、すべて有限、最初の S が 0、S が狭義単調増加（05 §7.4）。
+ * 無効なら理由を返す。
+ */
+export function spinTableError(table: SpinCoefficientTable): string | null {
+  const points = table.points;
+  if (points.length === 0) return 'the table has no points';
+  if (!points.every(([s, c]) => Number.isFinite(s) && Number.isFinite(c))) return 'the table contains a non-finite value';
+  if (points[0]![0] !== 0) return `the first spin parameter must be 0 (${points[0]![0]})`;
+  for (let i = 1; i < points.length; i++) {
+    if (!(points[i]![0] > points[i - 1]![0])) return 'the spin parameters must be strictly increasing';
+  }
+  return null;
+}
+
+/** 折れ線の表を S で評価する。S ≥ 0 を前提とし、最後の点より大きい S では最後の値。 */
+export function evaluateSpinTable(table: SpinCoefficientTable, spinParameter: number): number {
+  const points = table.points;
+  let i = 1;
+  while (i < points.length && points[i]![0] < spinParameter) i++;
+  if (i === points.length) return points[points.length - 1]![1];
+  const [s0, c0] = points[i - 1]!;
+  const [s1, c1] = points[i]!;
+  return c0 + ((c1 - c0) * (spinParameter - s0)) / (s1 - s0);
+}
+
 /** 係数モデルを評価する。結果が有限でない、または nonNegative なのに負なら SimResult のエラー（04 §6）。 */
 export function evaluateCoefficient(
   model: CoefficientModel, context: AeroContext, name: string, nonNegative: boolean,
 ): SimResult<number> {
-  const value = model.kind === 'constant' ? model.value : model.evaluate(context.reynolds, context.spinParameter);
+  const value = model.kind === 'constant'
+    ? model.value
+    : model.kind === 'spin-table'
+      ? evaluateSpinTable(model, context.spinParameter)
+      : model.evaluate(context.reynolds, context.spinParameter);
   if (!Number.isFinite(value)) {
     return fail('invalid-coefficient', `${name} is not finite (${value})`);
   }

@@ -7,10 +7,21 @@ import type { RigidBodyState } from '../bodies/types';
 import type { Vec3 } from '../math/vec3';
 import type { SimResult } from '../result';
 
-/** 空力係数のモデル：定数、または (Re, S) の関数（05 §7.3〜7.6、04 §6）。 */
+/**
+ * S の折れ線で与える係数（05 §7.4）。点 (S_i, C_i) を S の昇順に並べ、最初の点は S = 0。
+ * 点の間は線形補間し、最後の点より大きい S では最後の値を使う。関数を含まない素のデータなので、
+ * 一括 API（simulateKick）の境界を越えて渡せる（04 §9）。
+ */
+export interface SpinCoefficientTable {
+  readonly kind: 'spin-table';
+  readonly points: readonly (readonly [number, number])[];
+}
+
+/** 空力係数のモデル：定数、(Re, S) の関数、または S の折れ線（05 §7.3〜7.6、04 §6）。 */
 export type CoefficientModel =
   | { readonly kind: 'constant'; readonly value: number }
-  | { readonly kind: 'function'; readonly evaluate: (reynolds: number, spinParameter: number) => number };
+  | { readonly kind: 'function'; readonly evaluate: (reynolds: number, spinParameter: number) => number }
+  | SpinCoefficientTable;
 
 /** 回転減衰のモデル（05 §7.5）。 */
 export type SpinDecayModel =

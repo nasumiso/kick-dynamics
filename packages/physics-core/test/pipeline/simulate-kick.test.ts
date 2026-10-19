@@ -245,6 +245,14 @@ describe('simulateKick', () => {
       if (!result.ok) expect(result.error.code).toBe('invalid-parameter');
     });
 
+    it('accepts a C_L table of S and checks every coefficient value in it', () => {
+      const lift = (points: [number, number][]) => withValue('liftCoefficient', { kind: 'spin-table', points });
+      expect(simulateKick(input, lift([[0, 0], [0.25, 0.3], [1, 0.3]]), settings).ok).toBe(true);
+      const result = simulateKick(input, lift([[0, 0], [0.25, 2.1]]), settings);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.code).toBe('invalid-parameter');
+    });
+
     it('checks C_M only when the torque coefficient model is selected', () => {
       const p = withValue('torqueCoefficient', 1.1);
       expect(simulateKick(input, p, settings).ok).toBe(true);

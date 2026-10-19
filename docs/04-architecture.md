@@ -192,7 +192,7 @@ type SimResult<T> = { ok: true; value: T } | { ok: false; error: SimError };
   - **時刻の基準**：時刻 0 が衝突の瞬間で、軌道のサンプル 0 は `impact.ballAfter`（VER-S02）。衝突を軌道のイベント（`impact`）としては記録しない。
   - **`SimulationSettings`**：`maxTime`、`eventTimeTolerance`（$\delta_t$）、`forces`（`gravity`・`drag`・`magnus` の ON/OFF と、回転減衰 `spinDecay` の `'none' | 'linear' | 'torque-coefficient'`）、`ground`。Δt は P-18 を使う。
   - **`ground` の値**：`'stop-at-first-contact'` か `'bounce-and-roll'`。地面の係数が未決定の間も計算できるよう、設定で切り替える（決定、2026-10-19）。
-  - **空力係数**：P-12・P-13・P-22 の定数だけを使う。関数の係数は、§9 の「境界にコールバックを置かない」方針により、この API では扱わない。$\eta$（P-11）は使わない。
+  - **空力係数**：P-12・P-22 は定数を使う。P-13 は定数か、$S$ の折れ線の表（`SpinCoefficientTable`、05 §7.4。素のデータなので境界を越えて渡せる）を使う。関数の係数は、§9 の「境界にコールバックを置かない」方針により、この API では扱わない。$\eta$（P-11）は使わない。
   - **警告**：`warnings` は衝突の警告（`ImpactWarning`）を `{ stage: 'impact', code }` として並べたもの。
   - **`computeMetrics`**：軌道のサンプル 0 から打ち出しの値を求める。P-27 が未決定ならスピン成分を `null` とする。
 - 空力係数を関数で与える場合、関数は $(Re, S)$ を受け取り、有限の値を返す。$C_D$・$C_M$ は非負、$C_L$ の符号は [05 §7.4](05-physics-model.md) の規約に従う（負の $C_L$ も拒否しない。暫定、T1.2-05）。関数が範囲外の値・NaN・無限大を返した場合や、入力が係数の定義域外の場合は、値を補正・切り詰めせずに `SimResult` のエラーとして返す。

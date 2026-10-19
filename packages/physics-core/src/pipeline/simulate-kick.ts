@@ -3,8 +3,8 @@
 // ParameterSet の値から各段階のパラメータを組み立て、入力・物性値・設定を入口でまとめて検証してから、
 // buildImpactSetup → solveImpact → simulateFlight → computeMetrics の順に呼ぶ。
 // - 時刻 0 が衝突の瞬間で、軌道のサンプル 0 は衝突直後のボールの状態（solveImpact の ballAfter）。
-// - 空力係数は ParameterSet の定数（P-12・P-13・P-22）だけを使う。関数の係数は境界にコールバックを置かない方針（04 §9）のため、
-//   この API では扱わない（段階 API の simulateFlight では使える）。
+// - 空力係数は ParameterSet の値（P-12・P-22 は定数、P-13 は定数か S の折れ線、05 §7.4）を使う。関数の係数は、
+//   境界にコールバックを置かない方針（04 §9）のため、この API では扱わない（段階 API の simulateFlight では使える）。
 // - Core は既定値を持たない。計算に使うパラメータの値が未決定（null）なら、その ID をまとめて invalid-parameter で返す。
 import type { BallParams, FootParams } from '../bodies/types';
 import { buildImpactSetup } from '../contact/setup';
@@ -142,7 +142,11 @@ function validateRanges(input: KickInput, parameters: ParameterSet, settings: Si
     checks.push({ name: 'air density ρ', value: v(p.airDensity), range: r.airDensity, code: 'invalid-parameter', id: 'P-10' });
   }
   if (f.drag) checks.push({ name: 'drag coefficient C_D', value: v(p.dragCoefficient), range: r.dragCoefficient, code: 'invalid-parameter', id: 'P-12' });
-  if (f.magnus) checks.push({ name: 'lift coefficient C_L', value: v(p.liftCoefficient), range: r.liftCoefficient, code: 'invalid-parameter', id: 'P-13' });
+  if (f.magnus) {
+    const lift = v(p.liftCoefficient);
+    const values = typeof lift === 'number' ? [lift] : lift.points.map(([, c]) => c);
+    checks.push(...values.map((value): RangeCheck => ({ name: 'lift coefficient C_L', value, range: r.liftCoefficient, code: 'invalid-parameter', id: 'P-13' })));
+  }
   if (f.spinDecay === 'linear') {
     checks.push({ name: 'linear spin decay c_ω', value: v(p.spinDecayLinear), range: r.spinDecayLinear, code: 'invalid-parameter', id: 'P-14' });
   }
@@ -162,11 +166,11 @@ function validateRanges(input: KickInput, parameters: ParameterSet, settings: Si
 function flightForces(parameters: ParameterSet, settings: SimulationSettings): FlightForceSettings {
   const f = settings.forces;
   const p = parameters;
-  const constant = (entry: ParameterEntry<number>, enabled: boolean) => ({ kind: 'constant' as const, value: enabled ? v(entry) : 0 });
+  const lift = f.magnus ? v(p.liftCoefficient) : 0;
   return {
     gravity: f.gravity,
-    drag: { enabled: f.drag, coefficient: constant(p.dragCoefficient, f.drag) },
-    magnus: { enabled: f.magnus, coefficient: constant(p.liftCoefficient, f.magnus) },
+    drag: { enabled: f.drag, coefficient: { kind: 'constant', value: f.drag ? v(p.dragCoefficient) : 0 } },
+    magnus: { enabled: f.magnus, coefficient: typeof lift === 'number' ? { kind: 'constant', value: lift } : lift },
     spinDecay: f.spinDecay === 'linear'
       ? { kind: 'linear', coefficient: v(p.spinDecayLinear) }
       : f.spinDecay === 'torque-coefficient'

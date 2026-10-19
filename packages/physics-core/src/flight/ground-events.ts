@@ -9,9 +9,10 @@
 import type { BallParams, RigidBodyState } from '../bodies/types';
 import { GROUND_HEIGHT } from '../frames';
 import { fail, ok, type SimResult } from '../result';
+import { spinTableError } from './forces';
 import { rk4Step } from './integrator';
 import type {
-  FlightEnvironment, FlightEvent, FlightSample, FlightSimulationSettings, GroundContact, GroundContactHandler,
+  CoefficientModel, FlightEnvironment, FlightEvent, FlightSample, FlightSimulationSettings, GroundContact, GroundContactHandler,
   GroundContactResponse, GroundRolling,
 } from './types';
 
@@ -34,6 +35,14 @@ function validate(settings: FlightSimulationSettings): SimResult<void> {
   ];
   for (const [name, value] of positive) {
     if (!Number.isFinite(value) || !(value > 0)) return fail('invalid-setting', `${name} must be finite and positive (${value})`);
+  }
+  // 折れ線の表の係数は、積分の前に一度だけ確かめる（05 §7.4）。
+  const { drag, magnus, spinDecay } = settings.forces;
+  const models: Array<[string, CoefficientModel]> = [['C_D', drag.coefficient], ['C_L', magnus.coefficient]];
+  if (spinDecay.kind === 'torque-coefficient') models.push(['C_M', spinDecay.coefficient]);
+  for (const [name, model] of models) {
+    const error = model.kind === 'spin-table' ? spinTableError(model) : null;
+    if (error !== null) return fail('invalid-coefficient', `${name}: ${error}`);
   }
   return ok(undefined);
 }
