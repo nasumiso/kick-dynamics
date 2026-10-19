@@ -71,6 +71,18 @@ export interface KickSimulationResult {
   readonly warnings: readonly KickWarning[];
 }
 
+/** 空気の密度と相対速度を使う力項（抗力・マグヌス力・§7.5 (c) の回転減衰）があるか。 */
+function usesAero(settings: SimulationSettings): boolean {
+  const f = settings.forces;
+  return f.drag || f.magnus || f.spinDecay === 'torque-coefficient';
+}
+
+/**
+ * 使わない縮退判定の閾値（対応する力項が OFF）の代わりに渡す値。どの力項の計算にも使われないため、値は結果に影響しない
+ * （飛翔の入口の検証を通す正の有限値）。
+ */
+const UNUSED_THRESHOLD = 1;
+
 /** 計算に使うパラメータ（入力と設定によって変わる）。 */
 function requiredEntries(parameters: ParameterSet, settings: SimulationSettings): ParameterEntry<unknown>[] {
   const p = parameters;
@@ -79,15 +91,16 @@ function requiredEntries(parameters: ParameterSet, settings: SimulationSettings)
     // 有限質量の足でなくても、接触幾何（足の配置）に P-04〜P-06 を使う。
     p.footMass, p.footInertiaBody, p.footDimensions,
     p.restitution, p.friction, p.gravity, p.timeStep, p.wind,
-    p.magnusThreshold, p.zeroSpeedThreshold, p.zeroSpinThreshold,
-    p.tangentialSpeedThreshold, p.rollReferenceThreshold, p.verticalLaunchThreshold,
+    p.tangentialSpeedThreshold, p.rollReferenceThreshold, p.diagnosticRelativeTolerance,
   ];
+  // 縮退判定の閾値は、対応する力項を使うときだけ要求する（PR #12 のレビュー）。
+  // P-27 は要求しない：未決定ならスピン成分を定義不能（null）とする（computeMetrics）。
   const f = settings.forces;
-  if (f.drag || f.magnus || f.spinDecay === 'torque-coefficient') entries.push(p.airDensity);
+  if (usesAero(settings)) entries.push(p.airDensity, p.zeroSpeedThreshold);
   if (f.drag) entries.push(p.dragCoefficient);
-  if (f.magnus) entries.push(p.liftCoefficient);
+  if (f.magnus) entries.push(p.liftCoefficient, p.magnusThreshold);
   if (f.spinDecay === 'linear') entries.push(p.spinDecayLinear);
-  if (f.spinDecay === 'torque-coefficient') entries.push(p.torqueCoefficient);
+  if (f.spinDecay === 'torque-coefficient') entries.push(p.torqueCoefficient, p.zeroSpinThreshold);
   if (settings.ground === 'bounce-and-roll') entries.push(p.groundRestitution, p.groundFriction, p.rollingResistance, p.restThresholds);
   return entries;
 }
@@ -139,7 +152,7 @@ function validateRanges(input: KickInput, parameters: ParameterSet, settings: Si
     { name: 'step count maxTime / Δt', value: settings.maxTime / dt, range: r.stepCount, code: 'invalid-setting' },
   ];
   const f = settings.forces;
-  if (f.drag || f.magnus || f.spinDecay === 'torque-coefficient') {
+  if (usesAero(settings)) {
     checks.push({ name: 'air density ρ', value: v(p.airDensity), range: r.airDensity, code: 'invalid-parameter', id: 'P-10' });
   }
   if (f.drag) checks.push({ name: 'drag coefficient C_D', value: v(p.dragCoefficient), range: r.dragCoefficient, code: 'invalid-parameter', id: 'P-12' });
@@ -193,6 +206,11 @@ export function simulateKick(input: KickInput, parameters: ParameterSet, setting
     const error = spinTableError(lift);
     if (error !== null) return fail('invalid-coefficient', `C_L (P-13): ${error}`);
   }
+  // P-27 は値があれば正の有限値に限る（NaN では鉛直に近い打ち出しのスピン成分が NaN になる。PR #12 のレビュー）。
+  const vertical = parameters.verticalLaunchThreshold.value;
+  if (vertical !== null && !(Number.isFinite(vertical) && vertical > 0)) {
+    return fail('invalid-parameter', `vertical launch threshold ε_vert (P-27) must be finite and positive (${vertical})`);
+  }
   const ranges = validateRanges(input, parameters, settings);
   if (!ranges.ok) return ranges;
 
@@ -204,7 +222,10 @@ export function simulateKick(input: KickInput, parameters: ParameterSet, setting
   if (!setup.ok) return setup;
   const impact = solveImpact(
     setup.value,
-    { ball, foot, restitution: v(p.restitution), friction: v(p.friction), tangentialSpeedThreshold: v(p.tangentialSpeedThreshold) },
+    {
+      ball, foot, restitution: v(p.restitution), friction: v(p.friction),
+      tangentialSpeedThreshold: v(p.tangentialSpeedThreshold), diagnosticRelativeTolerance: v(p.diagnosticRelativeTolerance),
+    },
     input.footModel,
   );
   if (!impact.ok) return impact;
@@ -222,13 +243,18 @@ export function simulateKick(input: KickInput, parameters: ParameterSet, setting
     maxTime: settings.maxTime,
     eventTimeTolerance: settings.eventTimeTolerance,
     forces: flightForces(p, settings),
-    thresholds: { magnus: v(p.magnusThreshold), zeroSpeed: v(p.zeroSpeedThreshold), zeroSpin: v(p.zeroSpinThreshold) },
+    thresholds: {
+      magnus: settings.forces.magnus ? v(p.magnusThreshold) : UNUSED_THRESHOLD,
+      zeroSpeed: usesAero(settings) ? v(p.zeroSpeedThreshold) : UNUSED_THRESHOLD,
+      zeroSpin: settings.forces.spinDecay === 'torque-coefficient' ? v(p.zeroSpinThreshold) : UNUSED_THRESHOLD,
+    },
   };
   let onGround: GroundContactHandler = terminateOnGroundContact;
   if (settings.ground === 'bounce-and-roll') {
     const rest = v(p.restThresholds);
     const handler = groundHandler(ball, {
       restitution: v(p.groundRestitution), friction: v(p.groundFriction), tangentialSpeedThreshold: v(p.tangentialSpeedThreshold),
+      diagnosticRelativeTolerance: v(p.diagnosticRelativeTolerance),
       gravity, rollingResistance: v(p.rollingResistance), restSpeed: rest.rest, stopSpeed: rest.stopSpeed, stopSpin: rest.stopSpin,
     });
     if (!handler.ok) return handler;

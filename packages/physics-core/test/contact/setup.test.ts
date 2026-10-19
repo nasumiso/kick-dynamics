@@ -159,7 +159,7 @@ describe('overflow of the derived impact state (PR #7 review)', () => {
     expect(!r.ok && r.error.code).toBe('invalid-input');
     const s = build(base);
     const broken = { ...s, foot: { ...s.foot, linearVelocity: [Number.POSITIVE_INFINITY, 0, 0] as const } };
-    const impact = solveImpact(broken, { ball, foot, restitution: 0.5, friction: 0.3, tangentialSpeedThreshold: 1e-9 }, 'finite-mass');
+    const impact = solveImpact(broken, { ball, foot, restitution: 0.5, friction: 0.3, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9 }, 'finite-mass');
     expect(!impact.ok && impact.error.code).toBe('invalid-input');
   });
 });

@@ -14,7 +14,7 @@ export const foot: FootParams = { mass: 1.2, inertiaBody: boxInertia(1.2, dimens
 export const TANGENTIAL_SPEED_THRESHOLD = 1e-9;
 
 export function contactParams(restitution: number, friction: number): ContactParameters {
-  return { ball, foot, restitution, friction, tangentialSpeedThreshold: TANGENTIAL_SPEED_THRESHOLD };
+  return { ball, foot, restitution, friction, tangentialSpeedThreshold: TANGENTIAL_SPEED_THRESHOLD, diagnosticRelativeTolerance: 1e-9 };
 }
 
 export interface SetupSpec {

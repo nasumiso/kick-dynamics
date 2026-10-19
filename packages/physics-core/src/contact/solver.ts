@@ -10,12 +10,6 @@ import { fail, ok, type SimResult } from '../result';
 import { contactMatrix, finiteInertia, KINEMATIC_INERTIA, type ImpactInertia } from './k-matrix';
 import type { ContactParameters, FootModel, ImpactRegime, ImpactResult, ImpactSetup, ImpactWarning } from './types';
 
-/**
- * 警告の判定に使う相対的な幅（05 §10.2 P-28、仮置き）。ΔT は ½|J|(|u⁻| + |u⁺|) に対して、
- * 滑り方向の反転は |u⁻| に対して、この比率を超えたときだけ警告する（丸め誤差で警告しないため）。
- */
-export const DIAGNOSTIC_RELATIVE_TOLERANCE = 1e-9;
-
 /** 衝突直前の状態のすべての値（位置・姿勢・速度・角速度・接触点・法線）が有限か。 */
 export function isFiniteSetup(setup: ImpactSetup): boolean {
   const states = [setup.ball, setup.foot];
@@ -37,11 +31,16 @@ function applyImpulse(state: RigidBodyState, body: ImpactInertia, arm: Vec3, imp
   };
 }
 
-/** 反発・摩擦の係数と ε_t（足–ボールでは P-07・P-08、地面では P-15・P-16、共通の P-25）。 */
+/** 反発・摩擦の係数と ε_t・τ_diag（足–ボールでは P-07・P-08、地面では P-15・P-16、共通の P-25・P-28）。 */
 export interface ContactCoefficients {
   readonly restitution: number;
   readonly friction: number;
   readonly tangentialSpeedThreshold: number;
+  /**
+   * τ_diag：警告の判定に使う相対的な幅（P-28）。ΔT は ½|J|(|u⁻| + |u⁺|) に対して、滑り方向の反転は |u⁻| に対して、
+   * この比率を超えたときだけ警告する（丸め誤差で警告しないため）。正の有限値。
+   */
+  readonly diagnosticRelativeTolerance: number;
 }
 
 function validate(params: ContactCoefficients): SimResult<void> {
@@ -49,6 +48,8 @@ function validate(params: ContactCoefficients): SimResult<void> {
   if (!(Number.isFinite(e) && e >= 0 && e <= 1)) return fail('invalid-parameter', `restitution must be in [0, 1] (${e})`);
   if (!(Number.isFinite(mu) && mu >= 0)) return fail('invalid-parameter', `friction must be finite and non-negative (${mu})`);
   if (!(Number.isFinite(epsT) && epsT >= 0)) return fail('invalid-parameter', `tangential speed threshold must be finite and non-negative (${epsT})`);
+  const tau = params.diagnosticRelativeTolerance;
+  if (!(Number.isFinite(tau) && tau > 0)) return fail('invalid-parameter', `diagnostic relative tolerance must be finite and positive (${tau})`);
   return ok(undefined);
 }
 
@@ -180,12 +181,12 @@ export function solveContact(
   const kineticEnergyChange = 0.5 * dot(impulse, add(uBefore, uAfter));
   const energyScale = 0.5 * length(impulse) * (length(uBefore) + length(uAfter));
   const footTranslatesOnly = length(setup.foot.angularVelocity) === 0;
-  if ((footMassProperties !== null || footTranslatesOnly) && kineticEnergyChange > DIAGNOSTIC_RELATIVE_TOLERANCE * energyScale) {
+  if ((footMassProperties !== null || footTranslatesOnly) && kineticEnergyChange > params.diagnosticRelativeTolerance * energyScale) {
     warnings.push('energy-increase');
   }
   if (slidingDirection !== null) {
     const utAfter = sub(uAfter, scale(n, dot(uAfter, n)));
-    if (dot(utAfter, slidingDirection) < -DIAGNOSTIC_RELATIVE_TOLERANCE * length(uBefore)) warnings.push('slip-reversal');
+    if (dot(utAfter, slidingDirection) < -params.diagnosticRelativeTolerance * length(uBefore)) warnings.push('slip-reversal');
   }
   return ok({
     impulse, regime, ballAfter, footAfter,

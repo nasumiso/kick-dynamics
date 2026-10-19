@@ -36,6 +36,12 @@ function validate(settings: FlightSimulationSettings): SimResult<void> {
   for (const [name, value] of positive) {
     if (!Number.isFinite(value) || !(value > 0)) return fail('invalid-setting', `${name} must be finite and positive (${value})`);
   }
+  // 縮退判定の閾値は正の有限値（05 §7.3〜7.5、P-21・P-23・P-24。PR #12 のレビュー）。
+  const t = settings.thresholds;
+  const thresholds: Array<[string, number]> = [['magnus threshold ε', t.magnus], ['zero speed threshold ε_v', t.zeroSpeed], ['zero spin threshold ε_ω', t.zeroSpin]];
+  for (const [name, value] of thresholds) {
+    if (!(Number.isFinite(value) && value > 0)) return fail('invalid-parameter', `${name} must be finite and positive (${value})`);
+  }
   // 折れ線の表の係数は、積分の前に一度だけ確かめる（05 §7.4）。
   const { drag, magnus, spinDecay } = settings.forces;
   const models: Array<[string, CoefficientModel]> = [['C_D', drag.coefficient], ['C_L', magnus.coefficient]];
