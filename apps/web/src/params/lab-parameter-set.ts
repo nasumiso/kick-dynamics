@@ -1,44 +1,63 @@
-// パラメータセットのスタブ（AC-13 の表示用、T1.4-08）。05 §10.2（2026-10-19 時点）の記載を写したもので、Core の既定値ではない。
-// 05 §10.2 を変更したら、ここも同時に更新する。物理の計算に使うパラメータセットはパイプライン（T1.5-01）で扱う。
+// Lab が使うパラメータセット（T1.5-02）。05 §10.2（2026-10-19 時点）の値・確からしさ・出典を写したもので、Core の既定値ではない。
+// 05 §10.2 を変更したら、ここも同時に更新する。値が未決定（null）のパラメータは、それを使う設定では計算できない（simulateKick がエラーを返す）。
 import { boxInertia, type ParameterEntry, type ParameterId, type ParameterSet, type Vec3 } from '@kick-dynamics/physics-core';
 
 function undetermined<T>(id: ParameterId, symbol: string, unit: string, source: string): ParameterEntry<T> {
   return { id, symbol, unit, value: null, confidence: 'undetermined', source };
 }
 
+const IFAB = 'IFAB 競技規則 第 2 条 1 項（2026-10-19 照合）';
+const GOFF_CARRE = 'Goff & Carré, Am. J. Phys. 77, 1020–1027 (2009)';
 const footDimensions: Vec3 = [0.26, 0.1, 0.08];
 
-export const STUB_PARAMETER_SET: ParameterSet = {
+export const LAB_PARAMETER_SET: ParameterSet = {
   ballMass: {
-    id: 'P-01', symbol: 'm_B', unit: 'kg', value: null, candidateRange: { min: 0.41, max: 0.45 },
-    confidence: 'standard', source: 'IFAB 競技規則 第 2 条の 5 号球の規定とされる範囲（一次情報未照合）',
+    id: 'P-01', symbol: 'm_B', unit: 'kg', value: 0.43, candidateRange: { min: 0.41, max: 0.45 },
+    confidence: 'provisional', source: `範囲 0.41–0.45 kg は ${IFAB}。中央の値を仮置き`,
   },
   ballRadius: {
-    id: 'P-02', symbol: 'R', unit: 'm', value: null, candidateRange: { min: 0.68 / (2 * Math.PI), max: 0.7 / (2 * Math.PI) },
-    confidence: 'standard', source: '外周 0.68–0.70 m からの換算（一次情報未照合）',
+    id: 'P-02', symbol: 'R', unit: 'm', value: 0.69 / (2 * Math.PI), candidateRange: { min: 0.68 / (2 * Math.PI), max: 0.7 / (2 * Math.PI) },
+    confidence: 'provisional', source: `外周 0.68–0.70 m は ${IFAB}。中央の外周から換算した値を仮置き`,
   },
-  ballInertiaCoefficient: undetermined('P-03', 'κ', '—', '参照：2/5（中実球）、2/3（薄肉の中空球）。OQ-06'),
+  ballInertiaCoefficient: {
+    id: 'P-03', symbol: 'κ', unit: '—', value: 2 / 3, confidence: 'provisional', source: '出典なし。薄い球殻の式。OQ-06',
+  },
   footMass: { id: 'P-04', symbol: 'm_A', unit: 'kg', value: 1.2, confidence: 'provisional', source: '出典なし（T0-08）。OQ-02' },
   footInertiaBody: {
     id: 'P-05', symbol: 'I_A^body', unit: 'kg·m²', value: boxInertia(1.2, footDimensions),
     confidence: 'provisional', source: 'P-04・P-06 から直方体の式（05 §5.2）で計算',
   },
   footDimensions: { id: 'P-06', symbol: 'L_x, L_y, L_z', unit: 'm', value: footDimensions, confidence: 'provisional', source: '出典なし（T0-08）。OQ-02' },
-  restitution: undetermined('P-07', 'e', '—', 'OQ-04'),
-  friction: undetermined('P-08', 'μ', '—', 'OQ-05'),
+  restitution: {
+    id: 'P-07', symbol: 'e', unit: '—', value: 0.5, confidence: 'provisional',
+    source: '出典なし。二次情報の 0.46–0.68 は未照合で、「有効質量」による別の定義。OQ-04',
+  },
+  friction: { id: 'P-08', symbol: 'μ', unit: '—', value: 0.5, confidence: 'provisional', source: '出典なし。OQ-05' },
   gravity: { id: 'P-09', symbol: 'g', unit: 'm/s²', value: 9.80665, confidence: 'defined', source: '標準重力' },
   airDensity: {
     id: 'P-10', symbol: 'ρ', unit: 'kg/m³', value: 1.225, confidence: 'standard', source: '国際標準大気の海面値とされる値（一次情報未照合）',
   },
-  airViscosity: undetermined('P-11', 'η', 'Pa·s', '国際標準大気の値を候補とし、照合後に記入'),
-  dragCoefficient: undetermined('P-12', 'C_D', '—', 'モデル形も未決定。OQ-07'),
-  liftCoefficient: undetermined('P-13', 'C_L', '—', 'OQ-07'),
+  airViscosity: {
+    id: 'P-11', symbol: 'η', unit: 'Pa·s', value: 1.789e-5, confidence: 'standard',
+    source: '国際標準大気の海面値とされる値（一次情報未照合）。一括計算では使わない',
+  },
+  dragCoefficient: {
+    id: 'P-12', symbol: 'C_D', unit: '—', value: 0.2, confidence: 'literature',
+    source: `${GOFF_CARRE}。無回転、Re ≈ 2.6×10⁵。抗力危機・回転による変化は表さない。OQ-07`,
+  },
+  liftCoefficient: {
+    id: 'P-13', symbol: 'C_L', unit: '—', value: { kind: 'spin-table', points: [[0, 0], [0.25, 0.3], [1, 0.3]] },
+    confidence: 'provisional', source: `値の水準は ${GOFF_CARRE}（|C_L| 0.27–0.31、S 0.24–0.71）。折れ線の形は仮定。OQ-07`,
+  },
   spinDecayLinear: undetermined('P-14', 'c_ω', 'kg·m²/s', 'OQ-08'),
-  groundRestitution: undetermined('P-15', 'e_g', '—', 'OQ-09'),
-  groundFriction: undetermined('P-16', 'μ_g', '—', 'OQ-09'),
-  rollingResistance: undetermined('P-17', 'μ_r', '—', 'OQ-09'),
+  groundRestitution: { id: 'P-15', symbol: 'e_g', unit: '—', value: 0.6, confidence: 'provisional', source: '出典なし。OQ-09' },
+  groundFriction: { id: 'P-16', symbol: 'μ_g', unit: '—', value: 0.6, confidence: 'provisional', source: '出典なし。OQ-09' },
+  rollingResistance: { id: 'P-17', symbol: 'μ_r', unit: '—', value: 0.05, confidence: 'provisional', source: '出典なし。OQ-09' },
   timeStep: { id: 'P-18', symbol: 'Δt', unit: 's', value: 0.005, confidence: 'provisional', source: '収束試験（VER-F02）に基づく暫定の候補。OQ-12' },
-  restThresholds: undetermined('P-19', 'v_rest, v_stop, ω_stop', 'm/s, rad/s', 'OQ-09'),
+  restThresholds: {
+    id: 'P-19', symbol: 'v_rest, v_stop, ω_stop', unit: 'm/s, rad/s', value: { rest: 0.1, stopSpeed: 0.05, stopSpin: 0.5 },
+    confidence: 'provisional', source: '数値上の閾値、出典なし。OQ-09',
+  },
   wind: { id: 'P-20', symbol: 'w', unit: 'm/s', value: [0, 0, 0], confidence: 'assumption', source: 'Phase 1 は無風' },
   magnusThreshold: { id: 'P-21', symbol: 'ε', unit: 'm/s²', value: 1e-9, confidence: 'provisional', source: '数値上の閾値（T1.2-05）。物理的な根拠はない' },
   torqueCoefficient: undetermined('P-22', 'C_M', '—', 'OQ-08'),

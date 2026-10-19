@@ -1,4 +1,4 @@
-// スタブ軌道の再生（T1.4-09、描画の確認用）。再生クロック・再生速度・リプレイの本実装は M1.5（T1.5-03）。
+// キックの実行と再生（T1.5-02）。再生速度・一時停止・リプレイは T1.5-03。
 import { element, formatNumber, section } from './dom';
 
 export interface PlaybackPanel {
@@ -6,14 +6,14 @@ export interface PlaybackPanel {
   readonly showTime: (t: number, duration: number) => void;
 }
 
-export function createPlaybackPanel(onPlay: () => void, onReset: () => void): PlaybackPanel {
+export function createPlaybackPanel(onRun: () => void, onReset: () => void): PlaybackPanel {
   const time = element('span', { class: 'hint', 'data-testid': 'playback-time' });
-  const play = element('button', { type: 'button', 'data-testid': 'play-stub' }, 'スタブ軌道を再生');
+  const run = element('button', { type: 'button', 'data-testid': 'run-kick' }, 'キックを実行');
   const reset = element('button', { type: 'button' }, '初期位置に戻す');
-  play.addEventListener('click', onPlay);
+  run.addEventListener('click', onRun);
   reset.addEventListener('click', onReset);
-  const root = section('軌道（スタブ）',
-    element('p', { class: 'hint' }, '描画の確認用の固定の軌道です（重力のみの真空中、最初の接地まで）。キック入力からの計算は M1.5 で接続します。再生後に接触点を指定するときは「初期位置に戻す」を押してください。'),
-    element('div', { class: 'buttons' }, play, reset), time);
+  const root = section('キックの実行',
+    element('p', { class: 'hint' }, '入力とパラメータからキック 1 回分を計算し、実時間で再生します。計算に使う値の多くは「仮置き」です（物理パラメータの一覧を参照）。再生後に入力を変えるときは「初期位置に戻す」を押してください。'),
+    element('div', { class: 'buttons' }, run, reset), time);
   return { root, showTime: (t, duration) => { time.textContent = `t = ${formatNumber(t, 2)} s / ${formatNumber(duration, 2)} s`; } };
 }

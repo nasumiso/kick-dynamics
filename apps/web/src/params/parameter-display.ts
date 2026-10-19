@@ -1,5 +1,9 @@
 // パラメータの表示（AC-13、FR-19、NFR-13）：値・単位・確からしさ・出典を表示用の文字列にする。
-import type { Confidence, ParameterEntry } from '@kick-dynamics/physics-core';
+import type { Confidence, ParameterEntry, SpinCoefficientTable } from '@kick-dynamics/physics-core';
+
+function isSpinTable(value: unknown): value is SpinCoefficientTable {
+  return typeof value === 'object' && value !== null && (value as { kind?: unknown }).kind === 'spin-table';
+}
 
 /** 確からしさの区分の表示名（05 §10.1）。 */
 export const CONFIDENCE_LABELS: Record<Confidence, string> = {
@@ -33,6 +37,9 @@ export function formatParameterValue(entry: ParameterEntry<unknown>): string {
     const offDiagonalZero = value.length === 9 && [1, 2, 3, 5, 6, 7].every((i) => value[i] === 0);
     if (offDiagonalZero) return `diag(${[value[0], value[4], value[8]].map((x) => formatScalar(x as number)).join(', ')})`;
     return `(${value.map((x) => formatScalar(x as number)).join(', ')})`;
+  }
+  if (isSpinTable(value)) {
+    return `S の折れ線 ${value.points.map(([s, c]) => `(${formatScalar(s)}, ${formatScalar(c)})`).join('–')}`;
   }
   return JSON.stringify(value);
 }

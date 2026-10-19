@@ -2,7 +2,7 @@
 // 検証状態（06 §2）は、実測との照合（VAL）を実施していないため、すべて「未検証」。
 import type { ParameterEntry, ParameterSet } from '@kick-dynamics/physics-core';
 import { CONFIDENCE_LABELS, formatParameterValue, needsAttention } from '../params/parameter-display';
-import { PARAMETER_MEANINGS } from '../params/stub-parameter-set';
+import { PARAMETER_MEANINGS } from '../params/lab-parameter-set';
 import { element, section } from './dom';
 
 export function createParameterPanel(parameters: ParameterSet): HTMLElement {
@@ -24,7 +24,7 @@ export function createParameterPanel(parameters: ParameterSet): HTMLElement {
   return section('物理パラメータ',
     element('p', { class: 'hint' },
       `${counts('仮置き', provisional)}・${counts('未決定', undetermined)}。検証状態：すべて未検証（実測との照合は未実施、06 §2）。`,
-      '値は 05 §10.2 を写したスタブです。'),
+      '値は 05 §10.2 を写したもので、キックの計算に使います。'),
     element('details', {}, element('summary', {}, `一覧（${entries.length} 件）`),
       element('table', { class: 'params' }, element('tbody', {}, ...rows))),
   );
