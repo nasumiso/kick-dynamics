@@ -151,7 +151,7 @@ interface KickSimulationResult {
   modelVersion: string;
   input: KickInput;
   parameters: ParameterSet;    // 値・単位・出典・確からしさ（05 §10）
-  settings: SimulationSettings; // 時間刻み・最大時間・サンプリング間隔
+  settings: SimulationSettings; // 最大時間・接地時刻の打ち切り幅・力項の ON/OFF・接地の扱い（Δt は ParameterSet の P-18。T1.5-01）
   impact: ImpactResult;
   trajectory: Trajectory;
   metrics: KickMetrics;        // 05 §9
@@ -182,6 +182,19 @@ type SimResult<T> = { ok: true; value: T } | { ok: false; error: SimError };
 - 接触ソルバー（暫定、T1.3-02、`packages/physics-core/src/contact/`）：`solveImpact` は `ParameterSet` ではなく、ボール・足の物性と $e$、$\mu$、$\varepsilon_t$ をまとめた `ContactParameters` を受け取る段階 API とし、`ParameterSet` からの組み立てはパイプライン（T1.5-01）で行う。解けない構成（05 §6.8）や係数の範囲外があるため、戻り値は `SimResult<ImpactResult>` とした。`SimError` は診断値を入れる任意の `details` を持つ（解けない衝突の $\mathbf u^-$、$\mathbf K$、$\mathbf J^{*}$ など）。運動学的な物体（無限質量の足・地面）は、$1/m$ と $\mathbf I^{-1}$ を 0 とした慣性で同じ計算に通す。有限質量の足の姿勢 $q$ は、$q\,\mathbf v\,q^{-1}$ が $|q|$ に依存しないため $q/|q|$ として慣性テンソルの回転に使い、$|q|$ が 0 または有限でない場合は `invalid-input` を返す（ボールの姿勢も同様に、零・非有限のノルムは `invalid-input`）。慣性テンソルの対称性は許容幅を置かずに厳密に判定し、`inertiaWorld` は丸め誤差による非対称を除くため対称部分 $\tfrac12(\mathbf A+\mathbf A^{\mathsf T})$ を返す。
 - 地面バウンド（暫定、T1.3-07、`packages/physics-core/src/ground/bounce.ts`）：地面は無限質量で静止した物体として、足–ボールと共通の `solveContact` で解く（05 §8.1）。`groundBounceHandler` は飛翔の `GroundContactHandler` で、飛翔中の接地と、開始時に地面へ向かう速度を持つ場合（05 §8.3、`start-on-ground`）の両方を処理する。転がりを含む通常の計算には `groundHandler` を使い、`groundBounceHandler` はバウンドだけの処理として残す。
 - 転がりと停止（暫定、T1.3-08、`packages/physics-core/src/ground/rolling.ts`）：`groundHandler(ball, GroundParameters)` は係数・閾値を検証して `SimResult<GroundContactHandler>` を返す（値は未決定で、Core は既定値を持たない）。処理は、$|u_n^-| \le v_{\text{rest}}$（または $e_g = 0$）なら $e_g = 0$ の衝突の後に $y = R$、$v_y = 0$ とした状態と、転がりのモデル `GroundRolling`（`advance`・`isStopped`）を `{ kind: 'roll' }` で返す。飛翔はそれ以降、空力を使わずに `advance` で各ステップを進め、ステップの終了時に `isStopped` が真なら `stop` イベントで終える。転がりに移る接地では、接地のイベント（`response: 'roll'`）の後に、転がりに入った状態のサンプルを指す `roll-start` が同じ時刻で続く。条件 $e_g v_{\text{rest}} \ge g\Delta t/2$ は、`GroundContact` に渡す飛翔の `timeStep` で接地のたびに確認する（Δt の食い違いを避けるため）。測定値の `totalDistance` は `stop` イベントの位置から求める（05 §9）。
+- 一括計算（暫定、T1.5-01、`packages/physics-core/src/pipeline/`）：`simulateKick(input, parameters, settings)` は次の順に処理する。
+  1. `ParameterSet` から各段階のパラメータ（`ImpactGeometryParameters`、`ContactParameters`、`FlightEnvironment`、`FlightSimulationSettings`、`GroundParameters`）を組み立てる。
+  2. 計算に使うパラメータの値が未決定（`null`）なら、その ID の一覧を `details.missing` に入れて `invalid-parameter` で返す。
+  3. 05 §10.3 の範囲（仮置き）を入口で検証する。
+  4. `buildImpactSetup` → `solveImpact` → `simulateFlight` → `computeMetrics` の順に呼ぶ。
+
+  補足：
+  - **時刻の基準**：時刻 0 が衝突の瞬間で、軌道のサンプル 0 は `impact.ballAfter`（VER-S02）。衝突を軌道のイベント（`impact`）としては記録しない。
+  - **`SimulationSettings`**：`maxTime`、`eventTimeTolerance`（$\delta_t$）、`forces`（`gravity`・`drag`・`magnus` の ON/OFF と、回転減衰 `spinDecay` の `'none' | 'linear' | 'torque-coefficient'`）、`ground`。Δt は P-18 を使う。
+  - **`ground` の値**：`'stop-at-first-contact'` か `'bounce-and-roll'`。地面の係数が未決定の間も計算できるよう、設定で切り替える（決定、2026-10-19）。
+  - **空力係数**：P-12・P-13・P-22 の定数だけを使う。関数の係数は、§9 の「境界にコールバックを置かない」方針により、この API では扱わない。$\eta$（P-11）は使わない。
+  - **警告**：`warnings` は衝突の警告（`ImpactWarning`）を `{ stage: 'impact', code }` として並べたもの。
+  - **`computeMetrics`**：軌道のサンプル 0 から打ち出しの値を求める。P-27 が未決定ならスピン成分を `null` とする。
 - 空力係数を関数で与える場合、関数は $(Re, S)$ を受け取り、有限の値を返す。$C_D$・$C_M$ は非負、$C_L$ の符号は [05 §7.4](05-physics-model.md) の規約に従う（負の $C_L$ も拒否しない。暫定、T1.2-05）。関数が範囲外の値・NaN・無限大を返した場合や、入力が係数の定義域外の場合は、値を補正・切り詰めせずに `SimResult` のエラーとして返す。
 
 ## 7. 物理時間と描画時間

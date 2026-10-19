@@ -1,6 +1,6 @@
 // KickDynamics Core の公開 API（docs/04-architecture.md §6）。
 // 利用側（Lab・検証ツール）は '@kick-dynamics/physics-core' からだけ import する。
-export const MODEL_VERSION = '0.0.0';
+export { MODEL_VERSION } from './pipeline/simulate-kick';
 
 export type { SimError, SimErrorCode, SimResult } from './result';
 
@@ -50,3 +50,10 @@ export { buildImpactSetup, footAxes } from './contact/setup';
 
 export { computeFlightMetrics, spinComponents } from './metrics/flight-metrics';
 export type { FlightMetrics, MetricsSettings, SpinComponents } from './metrics/flight-metrics';
+
+export { computeMetrics, simulateKick } from './pipeline/simulate-kick';
+export type {
+  GroundMode, KickMetrics, KickSimulationResult, KickWarning, SimulationSettings, SpinDecaySelection,
+} from './pipeline/simulate-kick';
+export { ACCEPTED_RANGES } from './pipeline/ranges';
+export type { AcceptedRange } from './pipeline/ranges';
