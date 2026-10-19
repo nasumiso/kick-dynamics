@@ -5,13 +5,14 @@
 //   区間幅が δ_t 以下、または反復回数が ⌈log₂(Δt/δ_t)⌉ に達したら終了する。接地時刻は区間の右端（h ≤ 0 側）。
 // - 接地時の状態は y だけを R に射影してから処理に渡し、射影による位置エネルギーの変化を記録する。
 // - 処理の後は、残り時間 t_{k+1} − t* を 1 回積分して元の時刻の格子 t_k = k Δt に戻る。
+// - 処理が転がりを返したら（05 §8.1）、以降は空力を使わずに転がりのモデルで進め、各ステップの終了時に停止を判定する（§8.2）。
 import type { BallParams, RigidBodyState } from '../bodies/types';
 import { GROUND_HEIGHT } from '../frames';
 import { fail, ok, type SimResult } from '../result';
 import { rk4Step } from './integrator';
 import type {
   FlightEnvironment, FlightEvent, FlightSample, FlightSimulationSettings, GroundContact, GroundContactHandler,
-  GroundContactResponse,
+  GroundContactResponse, GroundRolling,
 } from './types';
 
 export interface FlightRun {
@@ -49,13 +50,16 @@ export function simulateFlightRun(
   const samples: FlightSample[] = [{ time: 0, state: initial }];
   const events: FlightEvent[] = [];
 
-  /** 接地を処理する。terminate なら null、continue なら処理後の状態を返す。 */
+  /** 転がりに移った後の転がりのモデル（05 §8.2）。null の間は飛翔として積分する。 */
+  const mode: { rolling: GroundRolling | null } = { rolling: null };
+
+  /** 接地を処理する。terminate なら null、continue・roll なら処理後の状態を返す（roll なら rolling を設定する）。 */
   function contact(time: number, raw: RigidBodyState, atStart: boolean, bisectionIterations: number): SimResult<RigidBodyState | null> {
     // 処理の前の状態（raw）は、呼び出し側で直前のサンプルとして追加済み。
     const sampleIndex = samples.length - 1;
     const projected: RigidBodyState = { ...raw, position: [raw.position[0], GROUND_HEIGHT + ball.radius, raw.position[2]] };
     const projectionEnergy = ball.mass * environment.gravity * (projected.position[1] - raw.position[1]);
-    const handled = onGroundContact({ time, state: projected, atStart } satisfies GroundContact);
+    const handled = onGroundContact({ time, state: projected, atStart, timeStep: dt } satisfies GroundContact);
     if (!handled.ok) return handled;
     const response: GroundContactResponse = handled.value;
     events.push(atStart
@@ -63,9 +67,15 @@ export function simulateFlightRun(
       : { type: 'ground-contact', time, sampleIndex, bisectionIterations, projectionEnergy, response: response.kind });
     if (response.kind === 'terminate') return ok(null);
     const after = response.state;
+    if (response.kind === 'roll') {
+      samples.push({ time, state: after });
+      events.push({ type: 'roll-start', time, sampleIndex: samples.length - 1 });
+      mode.rolling = response.rolling;
+      return ok(after);
+    }
     if (heightAboveContact(after, ball) <= 0 && after.linearVelocity[1] <= 0) {
-      // 地面上で v_y ≤ 0 の状態は転がり（05 §8.2）。転がりは T1.3-08 で扱う。
-      return fail('unsupported-model', 'rolling on the ground is not implemented yet (T1.3-08)');
+      // 地面上で v_y ≤ 0 のまま飛翔として続けることはできない：転がりへの移行（roll）を返す処理を使う（05 §8.1）。
+      return fail('unsupported-model', 'the ground contact handler continued the flight on the ground without rolling (05 §8.1)');
     }
     samples.push({ time, state: after });
     return ok(after);
@@ -84,14 +94,21 @@ export function simulateFlightRun(
   for (let k = 0; k < steps; k++) {
     const start = k * dt;
     const end = (k + 1) * dt;
+    const rolling = mode.rolling;
+    if (rolling !== null) {
+      state = rolling.advance(state, dt);
+      samples.push({ time: end, state });
+      if (rolling.isStopped(state)) return ok({ samples, events: [...events, { type: 'stop', time: end, sampleIndex: samples.length - 1 }] });
+      continue;
+    }
     const stepped = rk4Step(state, dt, ball, environment, settings);
     if (!stepped.ok) return stepped;
     let next = stepped.value;
     if (heightAboveContact(state, ball) <= 0 && heightAboveContact(next, ball) < 0 && next.linearVelocity[1] <= 0) {
       // 地面上（h ≤ 0）から始まったステップで、ボールが地面の下へ進んだ：処理後の滞空がステップより短い反発などで、
       // 再接地を検出できなかった（05 §7.7 の制約。開始で h > 0 という検出条件を満たさない）。黙って続けずにエラーにする。
-      // 転がりへの移行（05 §8.1 の v_rest、e_g v_rest ≥ g Δt/2）は T1.3-08 で扱う。
-      return fail('unsupported-model', `the ball went below the ground in the step starting at t = ${start} s without a detectable ground contact (rolling transition is T1.3-08)`);
+      // 転がりへの移行（05 §8.1 の v_rest）と条件 e_g v_rest ≥ g Δt/2（§7.7）を満たす接地の処理では、重力だけの近似では起きない。
+      return fail('unsupported-model', `the ball went below the ground in the step starting at t = ${start} s without a detectable ground contact (05 §7.7)`);
     }
 
     if (heightAboveContact(state, ball) > 0 && heightAboveContact(next, ball) <= 0) {
@@ -117,14 +134,22 @@ export function simulateFlightRun(
       if (!handled.ok) return handled;
       if (handled.value === null) return ok({ samples, events });
       const remaining = end - time;
+      const rollingAfter = mode.rolling;
+      if (rollingAfter !== null) {
+        // 接地がステップの終了時刻と一致する場合は、処理後の状態（追加済みのサンプル）がそのまま時刻 t_{k+1} の状態。
+        state = remaining > 0 ? rollingAfter.advance(handled.value, remaining) : handled.value;
+        if (remaining > 0) samples.push({ time: end, state });
+        if (rollingAfter.isStopped(state)) return ok({ samples, events: [...events, { type: 'stop', time: end, sampleIndex: samples.length - 1 }] });
+        continue;
+      }
       if (remaining > 0) {
         const rest = rk4Step(handled.value, remaining, ball, environment, settings);
         if (!rest.ok) return rest;
         next = rest.value;
         if (heightAboveContact(next, ball) < 0 && next.linearVelocity[1] <= 0) {
           // 処理後の残り時間のうちに再び地面を通過した（ステップより短い反発、05 §7.7）。最終ステップでも検出するため、
-          // 次のステップの開始を待たずにここでも判定する。転がりへの移行は T1.3-08。
-          return fail('unsupported-model', `the ball went below the ground within the remaining ${remaining} s after a ground contact at t = ${time} s (rolling transition is T1.3-08)`);
+          // 次のステップの開始を待たずにここでも判定する。
+          return fail('unsupported-model', `the ball went below the ground within the remaining ${remaining} s after a ground contact at t = ${time} s (05 §7.7)`);
         }
       } else {
         // 接地がステップの終了時刻と一致：処理後の状態がそのまま時刻 t_{k+1} の状態。

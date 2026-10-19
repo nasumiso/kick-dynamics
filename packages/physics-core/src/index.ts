@@ -25,7 +25,7 @@ export type {
 
 export type {
   CoefficientModel, DegeneracyThresholds, FlightEnvironment, FlightEvent, FlightForceSettings, FlightSample, FlightSettings,
-  FlightSimulationSettings, ForceAndTorque, GroundContact, GroundContactHandler, GroundContactResponse, SpinDecayModel,
+  FlightSimulationSettings, ForceAndTorque, GroundContact, GroundContactHandler, GroundContactResponse, GroundRolling, SpinDecayModel,
 } from './flight/types';
 export { computeForces } from './flight/forces';
 export { integrateFixedSteps, rk4Step } from './flight/integrator';
@@ -42,7 +42,10 @@ export { ballContactMatrix, bodyContactMatrix, contactMatrix, finiteInertia, KIN
 export type { ImpactInertia } from './contact/k-matrix';
 export { DIAGNOSTIC_RELATIVE_TOLERANCE, pointVelocity, solveContact, solveImpact } from './contact/solver';
 export type { ContactCoefficients } from './contact/solver';
-export { groundBounceHandler, solveGroundBounce } from './ground/bounce';
+export { groundBounceHandler, groundHandler, solveGroundBounce } from './ground/bounce';
+export type { GroundParameters } from './ground/bounce';
+export { advanceRolling, constrainToGround, isStopped, rollingContactVelocity } from './ground/rolling';
+export type { RollingParameters } from './ground/rolling';
 export { buildImpactSetup, footAxes } from './contact/setup';
 
 export { computeFlightMetrics, spinComponents } from './metrics/flight-metrics';

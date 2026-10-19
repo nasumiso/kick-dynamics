@@ -69,12 +69,24 @@ export interface GroundContact {
   readonly state: RigidBodyState;
   /** 飛翔の開始時に h ≤ 0 かつ v_y ≤ 0 だった場合（05 §7.7 の「初期状態」、§8.3） */
   readonly atStart: boolean;
+  /** 飛翔の時間刻み Δt s（転がりへの移行の閾値の条件 e_g v_rest ≥ g Δt / 2 の確認に使う、05 §7.7） */
+  readonly timeStep: number;
 }
 
-/** 接地の処理の結果：飛翔を終える、または処理後の状態から飛翔を続ける。 */
+/**
+ * 地面上の転がり（05 §8.2）。拘束 y = R、v_y = 0 を満たす状態を duration だけ進め、停止を判定する。
+ * 飛翔の積分は、転がりに移った後は空力を使わずにこれで進める（決定、2026-10-19）。
+ */
+export interface GroundRolling {
+  readonly advance: (state: RigidBodyState, duration: number) => RigidBodyState;
+  readonly isStopped: (state: RigidBodyState) => boolean;
+}
+
+/** 接地の処理の結果：飛翔を終える、処理後の状態から飛翔を続ける、または処理後の状態から転がりに移る（05 §8.1）。 */
 export type GroundContactResponse =
   | { readonly kind: 'terminate' }
-  | { readonly kind: 'continue'; readonly state: RigidBodyState };
+  | { readonly kind: 'continue'; readonly state: RigidBodyState }
+  | { readonly kind: 'roll'; readonly state: RigidBodyState; readonly rolling: GroundRolling };
 
 /**
  * 接地の処理（05 §8 のバウンドなど）。M1.2 では既定で最初の接地で終了する。
@@ -88,6 +100,8 @@ export type GroundContactHandler = (contact: GroundContact) => SimResult<GroundC
  *
  * - ground-contact：ステップ内で検出した接地（05 §7.7）。
  * - start-on-ground：飛翔の開始時に h ≤ 0 かつ v_y ≤ 0 で、開始時刻に地面上の処理（§8.3、§8.2）を行ったこと。
+ * - roll-start・stop：転がりの開始と停止（§8.1、§8.2）。転がりに移る接地では、接地のイベント（response: 'roll'）の後に
+ *   roll-start が同じ時刻で続く。
  *   05 §7.7 は開始時刻を接地イベントとして扱わないため、ground-contact とは別の種別にする（決定、2026-10-18）。
  */
 export type FlightEvent =
@@ -108,6 +122,10 @@ export type FlightEvent =
     readonly projectionEnergy: number;
     readonly response: GroundContactResponse['kind'];
   }
+  /** 転がりの開始（05 §8.1）。sampleIndex は転がりに入った状態（y = R、v_y = 0）のサンプル */
+  | { readonly type: 'roll-start'; readonly time: number; readonly sampleIndex: number }
+  /** 停止（05 §8.2）：停止条件を最初に満たしたステップの終了時刻 */
+  | { readonly type: 'stop'; readonly time: number; readonly sampleIndex: number }
   | { readonly type: 'max-time'; readonly time: number; readonly sampleIndex: number };
 
 /** 時刻つきの状態。 */
