@@ -12,6 +12,7 @@ import { solveImpact } from '../contact/solver';
 import type { ImpactResult, ImpactWarning, KickInput } from '../contact/types';
 import { simulateFlight, type Trajectory } from '../flight/trajectory';
 import type { FlightEnvironment, FlightForceSettings, FlightSimulationSettings, GroundContactHandler } from '../flight/types';
+import { spinTableError } from '../flight/forces';
 import { terminateOnGroundContact } from '../flight/ground-events';
 import { groundHandler } from '../ground/bounce';
 import { length, type Vec3 } from '../math/vec3';
@@ -184,6 +185,13 @@ export function simulateKick(input: KickInput, parameters: ParameterSet, setting
   const missing = requiredEntries(parameters, settings).filter((e) => e.value === null).map((e) => e.id);
   if (missing.length > 0) {
     return fail('invalid-parameter', `parameters used by this simulation are undetermined: ${missing.join(', ')}`, { missing });
+  }
+  // 折れ線の表の構造（有限性・先頭の S・単調性）は、各点の範囲より先に確かめる。非有限の値の表は、
+  // 範囲外（invalid-parameter）ではなく無効な係数（invalid-coefficient、05 §7.4）として返すため（IV-03-C2 の D01）。
+  const lift = parameters.liftCoefficient.value;
+  if (settings.forces.magnus && lift !== null && typeof lift !== 'number') {
+    const error = spinTableError(lift);
+    if (error !== null) return fail('invalid-coefficient', `C_L (P-13): ${error}`);
   }
   const ranges = validateRanges(input, parameters, settings);
   if (!ranges.ok) return ranges;
