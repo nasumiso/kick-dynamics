@@ -3,6 +3,7 @@ node_modules/
 
 # Build output (Vite / TypeScript)
 dist/
+dist-types/
 *.tsbuildinfo
 *.local
 

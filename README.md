@@ -99,8 +99,8 @@ KickDynamics は、キックの物理現象を解明・再現することを目�
 | テスト | `npm test`（Vitest、全ワークスペース） |
 | Core の依存境界の検査 | `npm run check:boundary`（VER-S05） |
 | 上記 3 つをまとめて実行 | `npm run check` |
-
-ビルド（`apps/web` の静的ビルド）は T1.4-01 で追記する。
+| Lab の開発サーバー | `npm run dev`（Vite、`http://localhost:5173/`） |
+| Lab の静的ビルド | `npm run build`（成果物は `apps/web/dist/`。相対パスで出力するため、任意の静的ファイルサーバーのパスに置ける） |
 
 ## 開発体制
 

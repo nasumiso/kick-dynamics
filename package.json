@@ -10,7 +10,9 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "check:boundary": "node packages/physics-core/scripts/check-boundary.mjs",
-    "check": "npm run typecheck && npm run check:boundary && npm test"
+    "check": "npm run typecheck && npm run check:boundary && npm test",
+    "build": "npm run build -w @kick-dynamics/web",
+    "dev": "npm run dev -w @kick-dynamics/web"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

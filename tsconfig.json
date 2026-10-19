@@ -15,6 +15,9 @@
   "references": [
     {
       "path": "./packages/physics-core"
+    },
+    {
+      "path": "./apps/web"
     }
   ]
 }
