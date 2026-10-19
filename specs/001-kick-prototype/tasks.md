@@ -1,6 +1,6 @@
 # 001 キックプロトタイプ（Phase 1）タスク
 
-> 状態：Draft（2026-10-19）。T0 は完了。M1.1 は完了。M1.2 は IV-03-R / IV-04-R まで完了（判断保留の事項は IV-03-R / IV-04-R の結果欄に記録）。M1.3 は T1.3-08（転がり・停止）と照合・差異の解決（IV-05-C2 / IV-05-R2）まで完了。
+> 状態：Draft（2026-10-19）。T0 は完了。M1.1 は完了。M1.2 は IV-03-R / IV-04-R まで完了（判断保留の事項は IV-03-R / IV-04-R の結果欄に記録）。M1.3 は T1.3-08（転がり・停止）と照合・差異の解決（IV-05-C2 / IV-05-R2）まで完了。M1.4 を実施中。
 > 計画は [plan.md](plan.md)、受入条件は [spec.md](spec.md)、検証項目と独立検証の手順は [06-validation.md](../../docs/06-validation.md) を参照してください。
 
 ## 使い方
@@ -336,10 +336,11 @@
 
 ## M1.4 ブラウザのキック入力 UI と軌道描画
 
-### [ ] T1.4-01 `apps/web` の雛形
+### [x] T1.4-01 `apps/web` の雛形
 - 担当：Claude Code
 - 依存：T1.1-01, T0-04
 - 完了確認：開発サーバーで空のシーンが表示され、ビルドで静的な成果物が生成される。
+- 結果（2026-10-19）：`apps/web`（パッケージ名 `@kick-dynamics/web`、暫定）に `index.html`、`src/main.ts`、`src/render/scene-view.ts`（`WebGLRenderer` と `setAnimationLoop` による描画だけのループ。物理の時間刻みとは独立）、`vite.config.ts`（`base: './'` で相対パス出力）、`tsconfig.json`（`lib` に DOM を含めるのは Lab だけ）。ADR-0004 で承認済みの `three` 0.186.1、`vite` 8.3.4、`@types/three` 0.186.0 を導入し lockfile で固定。ルートに `npm run dev`・`npm run build` を追加し README に記載。開発サーバーで空のシーン（背景色のみ）が表示されコンソールエラーがないこと（ヘッドレス Chromium のスクリーンショット）と、`npm run build` で `apps/web/dist/` が生成されることを確認。three を含むチャンクが Vite の既定の警告の閾値（500 kB）を超えるため、閾値を 1000 kB に上げた（分割は M1.5 の計測後に検討）。CI へのビルドの追加は、ワークフローの変更になるため行っていない。
 
 ### [ ] T1.4-02 3D シーン（地面・ボール・ライト・カメラ操作）
 - 担当：Claude Code
