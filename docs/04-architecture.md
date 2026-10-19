@@ -193,8 +193,10 @@ type SimResult<T> = { ok: true; value: T } | { ok: false; error: SimError };
   - **`SimulationSettings`**：`maxTime`、`eventTimeTolerance`（$\delta_t$）、`forces`（`gravity`・`drag`・`magnus` の ON/OFF と、回転減衰 `spinDecay` の `'none' | 'linear' | 'torque-coefficient'`）、`ground`。Δt は P-18 を使う。
   - **`ground` の値**：`'stop-at-first-contact'` か `'bounce-and-roll'`。地面の係数が未決定の間も計算できるよう、設定で切り替える（決定、2026-10-19）。
   - **空力係数**：P-12・P-22 は定数を使う。P-13 は定数か、$S$ の折れ線の表（`SpinCoefficientTable`、05 §7.4。素のデータなので境界を越えて渡せる）を使う。関数の係数は、§9 の「境界にコールバックを置かない」方針により、この API では扱わない。$\eta$（P-11）は使わない。
+  - **P-13 の表の検証**：マグヌス力が ON のとき、P-13 の表の構造（05 §7.4）を各点の範囲より先に確かめ、無効なら `invalid-coefficient` を返す（IV-03-C2 の D01）。
   - **警告**：`warnings` は衝突の警告（`ImpactWarning`）を `{ stage: 'impact', code }` として並べたもの。
   - **`computeMetrics`**：軌道のサンプル 0 から打ち出しの値を求める。P-27 が未決定ならスピン成分を `null` とする。
+- 飛翔の初期状態（段階 API の `simulateFlight`・`simulateFlightRun`）：位置・姿勢・速度・角速度の成分がすべて有限でなければ `invalid-input` を返す（決定、2026-10-20、IV-03-C2 の H01）。積分の途中で極端な値により有限でなくなる場合は、これまでどおり対象外とする（`packages/physics-core/AGENTS.md`）。
 - 空力係数を関数で与える場合、関数は $(Re, S)$ を受け取り、有限の値を返す。$C_D$・$C_M$ は非負、$C_L$ の符号は [05 §7.4](05-physics-model.md) の規約に従う（負の $C_L$ も拒否しない。暫定、T1.2-05）。関数が範囲外の値・NaN・無限大を返した場合や、入力が係数の定義域外の場合は、値を補正・切り詰めせずに `SimResult` のエラーとして返す。
 
 ## 7. 物理時間と描画時間

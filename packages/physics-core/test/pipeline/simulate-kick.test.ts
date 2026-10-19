@@ -253,6 +253,16 @@ describe('simulateKick', () => {
       if (!result.ok) expect(result.error.code).toBe('invalid-parameter');
     });
 
+    it.each<[string, [number, number][]]>([
+      ['a NaN coefficient', [[0, Number.NaN]]],
+      ['an infinite coefficient', [[0, 0], [0.25, Number.POSITIVE_INFINITY]]],
+      ['a first spin parameter other than 0', [[0.1, 0]]],
+    ])('rejects a C_L table with %s as invalid-coefficient (05 §7.4, IV-03-C2 D01)', (_, points) => {
+      const result = simulateKick(input, withValue('liftCoefficient', { kind: 'spin-table', points }), settings);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.code).toBe('invalid-coefficient');
+    });
+
     it('checks C_M only when the torque coefficient model is selected', () => {
       const p = withValue('torqueCoefficient', 1.1);
       expect(simulateKick(input, p, settings).ok).toBe(true);

@@ -53,6 +53,12 @@ export function simulateFlightRun(
 ): SimResult<FlightRun> {
   const valid = validate(settings);
   if (!valid.ok) return valid;
+  // 初期状態の成分がすべて有限であることを確かめる（IV-03-C2 の H01、2026-10-20 人間が判断）。
+  // 積分の途中で極端な値により有限でなくなる場合は対象外（packages/physics-core/AGENTS.md）。
+  const { position, orientation, linearVelocity, angularVelocity } = initial;
+  if (![...position, ...orientation, ...linearVelocity, ...angularVelocity].every(Number.isFinite)) {
+    return fail('invalid-input', 'the initial ball state contains a non-finite value');
+  }
   const dt = settings.timeStep;
   const steps = stepsUntil(settings.maxTime, dt);
   const maxIterations = Math.max(0, Math.ceil(Math.log2(dt / settings.eventTimeTolerance)));

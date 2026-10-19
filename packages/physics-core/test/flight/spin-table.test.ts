@@ -65,4 +65,16 @@ describe('spin coefficient table', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('invalid-coefficient');
   });
+
+  it.each<[string, Vec3]>([
+    ['an infinite', [0, 0, Number.POSITIVE_INFINITY]],
+    ['a NaN', [0, 0, Number.NaN]],
+  ])('rejects %s initial angular velocity as invalid-input instead of integrating NaN forces (IV-03-C2 H01)', (_, w) => {
+    const result = simulateFlight(body([10, 5, 0], w), ball, environment, {
+      timeStep: 0.005, maxTime: 1, eventTimeTolerance: 1e-9, thresholds,
+      forces: { ...allOff, magnus: { enabled: true, coefficient: table } },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('invalid-input');
+  });
 });
