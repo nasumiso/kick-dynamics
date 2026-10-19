@@ -44,7 +44,10 @@ function validate(settings: FlightSimulationSettings): SimResult<void> {
   }
   // 折れ線の表の係数は、積分の前に一度だけ確かめる（05 §7.4）。
   const { drag, magnus, spinDecay } = settings.forces;
-  const models: Array<[string, CoefficientModel]> = [['C_D', drag.coefficient], ['C_L', magnus.coefficient]];
+  // 無効にした力項の係数は評価されないため、検証しない（定数・関数のモデルと同じ扱い。PR #12 のレビュー）。
+  const models: Array<[string, CoefficientModel]> = [];
+  if (drag.enabled) models.push(['C_D', drag.coefficient]);
+  if (magnus.enabled) models.push(['C_L', magnus.coefficient]);
   if (spinDecay.kind === 'torque-coefficient') models.push(['C_M', spinDecay.coefficient]);
   for (const [name, model] of models) {
     const error = model.kind === 'spin-table' ? spinTableError(model) : null;

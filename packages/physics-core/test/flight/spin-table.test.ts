@@ -66,6 +66,14 @@ describe('spin coefficient table', () => {
     if (!result.ok) expect(result.error.code).toBe('invalid-coefficient');
   });
 
+  it('does not validate the table of a disabled force term (PR #12 review)', () => {
+    const result = simulateFlight(body([20, 5, 0], [0, 0, 30]), ball, environment, {
+      timeStep: 0.005, maxTime: 0.01, eventTimeTolerance: 1e-9, thresholds,
+      forces: { ...allOff, magnus: { enabled: false, coefficient: { kind: 'spin-table', points: [[0.1, 0]] } } },
+    });
+    expect(result.ok).toBe(true);
+  });
+
   it.each<[string, Vec3]>([
     ['an infinite', [0, 0, Number.POSITIVE_INFINITY]],
     ['a NaN', [0, 0, Number.NaN]],
