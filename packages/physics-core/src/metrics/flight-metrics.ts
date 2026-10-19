@@ -35,8 +35,8 @@ export interface FlightMetrics {
   readonly carry: number | null;
   /** 横ずれ：着地点の z m */
   readonly lateralDeviation: number | null;
-  /** 総距離：転がりを実装するまで null */
-  readonly totalDistance: null;
+  /** 総距離：初期のボール中心と停止位置のボール中心との水平距離 m（05 §9）。停止イベントがなければ（max-time で終了した場合を含む）null */
+  readonly totalDistance: number | null;
 }
 
 export interface MetricsSettings {
@@ -88,6 +88,7 @@ export function computeFlightMetrics(trajectory: Trajectory, settings: MetricsSe
   // 最初の接地：開始時刻の地面上の処理（start-on-ground、05 §7.7 の「初期状態」）は含めない（決定、2026-10-18）。
   const landing = trajectory.events.find((e) => e.type === 'ground-contact');
   const lastIndex = landing ? landing.sampleIndex : trajectory.time.length - 1;
+  const stop = trajectory.events.find((e) => e.type === 'stop');
 
   const t = trajectory.time;
   const p = trajectory.position;
@@ -110,7 +111,7 @@ export function computeFlightMetrics(trajectory: Trajectory, settings: MetricsSe
     spinRate: length(launch.angularVelocity),
     spinComponents: spinComponents(v, launch.angularVelocity, settings.verticalLaunchThreshold),
     maxHeight,
-    totalDistance: null,
+    totalDistance: stop ? horizontalDistance(stateAt(trajectory, stop.sampleIndex).position, launch.position) : null,
   };
   if (!landing) {
     return { ...base, flightTime: null, landingPoint: null, carry: null, lateralDeviation: null };
@@ -122,7 +123,11 @@ export function computeFlightMetrics(trajectory: Trajectory, settings: MetricsSe
     ...base,
     flightTime: landing.time - t[0]!,
     landingPoint: [x, z],
-    carry: Math.hypot(x - launch.position[0], z - launch.position[2]),
+    carry: horizontalDistance(at, launch.position),
     lateralDeviation: z,
   };
+}
+
+function horizontalDistance(a: Vec3, b: Vec3): number {
+  return Math.hypot(a[0] - b[0], a[2] - b[2]);
 }

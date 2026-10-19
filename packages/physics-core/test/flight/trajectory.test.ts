@@ -63,7 +63,7 @@ describe('Trajectory output format', () => {
         expect(t.events.length).toBeGreaterThan(0);
         for (const event of t.events) {
           expect(t.time[event.sampleIndex]).toBe(event.time);
-          if (event.type !== 'max-time' && event.response === 'continue') {
+          if ((event.type === 'ground-contact' || event.type === 'start-on-ground') && event.response !== 'terminate') {
             expect(t.time[event.sampleIndex + 1]).toBe(event.time);
             expect(stateAt(t, event.sampleIndex + 1).position[1]).toBe(ball.radius);
           }
