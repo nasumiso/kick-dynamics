@@ -354,10 +354,11 @@
 - 完了確認：Core の型 → Three.js の型 → Core の型の往復で値が一致するテストが合格する。
 - 結果（2026-10-19）：`apps/web/src/adapters/three-adapter.ts`（Vec3・Quat・Mat3 と `Vector3`・`Quaternion`・`Matrix3` の相互変換）。座標系は同じ（ADR-0005 と Three.js はどちらも y 上向きの右手系）なので成分をそのまま対応させ、Mat3 だけ行優先 ↔ 列優先を入れ替える。`apps/web/test/adapters/three-adapter.test.ts` で往復の完全一致に加え、同じ値が同じ意味を持つこと（ベクトルの回転 $q\,\mathbf v\,q^{*}$、積の順 $q \otimes r$、四元数からの回転行列、行列とベクトルの積、$\hat{\mathbf x}\times\hat{\mathbf y} = \hat{\mathbf z}$ と上向き $+y$）を Core と Three.js の両方で計算して確かめた（TOL-A）。
 
-### [ ] T1.4-04 表示単位の変換
+### [x] T1.4-04 表示単位の変換
 - 担当：Claude Code
 - 依存：T1.4-01
 - 完了確認：VER-M05 のテストが合格する。
+- 結果（2026-10-19）：`apps/web/src/units/units.ts`（m/s ↔ km/h、rad/s ↔ rpm、rad ↔ 度。換算係数は定義どおり）。`apps/web/test/units/units.test.ts` で VER-M05（往復の一致と、定義から分かる値との一致、TOL-A）に合格。
 
 ### [ ] T1.4-05 接触点のピッキング
 - 担当：Claude Code
