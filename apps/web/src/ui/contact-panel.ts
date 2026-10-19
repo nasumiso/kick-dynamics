@@ -20,8 +20,8 @@ export function createContactPanel(): ContactPanel {
     const angles = directionToAngles(d)!;
     value.replaceChildren(
       element('dt', {}, 'd'), element('dd', { 'data-testid': 'contact-d' }, `(${d.map((x) => formatNumber(x, 3)).join(', ')})`),
-      element('dt', {}, '方位角 ψ'), element('dd', { 'data-testid': 'contact-azimuth' }, `${formatNumber(radToDeg(angles.azimuth), 1)}°`),
-      element('dt', {}, '仰角 θ'), element('dd', { 'data-testid': 'contact-elevation' }, `${formatNumber(radToDeg(angles.elevation), 1)}°`),
+      element('dt', {}, 'd の方位角 ψ'), element('dd', { 'data-testid': 'contact-azimuth' }, `${formatNumber(radToDeg(angles.azimuth), 1)}°`),
+      element('dt', {}, 'd の仰角 θ'), element('dd', { 'data-testid': 'contact-elevation' }, `${formatNumber(radToDeg(angles.elevation), 1)}°`),
     );
   };
   show(null);

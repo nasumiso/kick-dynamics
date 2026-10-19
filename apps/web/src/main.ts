@@ -12,6 +12,7 @@ import { createContactMarker, installContactPicker } from './render/contact-pick
 import { addField } from './render/field';
 import { createFootMesh } from './render/foot-mesh';
 import { createSceneView } from './render/scene-view';
+import { createVelocityArrow, velocityArrowGeometry } from './render/velocity-arrow';
 import { createContactPanel } from './ui/contact-panel';
 import { createKickPanel } from './ui/kick-panel';
 import { createParameterPanel } from './ui/parameter-panel';
@@ -35,6 +36,8 @@ const marker = createContactMarker(radius);
 ball.add(marker);
 const foot = createFootMesh(WORKING_FOOT);
 view.scene.add(foot);
+const velocityArrow = createVelocityArrow();
+view.scene.add(velocityArrow.object);
 
 const contactPanel = createContactPanel();
 panel.append(contactPanel.root);
@@ -60,6 +63,8 @@ function render(): void {
   const atRest = playStart === null;
   toThreeVector(kick.contactDirection, marker.position).multiplyScalar(radius);
   marker.visible = atRest;
+  // 足の速度 v_A^p の矢印（入力の確認用）。ボールは原点で静止している前提で接触点を求める。
+  velocityArrow.update(atRest ? velocityArrowGeometry([0, radius, 0], radius, kick.contactDirection, input.footContactPointVelocity) : null);
   const pose = footPose(input, WORKING_GEOMETRY);
   foot.visible = atRest && pose.ok;
   if (pose.ok) {
@@ -101,6 +106,7 @@ const playback = createPlaybackPanel(
     line.visible = true;
     foot.visible = false;
     marker.visible = false;
+    velocityArrow.update(null);
   },
   () => {
     playStart = null;
