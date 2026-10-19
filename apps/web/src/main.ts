@@ -40,6 +40,8 @@ const contactPanel = createContactPanel();
 panel.append(contactPanel.root);
 
 let kick: KickState = INITIAL_KICK_STATE;
+/** スタブ軌道の再生の開始時刻。null 以外の間（再生後も「初期位置に戻す」まで）は、ボールが入力時の位置にない。 */
+let playStart: number | null = null;
 const kickPanel = createKickPanel(toFormValues(kick), (values) => {
   kick = applyFormValues(kick, values);
   render();
@@ -49,15 +51,17 @@ panel.append(createParameterPanel(STUB_PARAMETER_SET));
 
 /** 入力の状態を 3D ビューとパネルに反映する。 */
 function render(): void {
-  toThreeVector(kick.contactDirection, marker.position).multiplyScalar(radius);
-  marker.visible = true;
   contactPanel.show(kick.contactDirection);
   // 足の配置（AC-03）：接触面の法線が接触法線と一致するように置く。
   const input = toKickInput(kick);
   const status = inputStatus(input, WORKING_GEOMETRY);
   kickPanel.showStatus(status.message, status.ok);
+  // 再生中・再生後は、接触点と足を入力時のボール（原点で静止）を前提に置けないため表示しない。
+  const atRest = playStart === null;
+  toThreeVector(kick.contactDirection, marker.position).multiplyScalar(radius);
+  marker.visible = atRest;
   const pose = footPose(input, WORKING_GEOMETRY);
-  foot.visible = pose.ok;
+  foot.visible = atRest && pose.ok;
   if (pose.ok) {
     toThreeVector(pose.value.position, foot.position);
     toThreeQuaternion(pose.value.orientation, foot.quaternion);
@@ -65,6 +69,8 @@ function render(): void {
 }
 
 installContactPicker(view.renderer.domElement, view.camera, ball, (d) => {
+  // 接触点はボールが初期位置で静止しているときだけ指定できる（再生後は「初期位置に戻す」で戻る）。
+  if (playStart !== null) return;
   kick = { ...kick, contactDirection: d };
   render();
 });
@@ -78,7 +84,6 @@ const duration = trajectory.time[trajectory.time.length - 1]!;
 const line = createTrajectoryLine(trajectory);
 line.visible = false;
 view.scene.add(line);
-let playStart: number | null = null;
 // ボールを動かすときは、カメラも同じだけ平行移動する（視点の向きと距離はユーザーの操作のまま）。
 const previous = new THREE.Vector3();
 function followBall(move: () => void): void {

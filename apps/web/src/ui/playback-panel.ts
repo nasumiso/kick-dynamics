@@ -13,7 +13,7 @@ export function createPlaybackPanel(onPlay: () => void, onReset: () => void): Pl
   play.addEventListener('click', onPlay);
   reset.addEventListener('click', onReset);
   const root = section('軌道（スタブ）',
-    element('p', { class: 'hint' }, '描画の確認用の固定の軌道です（重力のみの真空中、最初の接地まで）。キック入力からの計算は M1.5 で接続します。'),
+    element('p', { class: 'hint' }, '描画の確認用の固定の軌道です（重力のみの真空中、最初の接地まで）。キック入力からの計算は M1.5 で接続します。再生後に接触点を指定するときは「初期位置に戻す」を押してください。'),
     element('div', { class: 'buttons' }, play, reset), time);
   return { root, showTime: (t, duration) => { time.textContent = `t = ${formatNumber(t, 2)} s / ${formatNumber(duration, 2)} s`; } };
 }
