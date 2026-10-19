@@ -12,8 +12,8 @@ export const FOOT_FACE_COLORS = {
   toe: 0xe8590c, // +x_b：つま先
 } as const;
 
-const LABEL_HEIGHT = 0.022;
-const LABEL_GAP = 0.025;
+const LABEL_HEIGHT = 0.04;
+const LABEL_GAP = 0.035;
 
 export function createFootMesh(foot: FootParams): THREE.Mesh {
   const [lx, ly, lz] = foot.shape.dimensions;
@@ -28,11 +28,11 @@ export function createFootMesh(foot: FootParams): THREE.Mesh {
   mesh.castShadow = true;
 
   // ラベルは物体座標で各面の外側に置く（足と一緒に回る）。接触面のラベルはボールと重ならないよう、つま先寄りの縁に置く。
-  const toe = createTextLabel('つま先', LABEL_HEIGHT);
+  const toe = createTextLabel('Toe', LABEL_HEIGHT);
   toe.position.set(lx / 2 + LABEL_GAP, 0, 0);
-  const instep = createTextLabel('甲（接触面）', LABEL_HEIGHT);
+  const instep = createTextLabel('Instep (contact)', LABEL_HEIGHT);
   instep.position.set(lx / 2, ly / 2 + LABEL_GAP, lz / 2);
-  const sole = createTextLabel('裏', LABEL_HEIGHT);
+  const sole = createTextLabel('Sole', LABEL_HEIGHT);
   sole.position.set(0, 0, -lz / 2 - LABEL_GAP);
   mesh.add(toe, instep, sole);
   return mesh;
