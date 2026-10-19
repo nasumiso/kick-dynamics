@@ -454,6 +454,9 @@
     - P2：P-28 が使われず、ソルバーの固定値で判定していた。`ContactCoefficients.diagnosticRelativeTolerance` として必須で渡すようにし、固定値 `DIAGNOSTIC_RELATIVE_TOLERANCE` を削除した。
     - P2：使わない力項の閾値まで要求していた。対応する力項が ON のときだけ要求するようにした。
     - テストは `test/pipeline/simulate-kick.test.ts` に追加した。04 §6・05 §10.2・§10.3 を更新した。
+  - **PR #12 の再レビュー対応（2026-10-20、2 件、修正）**：
+    - P2：無効にした力項の係数表まで、飛翔の入口で検証していた。有効な力項の係数だけを検証する。
+    - P2：無限質量の足でも P-04・P-05 を必須にしていた。有限質量の足のときだけ要求する。
 
 ### [x] T1.5-02 UI と Core の結線
 - 担当：Claude Code

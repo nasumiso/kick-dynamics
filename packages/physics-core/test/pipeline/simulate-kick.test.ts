@@ -238,6 +238,23 @@ describe('simulateKick', () => {
       if (!result.ok) expect(result.error.code).toBe('invalid-parameter');
     });
 
+    it('does not require the foot mass and inertia for the kinematic wall (PR #12 review)', () => {
+      const p: ParameterSet = {
+        ...parameters,
+        footMass: { ...parameters.footMass, value: null },
+        footInertiaBody: { ...parameters.footInertiaBody, value: null },
+      };
+      const wall = simulateKick({ ...input, footModel: 'kinematic-wall' }, p, settings);
+      if (!wall.ok) throw new Error(wall.error.message);
+      // 足の質量・慣性を使わないので、値があってもなくても結果は同じ。
+      const withMass = simulateKick({ ...input, footModel: 'kinematic-wall' }, parameters, settings);
+      if (!withMass.ok) throw new Error(withMass.error.message);
+      expect(wall.value.impact).toEqual(withMass.value.impact);
+      const finite = simulateKick(input, p, settings);
+      expect(finite.ok).toBe(false);
+      if (!finite.ok) expect(finite.error.details?.['missing']).toEqual(['P-04', 'P-05']);
+    });
+
     it('requires the ground parameters for bounce-and-roll', () => {
       const result = simulateKick(input, withValue('restThresholds', null), settings);
       expect(result.ok).toBe(false);

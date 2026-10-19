@@ -6,6 +6,7 @@
 // - 空力係数は ParameterSet の値（P-12・P-22 は定数、P-13 は定数か S の折れ線、05 §7.4）を使う。関数の係数は、
 //   境界にコールバックを置かない方針（04 §9）のため、この API では扱わない（段階 API の simulateFlight では使える）。
 // - Core は既定値を持たない。計算に使うパラメータの値が未決定（null）なら、その ID をまとめて invalid-parameter で返す。
+import { boxInertia } from '../bodies/dynamics';
 import type { BallParams, FootParams } from '../bodies/types';
 import { buildImpactSetup } from '../contact/setup';
 import { solveImpact } from '../contact/solver';
@@ -83,13 +84,17 @@ function usesAero(settings: SimulationSettings): boolean {
  */
 const UNUSED_THRESHOLD = 1;
 
+/** 無限質量の足（kinematic-wall）で、未使用の足の質量の代わりに渡す値 kg。衝突の計算には使われない。 */
+const UNUSED_FOOT_MASS = 1;
+
 /** 計算に使うパラメータ（入力と設定によって変わる）。 */
-function requiredEntries(parameters: ParameterSet, settings: SimulationSettings): ParameterEntry<unknown>[] {
+function requiredEntries(parameters: ParameterSet, input: KickInput, settings: SimulationSettings): ParameterEntry<unknown>[] {
   const p = parameters;
   const entries: ParameterEntry<unknown>[] = [
     p.ballMass, p.ballRadius, p.ballInertiaCoefficient,
-    // 有限質量の足でなくても、接触幾何（足の配置）に P-04〜P-06 を使う。
-    p.footMass, p.footInertiaBody, p.footDimensions,
+    // 接触幾何（足の配置）には P-06 だけを使う。P-04・P-05 は有限質量の足の衝突だけに使う（PR #12 のレビュー）。
+    p.footDimensions,
+    ...(input.footModel === 'finite-mass' ? [p.footMass, p.footInertiaBody] : []),
     p.restitution, p.friction, p.gravity, p.timeStep, p.wind,
     p.tangentialSpeedThreshold, p.rollReferenceThreshold, p.diagnosticRelativeTolerance,
   ];
@@ -136,12 +141,14 @@ function validateRanges(input: KickInput, parameters: ParameterSet, settings: Si
   const dims: Vec3 = v(p.footDimensions);
   const dt = v(p.timeStep);
   const checks: RangeCheck[] = [
+    ...(input.footModel === 'finite-mass'
+      ? [{ name: 'foot mass', value: v(p.footMass), range: r.footMass, code: 'invalid-parameter', id: 'P-04' } satisfies RangeCheck]
+      : []),
     { name: 'foot contact point speed |v_A^p|', value: length(input.footContactPointVelocity), range: r.footContactPointSpeed, code: 'invalid-input' },
     { name: 'foot angular speed |ω_A|', value: length(input.footAngularVelocity), range: r.footAngularSpeed, code: 'invalid-input' },
     { name: 'ball mass', value: v(p.ballMass), range: r.ballMass, code: 'invalid-parameter', id: 'P-01' },
     { name: 'ball radius', value: v(p.ballRadius), range: r.ballRadius, code: 'invalid-parameter', id: 'P-02' },
     { name: 'ball inertia coefficient κ', value: v(p.ballInertiaCoefficient), range: r.ballInertiaCoefficient, code: 'invalid-parameter', id: 'P-03' },
-    { name: 'foot mass', value: v(p.footMass), range: r.footMass, code: 'invalid-parameter', id: 'P-04' },
     ...dims.map((value, i): RangeCheck => ({ name: `foot dimension L_${'xyz'[i]}`, value, range: r.footDimension, code: 'invalid-parameter', id: 'P-06' })),
     { name: 'restitution e', value: v(p.restitution), range: r.restitution, code: 'invalid-parameter', id: 'P-07' },
     { name: 'friction μ', value: v(p.friction), range: r.friction, code: 'invalid-parameter', id: 'P-08' },
@@ -195,7 +202,7 @@ function flightForces(parameters: ParameterSet, settings: SimulationSettings): F
 
 /** キック 1 回分を、衝突から終了条件まで一括で計算する（04 §6）。 */
 export function simulateKick(input: KickInput, parameters: ParameterSet, settings: SimulationSettings): SimResult<KickSimulationResult> {
-  const missing = requiredEntries(parameters, settings).filter((e) => e.value === null).map((e) => e.id);
+  const missing = requiredEntries(parameters, input, settings).filter((e) => e.value === null).map((e) => e.id);
   if (missing.length > 0) {
     return fail('invalid-parameter', `parameters used by this simulation are undetermined: ${missing.join(', ')}`, { missing });
   }
@@ -216,7 +223,11 @@ export function simulateKick(input: KickInput, parameters: ParameterSet, setting
 
   const p = parameters;
   const ball: BallParams = { mass: v(p.ballMass), radius: v(p.ballRadius), inertiaCoefficient: v(p.ballInertiaCoefficient) };
-  const foot: FootParams = { mass: v(p.footMass), inertiaBody: v(p.footInertiaBody), shape: { kind: 'box', dimensions: v(p.footDimensions) } };
+  const dimensions = v(p.footDimensions);
+  // 無限質量の足では質量と慣性を使わない。接触幾何の入力検証（validateFoot）を通すためだけの値を渡す。
+  const foot: FootParams = input.footModel === 'finite-mass'
+    ? { mass: v(p.footMass), inertiaBody: v(p.footInertiaBody), shape: { kind: 'box', dimensions } }
+    : { mass: UNUSED_FOOT_MASS, inertiaBody: boxInertia(UNUSED_FOOT_MASS, dimensions), shape: { kind: 'box', dimensions } };
 
   const setup = buildImpactSetup(input, { ball, foot, rollReferenceThreshold: v(p.rollReferenceThreshold) });
   if (!setup.ok) return setup;
