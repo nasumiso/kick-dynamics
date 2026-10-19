@@ -348,10 +348,11 @@
 - 完了確認：AC-01（足モデルは T1.4-06 で追加）。
 - 結果（2026-10-19）：`src/render/field.ts`（$y = 0$ の地面、1 m と 10 m の格子、座標軸の目印、半球光と影を落とす平行光）、`src/render/ball-mesh.ts`（回転が見えるよう 8 象限で白黒に塗り分けた球。模様は表示だけ）、`scene-view.ts` に `OrbitControls`（`three` に含まれる。追加の依存なし）を加え、ドラッグで回転・ホイールでズーム、地面の下には回り込まない。ヘッドレス Chromium でドラッグとホイールによる視点の変化を確認（AC-01 のうち足モデル以外）。**仮置き**：表示用のボール半径 0.11 m（P-02 は採用値が未決定。外周 0.68–0.70 m から換算した 0.108–0.111 m の中ほど）。T1.4-08 のパラメータセットのスタブで置き換える。
 
-### [ ] T1.4-03 Core ↔ Three.js のアダプタ
+### [x] T1.4-03 Core ↔ Three.js のアダプタ
 - 担当：Claude Code
 - 依存：T1.4-01, T1.1-07
 - 完了確認：Core の型 → Three.js の型 → Core の型の往復で値が一致するテストが合格する。
+- 結果（2026-10-19）：`apps/web/src/adapters/three-adapter.ts`（Vec3・Quat・Mat3 と `Vector3`・`Quaternion`・`Matrix3` の相互変換）。座標系は同じ（ADR-0005 と Three.js はどちらも y 上向きの右手系）なので成分をそのまま対応させ、Mat3 だけ行優先 ↔ 列優先を入れ替える。`apps/web/test/adapters/three-adapter.test.ts` で往復の完全一致に加え、同じ値が同じ意味を持つこと（ベクトルの回転 $q\,\mathbf v\,q^{*}$、積の順 $q \otimes r$、四元数からの回転行列、行列とベクトルの積、$\hat{\mathbf x}\times\hat{\mathbf y} = \hat{\mathbf z}$ と上向き $+y$）を Core と Three.js の両方で計算して確かめた（TOL-A）。
 
 ### [ ] T1.4-04 表示単位の変換
 - 担当：Claude Code
