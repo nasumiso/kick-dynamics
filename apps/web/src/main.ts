@@ -79,9 +79,19 @@ const line = createTrajectoryLine(trajectory);
 line.visible = false;
 view.scene.add(line);
 let playStart: number | null = null;
+// ボールを動かすときは、カメラも同じだけ平行移動する（視点の向きと距離はユーザーの操作のまま）。
+const previous = new THREE.Vector3();
+function followBall(move: () => void): void {
+  previous.copy(ball.position);
+  move();
+  const delta = ball.position.clone().sub(previous);
+  view.camera.position.add(delta);
+  view.controls.target.add(delta);
+}
 const playback = createPlaybackPanel(
   () => {
-    applyTrajectoryPose(ball, trajectory, 0);
+    // 前回の再生の着地点などから開始位置へ移るときも、カメラを同じだけ動かす。
+    followBall(() => applyTrajectoryPose(ball, trajectory, 0));
     playStart = performance.now();
     line.visible = true;
     foot.visible = false;
@@ -90,10 +100,7 @@ const playback = createPlaybackPanel(
   () => {
     playStart = null;
     line.visible = false;
-    const back = new THREE.Vector3(0, radius, 0).sub(ball.position);
-    view.camera.position.add(back);
-    view.controls.target.add(back);
-    ball.position.set(0, radius, 0);
+    followBall(() => ball.position.set(0, radius, 0));
     ball.quaternion.identity();
     playback.showTime(0, duration);
     render();
@@ -101,15 +108,9 @@ const playback = createPlaybackPanel(
 );
 panel.insertBefore(playback.root, panel.lastElementChild);
 playback.showTime(0, duration);
-// 再生中はカメラをボールと一緒に平行移動する（視点の向きと距離はユーザーの操作のまま）。
-const previous = new THREE.Vector3();
 view.onFrame(() => {
   if (playStart === null) return;
   const t = Math.min((performance.now() - playStart) / 1000, duration);
-  previous.copy(ball.position);
-  applyTrajectoryPose(ball, trajectory, t);
-  const delta = ball.position.clone().sub(previous);
-  view.camera.position.add(delta);
-  view.controls.target.add(delta);
+  followBall(() => applyTrajectoryPose(ball, trajectory, t));
   playback.showTime(t, duration);
 });
