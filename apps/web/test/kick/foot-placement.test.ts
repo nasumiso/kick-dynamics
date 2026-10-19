@@ -1,6 +1,6 @@
 // T1.4-06：足モデルの配置（AC-03 の自動確認は Core の VER-C17）。ここでは、配置の結果を Three.js の物体に
 // 与えたとき、接触面（+z_b 面）上の点 (s_x, s_y, L_z/2) が接触点に、+z_b 軸が接触法線 n に重なることを確かめる。
-import type { Vec3 } from '@kick-dynamics/physics-core';
+import { quat, type Vec3 } from '@kick-dynamics/physics-core';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { fromThreeVector, toThreeQuaternion, toThreeVector } from '../../src/adapters/three-adapter';
@@ -39,5 +39,17 @@ describe('foot placement shown in Three.js (AC-03)', () => {
   it('places the foot even when the foot velocity is not approaching the ball', () => {
     const input = toKickInput({ ...INITIAL_KICK_STATE, footAzimuth: Math.PI }); // 後ろ向きに動く足
     expect(footPose(input, WORKING_GEOMETRY).ok).toBe(true);
+  });
+});
+
+describe('initial foot pose with the display-only anatomical mapping (05 §5.2)', () => {
+  it('points the toe (+x_b) down and faces the instep (+z_b) towards the ball at the initial input', () => {
+    const pose = footPose(toKickInput(INITIAL_KICK_STATE), WORKING_GEOMETRY);
+    expect(pose.ok).toBe(true);
+    if (!pose.ok) return;
+    const toe = quat.rotate(pose.value.orientation, [1, 0, 0]);
+    const instep = quat.rotate(pose.value.orientation, [0, 0, 1]);
+    [0, -1, 0].forEach((x, i) => expect(Math.abs(toe[i]! - x)).toBeLessThanOrEqual(1e-12));
+    [1, 0, 0].forEach((x, i) => expect(Math.abs(instep[i]! - x)).toBeLessThanOrEqual(1e-12));
   });
 });

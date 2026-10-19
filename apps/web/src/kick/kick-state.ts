@@ -36,7 +36,7 @@ export const INITIAL_KICK_STATE: KickState = {
   footSpeed: 20,
   footAzimuth: 0,
   footElevation: degToRad(10),
-  footRoll: 0,
+  footRoll: degToRad(-90), // ボールの真後ろからの接触で、つま先（+x_b、表示上の仮の対応）が下を向く
   footContactLocation: [0, 0],
   footAngularVelocity: [0, 0, 0],
   footModel: 'finite-mass',
