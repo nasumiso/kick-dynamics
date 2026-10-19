@@ -38,7 +38,7 @@ export interface ImpactSetup {
   readonly contactNormal: Vec3;
 }
 
-/** 衝突の計算に使う物性と係数（05 §10.2 の P-01〜P-08、P-25 の値）。 */
+/** 衝突の計算に使う物性と係数（05 §10.2 の P-01〜P-08、P-25、P-28 の値）。 */
 export interface ContactParameters {
   readonly ball: BallParams;
   readonly foot: FootParams;
@@ -48,6 +48,8 @@ export interface ContactParameters {
   readonly friction: number;
   /** ε_t：接線速度がほぼ 0 とみなす閾値 m/s（05 §6.8、P-25） */
   readonly tangentialSpeedThreshold: number;
+  /** τ_diag：衝突診断の警告の相対的な判定幅（05 §6.8 の手順 5、P-28）。正の有限値 */
+  readonly diagnosticRelativeTolerance: number;
 }
 
 /** 衝突終了時の状態のラベル（05 §6.8。衝突中ずっとその状態だったことは意味しない）。 */

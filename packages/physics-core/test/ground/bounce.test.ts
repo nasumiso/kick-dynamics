@@ -12,7 +12,7 @@ import { allOff, environment, thresholds } from '../flight/fixtures';
 import { ball } from '../contact/fixtures';
 
 const EPS_T = 1e-9; // P-25（仮置き）
-const coefficients = (eg: number, mug: number) => ({ restitution: eg, friction: mug, tangentialSpeedThreshold: EPS_T });
+const coefficients = (eg: number, mug: number) => ({ restitution: eg, friction: mug, tangentialSpeedThreshold: EPS_T, diagnosticRelativeTolerance: 1e-9 });
 
 function onGround(v: Vec3, w: Vec3 = [0, 0, 0]): RigidBodyState {
   return { position: [1.5, ball.radius, -0.7], orientation: IDENTITY_QUAT, linearVelocity: v, angularVelocity: w };

@@ -193,6 +193,11 @@ type SimResult<T> = { ok: true; value: T } | { ok: false; error: SimError };
   - **`SimulationSettings`**：`maxTime`、`eventTimeTolerance`（$\delta_t$）、`forces`（`gravity`・`drag`・`magnus` の ON/OFF と、回転減衰 `spinDecay` の `'none' | 'linear' | 'torque-coefficient'`）、`ground`。Δt は P-18 を使う。
   - **`ground` の値**：`'stop-at-first-contact'` か `'bounce-and-roll'`。地面の係数が未決定の間も計算できるよう、設定で切り替える（決定、2026-10-19）。
   - **空力係数**：P-12・P-22 は定数を使う。P-13 は定数か、$S$ の折れ線の表（`SpinCoefficientTable`、05 §7.4。素のデータなので境界を越えて渡せる）を使う。関数の係数は、§9 の「境界にコールバックを置かない」方針により、この API では扱わない。$\eta$（P-11）は使わない。
+  - **閾値の要求と検証**（PR #12 のレビュー、2026-10-20）：
+    - 縮退判定の閾値は、対応する力項が ON のときだけ要求する。P-21 はマグヌス力、P-23 は空力のいずれか、P-24 は §7.5 (c) の回転減衰のとき。OFF の閾値には、結果に影響しない正の有限値を渡す。
+    - 飛翔の入口では、閾値が正の有限値であることを確かめる（段階 API でも同じ）。
+    - P-27 は要求しない。未決定ならスピン成分を `null` とし、値があれば正の有限値に限る。
+    - P-28 は衝突の係数 `diagnosticRelativeTolerance` として必須で渡す。ソルバーは固定値を持たない。
   - **P-13 の表の検証**：マグヌス力が ON のとき、P-13 の表の構造（05 §7.4）を各点の範囲より先に確かめ、無効なら `invalid-coefficient` を返す（IV-03-C2 の D01）。
   - **警告**：`warnings` は衝突の警告（`ImpactWarning`）を `{ stage: 'impact', code }` として並べたもの。
   - **`computeMetrics`**：軌道のサンプル 0 から打ち出しの値を求める。P-27 が未決定ならスピン成分を `null` とする。

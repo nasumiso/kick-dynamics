@@ -40,7 +40,7 @@ export type {
 } from './contact/types';
 export { ballContactMatrix, bodyContactMatrix, contactMatrix, finiteInertia, KINEMATIC_INERTIA } from './contact/k-matrix';
 export type { ImpactInertia } from './contact/k-matrix';
-export { DIAGNOSTIC_RELATIVE_TOLERANCE, pointVelocity, solveContact, solveImpact } from './contact/solver';
+export { pointVelocity, solveContact, solveImpact } from './contact/solver';
 export type { ContactCoefficients } from './contact/solver';
 export { groundBounceHandler, groundHandler, solveGroundBounce } from './ground/bounce';
 export type { GroundParameters } from './ground/bounce';

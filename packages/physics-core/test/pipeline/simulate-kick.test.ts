@@ -116,7 +116,7 @@ describe('simulateKick', () => {
     const impact = solveImpact(setup.value, {
       ball: { mass: 0.43, radius: 0.11, inertiaCoefficient: 2 / 3 },
       foot: { mass: 1.2, inertiaBody: boxInertia(1.2, FOOT_DIMENSIONS), shape: { kind: 'box', dimensions: FOOT_DIMENSIONS } },
-      restitution: 0.5, friction: 0.5, tangentialSpeedThreshold: 1e-9,
+      restitution: 0.5, friction: 0.5, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9,
     }, 'finite-mass');
     if (!impact.ok) throw new Error(impact.error.message);
     expect(result.impact).toEqual(impact.value);
@@ -189,11 +189,53 @@ describe('simulateKick', () => {
         groundFriction: { ...parameters.groundFriction, value: null },
         rollingResistance: { ...parameters.rollingResistance, value: null },
         restThresholds: { ...parameters.restThresholds, value: null },
+        magnusThreshold: { ...parameters.magnusThreshold, value: null },
+        zeroSpeedThreshold: { ...parameters.zeroSpeedThreshold, value: null },
+        zeroSpinThreshold: { ...parameters.zeroSpinThreshold, value: null },
       };
       const s: SimulationSettings = {
         ...settings, forces: { gravity: true, drag: false, magnus: false, spinDecay: 'none' }, ground: 'stop-at-first-contact',
       };
       expect(simulateKick(input, p, s).ok).toBe(true);
+    });
+
+    it('requires each degeneracy threshold only with its force term (PR #12 review)', () => {
+      const cases: Array<[keyof ParameterSet, SimulationSettings['forces'], ParameterId]> = [
+        ['magnusThreshold', { gravity: true, drag: false, magnus: true, spinDecay: 'none' }, 'P-21'],
+        ['zeroSpeedThreshold', { gravity: true, drag: true, magnus: false, spinDecay: 'none' }, 'P-23'],
+        ['zeroSpinThreshold', { gravity: true, drag: false, magnus: false, spinDecay: 'torque-coefficient' }, 'P-24'],
+      ];
+      for (const [key, forces, id] of cases) {
+        const result = simulateKick(input, withValue(key, null), { ...settings, forces });
+        expect(result.ok).toBe(false);
+        if (!result.ok) expect(result.error.details?.['missing']).toEqual([id]);
+      }
+    });
+
+    it('treats an undetermined P-27 as undefined spin components instead of an error', () => {
+      const result = simulateKick(input, withValue('verticalLaunchThreshold', null), settings);
+      if (!result.ok) throw new Error(result.error.message);
+      expect(result.value.metrics.spinComponents).toBeNull();
+      expect(result.value.metrics.launchSpeed).toBeGreaterThan(0);
+    });
+
+    it('requires P-28 and passes it to the impact diagnostics', () => {
+      const missing = simulateKick(input, withValue('diagnosticRelativeTolerance', null), settings);
+      expect(missing.ok).toBe(false);
+      if (!missing.ok) expect(missing.error.details?.['missing']).toEqual(['P-28']);
+      const invalid = simulateKick(input, withValue('diagnosticRelativeTolerance', Number.NaN), settings);
+      expect(invalid.ok).toBe(false);
+      if (!invalid.ok) expect(invalid.error.code).toBe('invalid-parameter');
+    });
+
+    it.each<[keyof ParameterSet, number]>([
+      ['magnusThreshold', Number.NaN], ['zeroSpeedThreshold', -1e-6], ['zeroSpinThreshold', Number.POSITIVE_INFINITY],
+      ['verticalLaunchThreshold', Number.NaN],
+    ])('rejects %s = %s as invalid-parameter (PR #12 review)', (key, value) => {
+      const s: SimulationSettings = { ...settings, forces: { ...settings.forces, spinDecay: 'torque-coefficient' } };
+      const result = simulateKick(input, withValue(key, value), s);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.code).toBe('invalid-parameter');
     });
 
     it('requires the ground parameters for bounce-and-roll', () => {

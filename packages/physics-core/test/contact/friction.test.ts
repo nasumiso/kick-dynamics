@@ -132,7 +132,7 @@ describe('VER-C09 unsolvable configuration (05 §6.8, example from IV-01-C)', ()
       contactNormal: [0, 0, 1],
     };
     const r = solveImpact(setup, {
-      ball: unitBall, foot: thinFoot, restitution: 1, friction: (10 * Math.sqrt(26)) / 3, tangentialSpeedThreshold: 1e-9,
+      ball: unitBall, foot: thinFoot, restitution: 1, friction: (10 * Math.sqrt(26)) / 3, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9,
     }, 'finite-mass');
     expect(r.ok).toBe(false);
     if (r.ok) return;
