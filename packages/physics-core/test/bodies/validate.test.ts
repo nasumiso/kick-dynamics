@@ -29,7 +29,7 @@ describe('validation of physical parameters', () => {
       expect(!impact.ok && impact.error.code).toBe('invalid-parameter');
       const ground = solveGroundBounce(
         { position: [0, 0.11, 0], orientation: IDENTITY_QUAT, linearVelocity: [1, -3, 0], angularVelocity: [0, 0, 0] }, b,
-        { restitution: 0.5, friction: 0.3, tangentialSpeedThreshold: 1e-9 },
+        { restitution: 0.5, friction: 0.3, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9 },
       );
       expect(!ground.ok && ground.error.code).toBe('invalid-parameter');
       const built = buildImpactSetup(kick, { ball: b, foot, rollReferenceThreshold: 1e-6 });
@@ -80,7 +80,7 @@ describe('validation of extreme but finite parameters (PR #7 review)', () => {
 });
 
 describe('solveContact input validation (PR #7 review)', () => {
-  const coefficients = { restitution: 0.5, friction: 0.3, tangentialSpeedThreshold: 1e-9 };
+  const coefficients = { restitution: 0.5, friction: 0.3, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9 };
 
   it('rejects invalid mass properties of a finite-mass counterpart', () => {
     for (const [mass, inertiaWorld] of [[0, foot.inertiaBody], [1.2, [0, 0, 0, 0, 0, 0, 0, 0, 0]]] as const) {

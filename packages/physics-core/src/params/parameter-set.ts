@@ -1,6 +1,7 @@
 // パラメータセット：値とメタデータ（単位・出典・確からしさ・適用条件）。
 // 一覧と確からしさの区分の正本は docs/05-physics-model.md §10。
 // Core の計算は value だけを使い、メタデータは結果にそのまま含めて UI と出力へ渡す（04 §6）。
+import type { SpinCoefficientTable } from '../flight/types';
 import type { Mat3 } from '../math/mat3';
 import type { Vec3 } from '../math/vec3';
 
@@ -65,7 +66,7 @@ export interface ParameterSet {
   readonly airDensity: ParameterEntry<number>; // P-10
   readonly airViscosity: ParameterEntry<number>; // P-11
   readonly dragCoefficient: ParameterEntry<number>; // P-12（定数モデルの値）
-  readonly liftCoefficient: ParameterEntry<number>; // P-13（定数モデルの値）
+  readonly liftCoefficient: ParameterEntry<number | SpinCoefficientTable>; // P-13（定数、または S の折れ線、05 §7.4）
   readonly spinDecayLinear: ParameterEntry<number>; // P-14
   readonly groundRestitution: ParameterEntry<number>; // P-15
   readonly groundFriction: ParameterEntry<number>; // P-16

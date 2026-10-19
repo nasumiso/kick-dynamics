@@ -23,7 +23,7 @@ const DOWN: Vec3 = [0, -R, 0];
 const UP: Vec3 = [0, 1, 0];
 
 const params: GroundParameters = {
-  gravity: g, restitution: 0.6, friction: 0.4, tangentialSpeedThreshold: 1e-9, // ε_t は P-25 の仮置き
+  gravity: g, restitution: 0.6, friction: 0.4, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9, // ε_t・τ_diag は P-25・P-28 の仮置き
   rollingResistance: 0.05, restSpeed: 0.3, stopSpeed: 0.01, stopSpin: 0.1,
 };
 const dt = 0.005;
@@ -276,6 +276,7 @@ describe('ground parameter validation', () => {
   it.each([
     ['restitution', { restitution: 1.1 }], ['friction', { friction: -0.1 }], ['rolling resistance', { rollingResistance: Number.NaN }],
     ['rest speed', { restSpeed: -1 }], ['stop speed', { stopSpeed: Infinity }], ['zero stop speed', { stopSpeed: 0 }], ['stop spin', { stopSpin: -1 }], ['zero stop spin', { stopSpin: 0 }], ['gravity', { gravity: 0 }],
+    ['diagnostic relative tolerance (NaN)', { diagnosticRelativeTolerance: Number.NaN }], ['zero diagnostic relative tolerance', { diagnosticRelativeTolerance: 0 }],
   ] as const)('rejects an invalid %s', (_, patch) => {
     const r = groundHandler(ball, { ...params, ...patch });
     expect(!r.ok && r.error.code).toBe('invalid-parameter');
@@ -299,7 +300,7 @@ describe('IV-05-C2 independent cases', () => {
   it('settles with an e_g = 0 impact, not an e_g = 1/2 one, at |u_n⁻| = v_rest (fractional example)', () => {
     const unit: BallParams = { mass: 1, radius: 1, inertiaCoefficient: 2 / 5 };
     const p: GroundParameters = {
-      gravity: 10, restitution: 1 / 2, friction: 1 / 5, tangentialSpeedThreshold: 1e-9,
+      gravity: 10, restitution: 1 / 2, friction: 1 / 5, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9,
       rollingResistance: 0, restSpeed: 1, stopSpeed: 0.01, stopSpin: 0.01,
     };
     const h = groundHandler(unit, p);
@@ -316,7 +317,7 @@ describe('IV-05-C2 independent cases', () => {
   describe('stop events on the time grid (m = R = κ = 1, g = 8, μ_g = μ_r = 1/4, Δt = 1/4, deceleration 1)', () => {
     const unit: BallParams = { mass: 1, radius: 1, inertiaCoefficient: 1 };
     const p: GroundParameters = {
-      gravity: 8, restitution: 1 / 2, friction: 1 / 4, tangentialSpeedThreshold: 1e-9,
+      gravity: 8, restitution: 1 / 2, friction: 1 / 4, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9,
       rollingResistance: 1 / 4, restSpeed: 2, stopSpeed: 1 / 2, stopSpin: 1,
     };
     const gridSettings: FlightSimulationSettings = {

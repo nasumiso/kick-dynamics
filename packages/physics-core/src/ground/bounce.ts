@@ -54,6 +54,8 @@ function validateGround(ball: BallParams, params: GroundParameters): SimResult<v
     if (!(Number.isFinite(value) && value > 0)) return fail('invalid-parameter', `${name} must be finite and positive (${value})`);
   }
   if (!(Number.isFinite(params.gravity) && params.gravity > 0)) return fail('invalid-parameter', `gravity must be finite and positive (${params.gravity})`);
+  const tau = params.diagnosticRelativeTolerance;
+  if (!(Number.isFinite(tau) && tau > 0)) return fail('invalid-parameter', `diagnostic relative tolerance must be finite and positive (${tau})`);
   // 純転がりを保つのに必要な静止摩擦力 κ μ_r m g / (1 + κ) が μ_g m g を超える構成は扱わない（05 §8.2、決定 2026-10-19）。
   const kappa = ball.inertiaCoefficient;
   if ((kappa * muR) / (1 + kappa) > mu) {

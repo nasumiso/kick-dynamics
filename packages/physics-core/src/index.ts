@@ -1,6 +1,6 @@
 // KickDynamics Core の公開 API（docs/04-architecture.md §6）。
 // 利用側（Lab・検証ツール）は '@kick-dynamics/physics-core' からだけ import する。
-export const MODEL_VERSION = '0.0.0';
+export { MODEL_VERSION } from './pipeline/simulate-kick';
 
 export type { SimError, SimErrorCode, SimResult } from './result';
 
@@ -24,10 +24,10 @@ export type {
 } from './params/parameter-set';
 
 export type {
-  CoefficientModel, DegeneracyThresholds, FlightEnvironment, FlightEvent, FlightForceSettings, FlightSample, FlightSettings,
+  CoefficientModel, DegeneracyThresholds, SpinCoefficientTable, FlightEnvironment, FlightEvent, FlightForceSettings, FlightSample, FlightSettings,
   FlightSimulationSettings, ForceAndTorque, GroundContact, GroundContactHandler, GroundContactResponse, GroundRolling, SpinDecayModel,
 } from './flight/types';
-export { computeForces } from './flight/forces';
+export { computeForces, evaluateSpinTable } from './flight/forces';
 export { integrateFixedSteps, rk4Step } from './flight/integrator';
 export { simulateFlightRun, terminateOnGroundContact } from './flight/ground-events';
 export type { FlightRun } from './flight/ground-events';
@@ -40,7 +40,7 @@ export type {
 } from './contact/types';
 export { ballContactMatrix, bodyContactMatrix, contactMatrix, finiteInertia, KINEMATIC_INERTIA } from './contact/k-matrix';
 export type { ImpactInertia } from './contact/k-matrix';
-export { DIAGNOSTIC_RELATIVE_TOLERANCE, pointVelocity, solveContact, solveImpact } from './contact/solver';
+export { pointVelocity, solveContact, solveImpact } from './contact/solver';
 export type { ContactCoefficients } from './contact/solver';
 export { groundBounceHandler, groundHandler, solveGroundBounce } from './ground/bounce';
 export type { GroundParameters } from './ground/bounce';
@@ -50,3 +50,10 @@ export { buildImpactSetup, footAxes } from './contact/setup';
 
 export { computeFlightMetrics, spinComponents } from './metrics/flight-metrics';
 export type { FlightMetrics, MetricsSettings, SpinComponents } from './metrics/flight-metrics';
+
+export { computeMetrics, simulateKick } from './pipeline/simulate-kick';
+export type {
+  GroundMode, KickMetrics, KickSimulationResult, KickWarning, SimulationSettings, SpinDecaySelection,
+} from './pipeline/simulate-kick';
+export { ACCEPTED_RANGES } from './pipeline/ranges';
+export type { AcceptedRange } from './pipeline/ranges';

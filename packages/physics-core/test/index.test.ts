@@ -11,5 +11,6 @@ describe('package entry point', () => {
     expect(typeof core.boxInertia).toBe('function');
     expect(typeof core.computeForces).toBe('function');
     expect(typeof core.integrateFixedSteps).toBe('function');
+    expect(typeof core.simulateKick).toBe('function');
   });
 });
