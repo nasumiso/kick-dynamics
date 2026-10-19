@@ -3,7 +3,7 @@
 // 期待値は実装の式ではなく、接触点まわりの角運動量の保存、仕事とエネルギーの関係、05 §6.8 のソルバー（e_g = 0）から求める。
 import { describe, expect, it } from 'vitest';
 import { ballInertia, kineticEnergy } from '../../src/bodies/dynamics';
-import type { RigidBodyState } from '../../src/bodies/types';
+import type { BallParams, RigidBodyState } from '../../src/bodies/types';
 import { pointVelocity } from '../../src/contact/solver';
 import { simulateFlight, stateAt, type Trajectory } from '../../src/flight/trajectory';
 import type { FlightSimulationSettings, GroundContactHandler } from '../../src/flight/types';
@@ -290,5 +290,75 @@ describe('ground parameter validation', () => {
   it('checks the velocity direction used for u_n⁻: n = ŷ, so u_n⁻ = v_y', () => {
     const s = onGround([1, -0.2, 0.5], [4, -2, 7]);
     expectClose(dot(pointVelocity(s, DOWN), UP), s.linearVelocity[1]);
+  });
+});
+
+// IV-05-C2（verification/independent/IV-05/comparison-rolling.md）で Codex が独立に求めた期待値。照合の時点では実装を
+// 実行できず静的な照合だけだったため、ここで実行して確かめる（IV-05-R2）。値はすべて二進で正確に表せる合成値。
+describe('IV-05-C2 independent cases', () => {
+  it('settles with an e_g = 0 impact, not an e_g = 1/2 one, at |u_n⁻| = v_rest (fractional example)', () => {
+    const unit: BallParams = { mass: 1, radius: 1, inertiaCoefficient: 2 / 5 };
+    const p: GroundParameters = {
+      gravity: 10, restitution: 1 / 2, friction: 1 / 5, tangentialSpeedThreshold: 1e-9,
+      rollingResistance: 0, restSpeed: 1, stopSpeed: 0.01, stopSpin: 0.01,
+    };
+    const h = groundHandler(unit, p);
+    if (!h.ok) throw new Error(h.error.message);
+    const state: RigidBodyState = { position: [0, 1, 0], orientation: IDENTITY_QUAT, linearVelocity: [1, -1, 0], angularVelocity: [0, 7, 0] };
+    const r = h.value({ time: 0, state, atStart: false, timeStep: 1 / 10 }); // e_g v_rest = g Δt / 2（等号）
+    if (!r.ok) throw new Error(r.error.message);
+    expect(r.value.kind).toBe('roll');
+    if (r.value.kind !== 'roll') return;
+    expectAllClose(r.value.state.linearVelocity, [4 / 5, 0, 0]);
+    expectAllClose(r.value.state.angularVelocity, [0, 7, -1 / 2]);
+  });
+
+  describe('stop events on the time grid (m = R = κ = 1, g = 8, μ_g = μ_r = 1/4, Δt = 1/4, deceleration 1)', () => {
+    const unit: BallParams = { mass: 1, radius: 1, inertiaCoefficient: 1 };
+    const p: GroundParameters = {
+      gravity: 8, restitution: 1 / 2, friction: 1 / 4, tangentialSpeedThreshold: 1e-9,
+      rollingResistance: 1 / 4, restSpeed: 2, stopSpeed: 1 / 2, stopSpin: 1,
+    };
+    const gridSettings: FlightSimulationSettings = {
+      timeStep: 1 / 4, maxTime: 5, eventTimeTolerance: 1e-9, forces: { ...allOff, gravity: true }, thresholds,
+    };
+    function simulate(start: RigidBodyState, overrides: Partial<GroundParameters> = {}): Trajectory {
+      const h = groundHandler(unit, { ...p, ...overrides });
+      if (!h.ok) throw new Error(h.error.message);
+      const r = simulateFlight(start, unit, { ...environment, gravity: 8 }, gridSettings, h.value);
+      if (!r.ok) throw new Error(r.error.message);
+      return r.value;
+    }
+    const state = (y: number, vx: number): RigidBodyState => ({
+      position: [0, y, 0], orientation: IDENTITY_QUAT, linearVelocity: [vx, 0, 0], angularVelocity: [0, 0, -vx],
+    });
+
+    it('does not stop on the strict boundary |v| = v_stop, but at the next grid time (3/4 s)', () => {
+      const t = simulate(state(1, 1));
+      expect(t.events.map((e) => e.type)).toEqual(['start-on-ground', 'roll-start', 'stop']);
+      expect(t.events[2]!.time).toBe(3 / 4);
+    });
+
+    it('stops at the end of the step after a mid-step transition to rolling (contact at 1/8 s, stop at 1/4 s, 15/128 m)', () => {
+      const t = simulate(state(1 + 1 / 16, 1 / 2), { stopSpeed: 2 / 5 });
+      expect(t.events.map((e) => e.type)).toEqual(['ground-contact', 'roll-start', 'stop']);
+      expectClose(t.events[0]!.time, 1 / 8, { relative: 0, absolute: 1e-9 }); // 二分法の打ち切り幅 δ_t（TOL-C）
+      expect(t.events[2]!.time).toBe(1 / 4);
+      expectClose(computeFlightMetrics(t, { verticalLaunchThreshold: 1e-6 }).totalDistance!, 15 / 128, { relative: 1e-12, absolute: 1e-8 });
+    });
+
+    it('checks the stop at the next step when the contact falls on a grid time (contact at 1/4 s, stop at 1/2 s, 7/32 m)', () => {
+      const t = simulate(state(1 + 1 / 4, 1 / 2), { stopSpeed: 2 / 5 });
+      expect(t.events.map((e) => e.type)).toEqual(['ground-contact', 'roll-start', 'stop']);
+      expect(t.events[0]!.time).toBe(1 / 4);
+      expect(t.events[2]!.time).toBe(1 / 2);
+      expectClose(computeFlightMetrics(t, { verticalLaunchThreshold: 1e-6 }).totalDistance!, 7 / 32);
+    });
+
+    it('can stop with a non-zero ω_y below ω_stop, and cannot with |ω_y| = ω_stop', () => {
+      const spinning = (wy: number): RigidBodyState => ({ ...state(1, 1), angularVelocity: [0, wy, -1] });
+      expect(simulate(spinning(1 / 2)).events.at(-1)!.type).toBe('stop');
+      expect(simulate(spinning(1)).events.at(-1)!.type).toBe('max-time');
+    });
   });
 });
