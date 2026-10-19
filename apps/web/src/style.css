@@ -120,3 +120,52 @@ details summary {
   background: #3a1d1d;
   color: #ffb3ad;
 }
+
+table.params {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+table.params td {
+  border-top: 1px solid #2c333b;
+  padding: 4px 3px;
+  vertical-align: top;
+}
+
+table.params tr.attention td {
+  background: #2a2417;
+}
+
+.param-id {
+  color: #9aa4ae;
+  white-space: nowrap;
+}
+
+.param-source {
+  color: #9aa4ae;
+  font-size: 11px;
+}
+
+.param-value {
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 8px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.badge-warn {
+  background: #6b4a10;
+  color: #ffd38a;
+}
+
+.badge-info {
+  background: #23384f;
+  color: #a9cdf2;
+}

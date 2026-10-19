@@ -13,6 +13,8 @@ import { createFootMesh } from './render/foot-mesh';
 import { createSceneView } from './render/scene-view';
 import { createContactPanel } from './ui/contact-panel';
 import { createKickPanel } from './ui/kick-panel';
+import { createParameterPanel } from './ui/parameter-panel';
+import { STUB_PARAMETER_SET } from './params/stub-parameter-set';
 
 const viewport = document.querySelector<HTMLElement>('#viewport');
 const panel = document.querySelector<HTMLElement>('#panel');
@@ -39,6 +41,7 @@ const kickPanel = createKickPanel(toFormValues(kick), (values) => {
   render();
 });
 panel.append(kickPanel.root);
+panel.append(createParameterPanel(STUB_PARAMETER_SET));
 
 /** 入力の状態を 3D ビューとパネルに反映する。 */
 function render(): void {
