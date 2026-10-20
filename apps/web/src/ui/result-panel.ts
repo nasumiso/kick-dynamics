@@ -17,7 +17,10 @@ export interface ResultPanel {
 
 export function createResultPanel(): ResultPanel {
   const body = element('div', {});
-  const root = section('測定値と衝突診断', body);
+  // 起動時から常に表示する（spec §6 の 1：結果パネルに「モデルは未検証」である旨を表示する）。
+  const notice = element('p', { class: 'status error', 'data-testid': 'unverified-notice' },
+    'モデルは未検証です。実測との照合（06 の VAL）は未実施で、パラメータの多くは仮置きです。結果は定量的に正しいとは限りません。');
+  const root = section('測定値と衝突診断', notice, body);
   const show = (result: KickSimulationResult | null): void => {
     if (!result) {
       body.replaceChildren(element('p', { class: 'hint' }, 'キックを実行すると表示されます。'));
@@ -26,7 +29,7 @@ export function createResultPanel(): ResultPanel {
     body.replaceChildren(
       element('h3', {}, '測定値（05 §9）'), table(metricsRows(result.metrics), 'metrics'),
       element('h3', {}, '衝突診断'), table(diagnosticsRows(result.impact, result.warnings), 'diagnostics'),
-      element('p', { class: 'hint' }, `モデル ${result.modelVersion}。値の多くは仮置きのパラメータによる計算で、実測と照合していない（未検証）。`),
+      element('p', { class: 'hint' }, `モデルの版 ${result.modelVersion}。`),
     );
   };
   show(null);
