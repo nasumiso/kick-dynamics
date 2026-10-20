@@ -17,9 +17,11 @@ import { createContactPanel } from './ui/contact-panel';
 import { createKickPanel } from './ui/kick-panel';
 import { createParameterPanel } from './ui/parameter-panel';
 import { createPlaybackPanel } from './ui/playback-panel';
-import { stubTrajectory } from './playback/stub-trajectory';
 import { applyTrajectoryPose, createTrajectoryLine } from './render/trajectory-view';
-import { STUB_PARAMETER_SET } from './params/stub-parameter-set';
+import { DEFAULT_PARAMETER_SET } from './params/default-parameter-set';
+import { runKick } from './simulation/run-kick';
+import { summarize } from './simulation/summary';
+import type { Trajectory } from '@kick-dynamics/physics-core';
 
 const viewport = document.querySelector<HTMLElement>('#viewport');
 const panel = document.querySelector<HTMLElement>('#panel');
@@ -50,7 +52,7 @@ const kickPanel = createKickPanel(toFormValues(kick), (values) => {
   render();
 });
 panel.append(kickPanel.root);
-panel.append(createParameterPanel(STUB_PARAMETER_SET));
+panel.append(createParameterPanel(DEFAULT_PARAMETER_SET));
 
 /** 入力の状態を 3D ビューとパネルに反映する。 */
 function render(): void {
@@ -81,14 +83,10 @@ installContactPicker(view.renderer.domElement, view.camera, ball, (d) => {
 });
 render();
 
-// スタブ軌道の再生（T1.4-09）。再生時刻は描画の時計（performance.now）で進め、物理の時間刻みとは独立。
-const stub = stubTrajectory();
-if (!stub.ok) throw new Error(`stub trajectory failed: ${stub.error.message}`);
-const trajectory = stub.value;
-const duration = trajectory.time[trajectory.time.length - 1]!;
-const line = createTrajectoryLine(trajectory);
-line.visible = false;
-view.scene.add(line);
+// キックの実行と軌道の再生（T1.5-02）。再生時刻は描画の時計（performance.now）で進め、物理の時間刻みとは独立。
+let trajectory: Trajectory | null = null;
+let duration = 0;
+let line: THREE.Line | null = null;
 // ボールを動かすときは、カメラも同じだけ平行移動する（視点の向きと距離はユーザーの操作のまま）。
 const previous = new THREE.Vector3();
 function followBall(move: () => void): void {
@@ -98,30 +96,47 @@ function followBall(move: () => void): void {
   view.camera.position.add(delta);
   view.controls.target.add(delta);
 }
+function resetBall(): void {
+  playStart = null;
+  if (line) line.visible = false;
+  followBall(() => ball.position.set(0, radius, 0));
+  ball.quaternion.identity();
+  playback.showTime(0, duration);
+  render();
+}
 const playback = createPlaybackPanel(
   () => {
+    // 入力はボールが原点で静止した状態を前提にするため、再生後のキックも初期位置から計算する（入力の状態は変えない）。
+    const outcome = runKick(kick, DEFAULT_PARAMETER_SET);
+    if (!outcome.ok) {
+      playback.showMessage(outcome.reason, false);
+      return;
+    }
+    trajectory = outcome.result.trajectory;
+    duration = trajectory.time[trajectory.time.length - 1]!;
+    if (line) {
+      view.scene.remove(line);
+      line.geometry.dispose();
+    }
+    line = createTrajectoryLine(trajectory);
+    view.scene.add(line);
+    playback.showMessage(summarize(outcome.result), true);
     // 前回の再生の着地点などから開始位置へ移るときも、カメラを同じだけ動かす。
-    followBall(() => applyTrajectoryPose(ball, trajectory, 0));
+    const current = trajectory;
+    followBall(() => applyTrajectoryPose(ball, current, 0));
     playStart = performance.now();
-    line.visible = true;
     foot.visible = false;
     marker.visible = false;
     velocityArrow.update(null);
   },
-  () => {
-    playStart = null;
-    line.visible = false;
-    followBall(() => ball.position.set(0, radius, 0));
-    ball.quaternion.identity();
-    playback.showTime(0, duration);
-    render();
-  },
+  resetBall,
 );
 panel.insertBefore(playback.root, panel.lastElementChild);
 playback.showTime(0, duration);
 view.onFrame(() => {
-  if (playStart === null) return;
+  if (playStart === null || trajectory === null) return;
+  const current = trajectory;
   const t = Math.min((performance.now() - playStart) / 1000, duration);
-  followBall(() => applyTrajectoryPose(ball, trajectory, t));
+  followBall(() => applyTrajectoryPose(ball, current, t));
   playback.showTime(t, duration);
 });
