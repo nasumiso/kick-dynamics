@@ -22,6 +22,7 @@ import { PLAYBACK_SPEEDS, PlaybackClock } from './playback/playback-clock';
 import { DEFAULT_PARAMETER_SET } from './params/default-parameter-set';
 import { runKick } from './simulation/run-kick';
 import { summarize } from './simulation/summary';
+import { createResultPanel } from './ui/result-panel';
 import type { Trajectory } from '@kick-dynamics/physics-core';
 
 const viewport = document.querySelector<HTMLElement>('#viewport');
@@ -115,8 +116,10 @@ const playback = createPlaybackPanel(
     const outcome = runKick(kick, DEFAULT_PARAMETER_SET);
     if (!outcome.ok) {
       playback.showMessage(outcome.reason, false);
+      resultPanel.show(null);
       return;
     }
+    resultPanel.show(outcome.result);
     trajectory = outcome.result.trajectory;
     duration = trajectory.time[trajectory.time.length - 1]!;
     if (line) {
@@ -165,6 +168,8 @@ const playback = createPlaybackPanel(
   },
 );
 panel.insertBefore(playback.root, panel.lastElementChild);
+const resultPanel = createResultPanel();
+panel.insertBefore(resultPanel.root, panel.lastElementChild);
 playback.showTime(0, duration);
 view.onFrame(() => {
   const now = performance.now();

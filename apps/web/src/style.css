@@ -188,3 +188,37 @@ button {
 button:hover {
   background: #3a6fb8;
 }
+
+table.results {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 8px;
+}
+
+table.results th {
+  text-align: left;
+  color: #9aa4ae;
+  font-weight: normal;
+  border-bottom: 1px solid #39424c;
+  padding: 3px;
+}
+
+table.results td {
+  border-top: 1px solid #2c333b;
+  padding: 3px;
+  vertical-align: top;
+}
+
+table.results td.si {
+  color: #9aa4ae;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.panel-section h3 {
+  font-size: 12px;
+  margin: 8px 0 4px;
+  color: #c9d1d9;
+}
