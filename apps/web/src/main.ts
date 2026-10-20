@@ -20,7 +20,9 @@ import { createPlaybackPanel } from './ui/playback-panel';
 import { applyTrajectoryPose, createTrajectoryLine } from './render/trajectory-view';
 import { PLAYBACK_SPEEDS, PlaybackClock } from './playback/playback-clock';
 import { DEFAULT_PARAMETER_SET } from './params/default-parameter-set';
-import { runKick } from './simulation/run-kick';
+import { DEFAULT_SIMULATION_SETTINGS, runKick } from './simulation/run-kick';
+import { createSettingsPanel } from './ui/settings-panel';
+import type { SimulationSettings } from '@kick-dynamics/physics-core';
 import { summarize } from './simulation/summary';
 import { createResultPanel } from './ui/result-panel';
 import type { Trajectory } from '@kick-dynamics/physics-core';
@@ -47,6 +49,8 @@ const contactPanel = createContactPanel();
 panel.append(contactPanel.root);
 
 let kick: KickState = INITIAL_KICK_STATE;
+/** 計算の設定（力項の ON/OFF、AC-11）。変更は次のキックから反映する。 */
+let settings: SimulationSettings = DEFAULT_SIMULATION_SETTINGS;
 /** 軌道の再生クロック。null 以外の間（再生後も「初期位置に戻す」まで）は、ボールが入力時の位置にない。 */
 let clock: PlaybackClock | null = null;
 let speed: number = PLAYBACK_SPEEDS[0];
@@ -55,6 +59,7 @@ const kickPanel = createKickPanel(toFormValues(kick), (values) => {
   render();
 });
 panel.append(kickPanel.root);
+panel.append(createSettingsPanel(settings, DEFAULT_PARAMETER_SET, (next) => { settings = next; }));
 panel.append(createParameterPanel(DEFAULT_PARAMETER_SET));
 
 /** 入力の状態を 3D ビューとパネルに反映する。 */
@@ -113,7 +118,7 @@ function resetBall(): void {
 const playback = createPlaybackPanel(
   () => {
     // 入力はボールが原点で静止した状態を前提にするため、再生後のキックも初期位置から計算する（入力の状態は変えない）。
-    const outcome = runKick(kick, DEFAULT_PARAMETER_SET);
+    const outcome = runKick(kick, DEFAULT_PARAMETER_SET, settings);
     if (!outcome.ok) {
       playback.showMessage(outcome.reason, false);
       resultPanel.show(null);
