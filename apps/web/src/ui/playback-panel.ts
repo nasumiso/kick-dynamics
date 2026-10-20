@@ -7,6 +7,8 @@ export interface PlaybackPanel {
   readonly showTime: (t: number, duration: number) => void;
   /** 実行の結果、または実行しなかった理由（AC-05） */
   readonly showMessage: (message: string, ok: boolean) => void;
+  /** 保存できる結果があるか */
+  readonly showSavable: (savable: boolean) => void;
   /** 再生中か一時停止中か。null は再生する軌道がない状態（再生操作を無効にする） */
   readonly showPlaying: (playing: boolean | null) => void;
 }
@@ -15,6 +17,8 @@ export interface PlaybackControls {
   readonly togglePause: () => void;
   readonly replay: () => void;
   readonly setSpeed: (speed: number) => void;
+  /** 結果を JSON ファイルに保存する（T1.5-06） */
+  readonly save: () => void;
 }
 
 export function createPlaybackPanel(onKick: () => void, onReset: () => void, controls: PlaybackControls): PlaybackPanel {
@@ -27,6 +31,9 @@ export function createPlaybackPanel(onKick: () => void, onReset: () => void, con
   const replay = element('button', { type: 'button', 'data-testid': 'replay' }, 'リプレイ');
   const speed = element('select', { 'data-testid': 'speed' },
     ...PLAYBACK_SPEEDS.map((s) => element('option', { value: String(s) }, `${s} 倍`)));
+  const save = element('button', { type: 'button', 'data-testid': 'save-result' }, '結果を保存（JSON）');
+  save.disabled = true;
+  save.addEventListener('click', controls.save);
   pause.disabled = true;
   replay.disabled = true;
   kick.addEventListener('click', onKick);
@@ -38,7 +45,9 @@ export function createPlaybackPanel(onKick: () => void, onReset: () => void, con
     element('p', { class: 'hint' }, '入力とパラメータから Core で衝突・飛翔・接地を計算し、軌道を再生します。再生速度・一時停止・リプレイは表示だけを変え、計算結果は変わりません。再生後に接触点を指定するときは「初期位置に戻す」を押してください。'),
     element('div', { class: 'buttons' }, kick, reset),
     element('div', { class: 'buttons' }, pause, replay, element('label', { class: 'hint' }, '再生速度 ', speed)),
-    time, message);
+    time, message,
+    element('div', { class: 'buttons' }, save),
+    element('p', { class: 'hint' }, '入力・パラメータ（確からしさ・出典を含む）・設定・モデルの版・結果（軌道の全サンプルを含む）を SI のまま保存します。'));
   return {
     root,
     showTime: (t, duration) => { time.textContent = `t = ${formatNumber(t, 2)} s / ${formatNumber(duration, 2)} s`; },
@@ -47,6 +56,7 @@ export function createPlaybackPanel(onKick: () => void, onReset: () => void, con
       message.textContent = text;
       message.className = ok ? 'status ok' : 'status error';
     },
+    showSavable: (savable) => { save.disabled = !savable; },
     showPlaying: (playing) => {
       pause.textContent = playing === false ? '再開' : '一時停止';
       pause.disabled = playing === null;
