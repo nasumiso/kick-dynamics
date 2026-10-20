@@ -22,7 +22,8 @@ import { PLAYBACK_SPEEDS, PlaybackClock } from './playback/playback-clock';
 import { DEFAULT_PARAMETER_SET } from './params/default-parameter-set';
 import { DEFAULT_SIMULATION_SETTINGS, runKick } from './simulation/run-kick';
 import { createSettingsPanel } from './ui/settings-panel';
-import type { SimulationSettings } from '@kick-dynamics/physics-core';
+import type { KickSimulationResult, SimulationSettings } from '@kick-dynamics/physics-core';
+import { downloadResult } from './export/result-json';
 import { summarize } from './simulation/summary';
 import { createResultPanel } from './ui/result-panel';
 import type { Trajectory } from '@kick-dynamics/physics-core';
@@ -93,6 +94,8 @@ render();
 
 // キックの実行と軌道の再生（T1.5-02）。再生時刻は描画の時計（performance.now）で進め、物理の時間刻みとは独立。
 let trajectory: Trajectory | null = null;
+/** 直前のキックの結果（保存用、T1.5-06） */
+let lastResult: KickSimulationResult | null = null;
 /** 直前の描画フレームの時刻 ms。再生・再開・リプレイのときは現在時刻に戻し、操作前の経過時間（計算時間を含む）を再生時刻に加えない。 */
 let lastFrame = performance.now();
 let duration = 0;
@@ -122,9 +125,13 @@ const playback = createPlaybackPanel(
     if (!outcome.ok) {
       playback.showMessage(outcome.reason, false);
       resultPanel.show(null);
+      lastResult = null;
+      playback.showSavable(false);
       return;
     }
     resultPanel.show(outcome.result);
+    lastResult = outcome.result;
+    playback.showSavable(true);
     trajectory = outcome.result.trajectory;
     duration = trajectory.time[trajectory.time.length - 1]!;
     if (line) {
@@ -166,6 +173,9 @@ const playback = createPlaybackPanel(
       playback.showPlaying(true);
     },
     // 再生速度：再生時刻の進め方だけを変える（計算結果は変わらない、AC-07）
+    save: () => {
+      if (lastResult) downloadResult(lastResult);
+    },
     setSpeed: (value) => {
       speed = value;
       clock?.setSpeed(value);
