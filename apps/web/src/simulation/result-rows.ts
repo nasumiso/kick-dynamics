@@ -73,6 +73,18 @@ export const WARNING_LABELS: Record<ImpactWarning, string> = {
   'slip-reversal': '衝突後に滑りの向きが反転した',
 };
 
+/**
+ * ΔT = ½ J·(u⁻ + u⁺) の表示名。意味は足のモデルで変わる（05 §6.11）。
+ * - 有限質量の足：足とボールの運動エネルギーの合計の変化。
+ * - 無限質量の足で ω_A = 0：足とともに並進する系から見たボールの運動エネルギーの変化。
+ * - 無限質量の足で ω_A ≠ 0：足に固定した系が慣性系でないため、エネルギー変化としての解釈を与えない（Core と同じく |ω_A| = 0 で判定）。
+ */
+function energyChangeLabel(impact: ImpactResult): string {
+  if (impact.diagnostics.systemMomentum !== null) return '運動エネルギーの変化 ΔT（足とボールの合計、05 §6.11）';
+  if (norm(impact.footAfter.angularVelocity) === 0) return 'ΔT（足とともに並進する系から見たボールの運動エネルギーの変化、05 §6.11）';
+  return 'ΔT = ½J·(u⁻ + u⁺)（回転する無限質量の足では、エネルギー変化としての解釈はない、05 §6.11）';
+}
+
 /** 衝突診断の行（AC-12、spec §5）。 */
 export function diagnosticsRows(impact: ImpactResult, warnings: readonly KickWarning[]): ResultRow[] {
   const d = impact.diagnostics;
@@ -82,7 +94,7 @@ export function diagnosticsRows(impact: ImpactResult, warnings: readonly KickWar
     row('ballEnergy', 'ボールの運動エネルギー（衝突前 → 後）',
       `${formatNumber(d.ballKineticEnergyBefore, 2)} → ${formatNumber(d.ballKineticEnergyAfter, 2)} J`,
       `${formatNumber(d.ballKineticEnergyBefore, 4)} → ${formatNumber(d.ballKineticEnergyAfter, 4)} J`),
-    row('energyChange', '運動エネルギーの変化 ΔT（05 §6.11）', `${formatNumber(d.kineticEnergyChange, 2)} J`, `${formatNumber(d.kineticEnergyChange, 4)} J`),
+    row('energyChange', energyChangeLabel(impact), `${formatNumber(d.kineticEnergyChange, 2)} J`, `${formatNumber(d.kineticEnergyChange, 4)} J`),
   ];
   if (d.systemMomentum && d.systemAngularMomentum) {
     rows.push(

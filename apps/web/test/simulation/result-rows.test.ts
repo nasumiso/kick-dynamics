@@ -60,6 +60,17 @@ describe('impact diagnostics rows (AC-12)', () => {
     expect(rows.has('angularMomentum')).toBe(false);
   });
 
+  it('labels ΔT by its meaning for each foot model (05 §6.11)', () => {
+    const label = (state: typeof INITIAL_KICK_STATE): string => {
+      const outcome = runKick(state, DEFAULT_PARAMETER_SET);
+      if (!outcome.ok) throw new Error(outcome.reason);
+      return byKey(diagnosticsRows(outcome.result.impact, [])).get('energyChange')!.label;
+    };
+    expect(label(INITIAL_KICK_STATE)).toContain('足とボールの合計');
+    expect(label({ ...INITIAL_KICK_STATE, footModel: 'kinematic-wall' })).toContain('足とともに並進する系');
+    expect(label({ ...INITIAL_KICK_STATE, footModel: 'kinematic-wall', footAngularVelocity: [0, 0, 5] })).toContain('解釈はない');
+  });
+
   it('lists warnings by their labels', () => {
     const outcome = runKick(INITIAL_KICK_STATE, DEFAULT_PARAMETER_SET);
     if (!outcome.ok) throw new Error(outcome.reason);
