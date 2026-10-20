@@ -222,3 +222,8 @@ table.results td.si {
   margin: 8px 0 4px;
   color: #c9d1d9;
 }
+
+.check-row {
+  display: block;
+  margin: 4px 0;
+}
