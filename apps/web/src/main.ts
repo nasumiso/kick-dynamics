@@ -18,6 +18,7 @@ import { createKickPanel } from './ui/kick-panel';
 import { createParameterPanel } from './ui/parameter-panel';
 import { createPlaybackPanel } from './ui/playback-panel';
 import { applyTrajectoryPose, createTrajectoryLine } from './render/trajectory-view';
+import { PLAYBACK_SPEEDS, PlaybackClock } from './playback/playback-clock';
 import { DEFAULT_PARAMETER_SET } from './params/default-parameter-set';
 import { runKick } from './simulation/run-kick';
 import { summarize } from './simulation/summary';
@@ -45,8 +46,9 @@ const contactPanel = createContactPanel();
 panel.append(contactPanel.root);
 
 let kick: KickState = INITIAL_KICK_STATE;
-/** スタブ軌道の再生の開始時刻。null 以外の間（再生後も「初期位置に戻す」まで）は、ボールが入力時の位置にない。 */
-let playStart: number | null = null;
+/** 軌道の再生クロック。null 以外の間（再生後も「初期位置に戻す」まで）は、ボールが入力時の位置にない。 */
+let clock: PlaybackClock | null = null;
+let speed: number = PLAYBACK_SPEEDS[0];
 const kickPanel = createKickPanel(toFormValues(kick), (values) => {
   kick = applyFormValues(kick, values);
   render();
@@ -62,7 +64,7 @@ function render(): void {
   const status = inputStatus(input, WORKING_GEOMETRY);
   kickPanel.showStatus(status.message, status.ok);
   // 再生中・再生後は、接触点と足を入力時のボール（原点で静止）を前提に置けないため表示しない。
-  const atRest = playStart === null;
+  const atRest = clock === null;
   toThreeVector(kick.contactDirection, marker.position).multiplyScalar(radius);
   marker.visible = atRest;
   // 足の速度 v_A^p の矢印（入力の確認用）。ボールは原点で静止している前提で接触点を求める。
@@ -77,7 +79,7 @@ function render(): void {
 
 installContactPicker(view.renderer.domElement, view.camera, ball, (d) => {
   // 接触点はボールが初期位置で静止しているときだけ指定できる（再生後は「初期位置に戻す」で戻る）。
-  if (playStart !== null) return;
+  if (clock !== null) return;
   kick = { ...kick, contactDirection: d };
   render();
 });
@@ -85,6 +87,8 @@ render();
 
 // キックの実行と軌道の再生（T1.5-02）。再生時刻は描画の時計（performance.now）で進め、物理の時間刻みとは独立。
 let trajectory: Trajectory | null = null;
+/** 直前の描画フレームの時刻 ms。再生・再開・リプレイのときは現在時刻に戻し、操作前の経過時間（計算時間を含む）を再生時刻に加えない。 */
+let lastFrame = performance.now();
 let duration = 0;
 let line: THREE.Line | null = null;
 // ボールを動かすときは、カメラも同じだけ平行移動する（視点の向きと距離はユーザーの操作のまま）。
@@ -97,7 +101,8 @@ function followBall(move: () => void): void {
   view.controls.target.add(delta);
 }
 function resetBall(): void {
-  playStart = null;
+  clock = null;
+  playback.showPlaying(null);
   if (line) line.visible = false;
   followBall(() => ball.position.set(0, radius, 0));
   ball.quaternion.identity();
@@ -124,19 +129,53 @@ const playback = createPlaybackPanel(
     // 前回の再生の着地点などから開始位置へ移るときも、カメラを同じだけ動かす。
     const current = trajectory;
     followBall(() => applyTrajectoryPose(ball, current, 0));
-    playStart = performance.now();
+    clock = new PlaybackClock(duration);
+    clock.setSpeed(speed);
+    clock.play();
+    lastFrame = performance.now();
+    playback.showPlaying(true);
     foot.visible = false;
     marker.visible = false;
     velocityArrow.update(null);
   },
   resetBall,
+  {
+    // 一時停止・再開（終わりまで再生した後の「再開」は最初から）
+    togglePause: () => {
+      if (!clock) return;
+      if (clock.playing) clock.pause();
+      else {
+        clock.play();
+        lastFrame = performance.now();
+      }
+      playback.showPlaying(clock.playing);
+    },
+    // リプレイ：同じ軌道を最初から再生する（計算し直さない、AC-08）
+    replay: () => {
+      if (!clock) return;
+      clock.replay();
+      lastFrame = performance.now();
+      playback.showPlaying(true);
+    },
+    // 再生速度：再生時刻の進め方だけを変える（計算結果は変わらない、AC-07）
+    setSpeed: (value) => {
+      speed = value;
+      clock?.setSpeed(value);
+    },
+  },
 );
 panel.insertBefore(playback.root, panel.lastElementChild);
 playback.showTime(0, duration);
 view.onFrame(() => {
-  if (playStart === null || trajectory === null) return;
+  const now = performance.now();
+  const frameSeconds = (now - lastFrame) / 1000;
+  lastFrame = now;
+  if (clock === null || trajectory === null) return;
+  const wasPlaying = clock.playing;
+  clock.tick(frameSeconds);
+  if (wasPlaying && !clock.playing) playback.showPlaying(false);
   const current = trajectory;
-  const t = Math.min((performance.now() - playStart) / 1000, duration);
+  const t = clock.t;
   followBall(() => applyTrajectoryPose(ball, current, t));
   playback.showTime(t, duration);
 });
