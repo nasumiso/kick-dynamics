@@ -87,6 +87,8 @@ render();
 
 // キックの実行と軌道の再生（T1.5-02）。再生時刻は描画の時計（performance.now）で進め、物理の時間刻みとは独立。
 let trajectory: Trajectory | null = null;
+/** 直前の描画フレームの時刻 ms。再生・再開・リプレイのときは現在時刻に戻し、操作前の経過時間（計算時間を含む）を再生時刻に加えない。 */
+let lastFrame = performance.now();
 let duration = 0;
 let line: THREE.Line | null = null;
 // ボールを動かすときは、カメラも同じだけ平行移動する（視点の向きと距離はユーザーの操作のまま）。
@@ -130,6 +132,7 @@ const playback = createPlaybackPanel(
     clock = new PlaybackClock(duration);
     clock.setSpeed(speed);
     clock.play();
+    lastFrame = performance.now();
     playback.showPlaying(true);
     foot.visible = false;
     marker.visible = false;
@@ -141,13 +144,17 @@ const playback = createPlaybackPanel(
     togglePause: () => {
       if (!clock) return;
       if (clock.playing) clock.pause();
-      else clock.play();
+      else {
+        clock.play();
+        lastFrame = performance.now();
+      }
       playback.showPlaying(clock.playing);
     },
     // リプレイ：同じ軌道を最初から再生する（計算し直さない、AC-08）
     replay: () => {
       if (!clock) return;
       clock.replay();
+      lastFrame = performance.now();
       playback.showPlaying(true);
     },
     // 再生速度：再生時刻の進め方だけを変える（計算結果は変わらない、AC-07）
@@ -159,7 +166,6 @@ const playback = createPlaybackPanel(
 );
 panel.insertBefore(playback.root, panel.lastElementChild);
 playback.showTime(0, duration);
-let lastFrame = performance.now();
 view.onFrame(() => {
   const now = performance.now();
   const frameSeconds = (now - lastFrame) / 1000;
