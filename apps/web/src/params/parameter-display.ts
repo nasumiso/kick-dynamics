@@ -28,11 +28,20 @@ export function formatParameterValue(entry: ParameterEntry<unknown>): string {
   if (value === null) {
     return candidateRange ? `候補範囲 ${formatScalar(candidateRange.min)}–${formatScalar(candidateRange.max)}` : '—（未決定）';
   }
-  if (typeof value === 'number') return formatScalar(value);
+  if (typeof value === 'number') {
+    return candidateRange ? `${formatScalar(value)}（範囲 ${formatScalar(candidateRange.min)}–${formatScalar(candidateRange.max)}）` : formatScalar(value);
+  }
   if (Array.isArray(value)) {
     const offDiagonalZero = value.length === 9 && [1, 2, 3, 5, 6, 7].every((i) => value[i] === 0);
     if (offDiagonalZero) return `diag(${[value[0], value[4], value[8]].map((x) => formatScalar(x as number)).join(', ')})`;
     return `(${value.map((x) => formatScalar(x as number)).join(', ')})`;
+  }
+  if (typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'spin-table' && 'points' in value) {
+    const points = value.points as ReadonlyArray<readonly [number, number]>;
+    return `S の折れ線 ${points.map(([x, y]) => `(${formatScalar(x)}, ${formatScalar(y)})`).join(' ')}`;
+  }
+  if (typeof value === 'object' && value !== null && 'rest' in value && 'stopSpeed' in value && 'stopSpin' in value) {
+    return `${formatScalar(value.rest as number)}、${formatScalar(value.stopSpeed as number)}、${formatScalar(value.stopSpin as number)}`;
   }
   return JSON.stringify(value);
 }

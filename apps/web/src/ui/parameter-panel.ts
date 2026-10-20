@@ -2,7 +2,7 @@
 // 検証状態（06 §2）は、実測との照合（VAL）を実施していないため、すべて「未検証」。
 import type { ParameterEntry, ParameterSet } from '@kick-dynamics/physics-core';
 import { CONFIDENCE_LABELS, formatParameterValue, needsAttention } from '../params/parameter-display';
-import { PARAMETER_MEANINGS } from '../params/stub-parameter-set';
+import { PARAMETER_MEANINGS } from '../params/default-parameter-set';
 import { element, section } from './dom';
 
 export function createParameterPanel(parameters: ParameterSet): HTMLElement {
