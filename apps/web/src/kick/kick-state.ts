@@ -46,11 +46,23 @@ export const INITIAL_KICK_STATE: KickState = {
 export function toKickInput(state: KickState): KickInput {
   const direction = anglesToDirection({ azimuth: state.footAzimuth, elevation: state.footElevation });
   return {
-    contactDirection: state.contactDirection,
-    footRollAboutNormal: state.footRoll,
-    footContactLocation: state.footContactLocation,
-    footContactPointVelocity: [direction[0] * state.footSpeed, direction[1] * state.footSpeed, direction[2] * state.footSpeed],
-    footAngularVelocity: state.footAngularVelocity,
+    contactDirection: vec(state.contactDirection),
+    footRollAboutNormal: z(state.footRoll),
+    footContactLocation: [z(state.footContactLocation[0]), z(state.footContactLocation[1])],
+    footContactPointVelocity: vec([direction[0] * state.footSpeed, direction[1] * state.footSpeed, direction[2] * state.footSpeed]),
+    footAngularVelocity: vec(state.footAngularVelocity),
     footModel: state.footModel,
   };
+}
+
+/**
+ * −0 を +0 にする。JSON は −0 を 0 として書くため、Core に渡す入力から −0 を除き、出力した入力（T1.5-06）で
+ * 再実行したときに同じ計算になるようにする（AC-14）。−0 と +0 は同じ物理量で、計算の意味は変わらない。
+ */
+function z(x: number): number {
+  return x + 0;
+}
+
+function vec(v: Vec3): Vec3 {
+  return [z(v[0]), z(v[1]), z(v[2])];
 }

@@ -12,6 +12,11 @@ const states = [
   INITIAL_KICK_STATE,
   { ...INITIAL_KICK_STATE, contactDirection: [-0.9, -0.3, 0.3] as const, footElevation: degToRad(25), footAngularVelocity: [0, 3, 0] as const },
   { ...INITIAL_KICK_STATE, footModel: 'kinematic-wall' as const },
+  // 数値欄に "-0" を入力した場合（PR #18 のレビュー）：Core に渡す前に −0 を +0 にするので、JSON で往復しても同じ計算になる。
+  {
+    ...INITIAL_KICK_STATE, footAzimuth: -0, footElevation: -0, footRoll: -0,
+    footContactLocation: [-0, -0] as const, footAngularVelocity: [-0, -0, -0] as const, contactDirection: [-1, -0, -0] as const,
+  },
 ];
 
 describe('result file (AC-14)', () => {
@@ -25,6 +30,10 @@ describe('result file (AC-14)', () => {
       expect(file.schemaVersion).toBe(RESULT_SCHEMA_VERSION);
       expect(file.units).toBe('SI');
       expect(file.modelVersion).toBe(original.modelVersion);
+      // 入力は −0 を含まないため、JSON で往復しても元の入力と同一になる。
+      expect(file.input).toEqual(original.input);
+      expect([...original.input.contactDirection, ...original.input.footAngularVelocity, ...original.input.footContactLocation,
+        ...original.input.footContactPointVelocity, original.input.footRollAboutNormal].some((x) => Object.is(x, -0))).toBe(false);
       expect(file.parameters.ballRadius.confidence).toBe('provisional'); // 確からしさ・出典も出力される
       expect(file.parameters.dragCoefficient.source).toContain('Goff');
 

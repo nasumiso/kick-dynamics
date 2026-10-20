@@ -48,7 +48,7 @@ tools/validation/             # 候補：検証スクリプトとレポート生
 ```
 
 - ワークスペースは **npm workspaces** で管理する（決定：[ADR-0004](decisions/0004-npm-workspaces-and-initial-dependencies.md)、OQ-16）。ルートの `package.json` に `"workspaces": ["apps/*", "packages/*"]` を置き、`package-lock.json` をコミットする。承認済みの依存パッケージも ADR-0004 を参照。
-- 結果の出力（暫定、T1.5-06、`apps/web/src/export/result-json.ts`）：JSON 1 ファイル（OQ-19）。最上位は `schema`（`kickdynamics-result`）・`schemaVersion`（1）・`exportedAt`・`units`（`SI`）・`modelVersion`・`input`（`KickInput`）・`parameters`（`ParameterSet` をメタデータごと）・`settings`（`SimulationSettings`）・`result`（`impact`・`metrics`・`warnings`・`trajectory`）。`trajectory` は `Trajectory` の各 `Float64Array` を数値の配列にし、`sampleCount` を加えたもの。出力した `input`・`parameters`・`settings` で `simulateKick` を再実行すると同じ結果になる（AC-14）。形式を変えたら `schemaVersion` を上げる。
+- 結果の出力（暫定、T1.5-06、`apps/web/src/export/result-json.ts`）：JSON 1 ファイル（OQ-19、[ADR-0006](decisions/0006-result-json-format.md)）。最上位は `schema`（`kickdynamics-result`）・`schemaVersion`（1）・`exportedAt`・`units`（`SI`）・`modelVersion`・`input`（`KickInput`）・`parameters`（`ParameterSet` をメタデータごと）・`settings`（`SimulationSettings`）・`result`（`impact`・`metrics`・`warnings`・`trajectory`）。`trajectory` は `Trajectory` の各 `Float64Array` を数値の配列にし、`sampleCount` を加えたもの。出力した `input`・`parameters`・`settings` で `simulateKick` を再実行すると同じ結果になる（AC-14）。形式を変えたら `schemaVersion` を上げる。
 - `apps/web` の実装（暫定、M1.4）：上の構成に加え、`kick/`（キック入力の状態・表示単位 ↔ SI の変換・足の配置・入力の妥当性）と `params/`（Lab が Core を呼ぶための作業値と、表示用のパラメータセットのスタブ）を置いた。UI は素の DOM で組み、UI ライブラリは使わない（OQ-17）。足の配置と入力の妥当性は Core の `buildImpactSetup` で求め、Lab 側で物理の式を持たない。パッケージ名は `@kick-dynamics/web`（暫定）。
 - パッケージ名：Core は `@kick-dynamics/physics-core`（暫定、T1.1-02）。Core の `exports` はビルドせずに `src/index.ts` を指す（Lab は Vite で、テストは Vitest で直接 TypeScript を読む）。
 
