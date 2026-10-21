@@ -29,23 +29,27 @@ const deg = (x) => (x * Math.PI) / 180;
 const runs = Number(process.argv[2] ?? 30);
 const settings = DEFAULT_SIMULATION_SETTINGS;
 
+const params = DEFAULT_PARAMETER_SET;
+/** 05 §10.3 のステップ数の上限（maxTime / Δt ≤ 10⁶）に達する Δt（maxTime = 120 s のとき）。 */
+const maxStepParams = { ...params, timeStep: { ...params.timeStep, value: 1.2e-4 } };
+const sideSpin = {
+  ...INITIAL_KICK_STATE, contactDirection: [-Math.cos(deg(20)), 0, Math.sin(deg(20))], footSpeed: 25, footElevation: deg(15),
+};
+
 /** 代表的な条件。入力の値は計測のための任意の例で、物理的な根拠はない。 */
 const conditions = [
-  ['A 初期入力（バウンド＋転がり、最大 20 s）', INITIAL_KICK_STATE, settings],
-  ['B 浮き球（25 m/s、仰角 30°）', { ...INITIAL_KICK_STATE, footSpeed: 25, footElevation: deg(30) }, settings],
-  ['C 横回転（接触点を横にずらす、25 m/s、仰角 15°）', {
-    ...INITIAL_KICK_STATE, contactDirection: [-Math.cos(deg(20)), 0, Math.sin(deg(20))], footSpeed: 25, footElevation: deg(15),
-  }, settings],
-  ['D 初期入力（最初の接地で終了）', INITIAL_KICK_STATE, { ...settings, ground: 'stop-at-first-contact' }],
-  ['E 初期入力（無限質量の足）', { ...INITIAL_KICK_STATE, footModel: 'kinematic-wall' }, settings],
-  ['F 初期入力（最大時間 120 s：05 §10.3 の上限）', INITIAL_KICK_STATE, { ...settings, maxTime: 120 }],
-  ['G 横回転（C と同じ、最大時間 120 s：停止しないため最も長い）', {
-    ...INITIAL_KICK_STATE, contactDirection: [-Math.cos(deg(20)), 0, Math.sin(deg(20))], footSpeed: 25, footElevation: deg(15),
-  }, { ...settings, maxTime: 120 }],
+  ['A 初期入力（バウンド＋転がり、最大 20 s）', INITIAL_KICK_STATE, params, settings],
+  ['B 浮き球（25 m/s、仰角 30°）', { ...INITIAL_KICK_STATE, footSpeed: 25, footElevation: deg(30) }, params, settings],
+  ['C 横回転（接触点を横にずらす、25 m/s、仰角 15°）', sideSpin, params, settings],
+  ['D 初期入力（最初の接地で終了）', INITIAL_KICK_STATE, params, { ...settings, ground: 'stop-at-first-contact' }],
+  ['E 初期入力（無限質量の足）', { ...INITIAL_KICK_STATE, footModel: 'kinematic-wall' }, params, settings],
+  ['F 初期入力（最大時間 120 s：05 §10.3 の上限）', INITIAL_KICK_STATE, params, { ...settings, maxTime: 120 }],
+  ['G 横回転（C と同じ、最大時間 120 s：Δt = 0.005 s では停止しないため最も長い）', sideSpin, params, { ...settings, maxTime: 120 }],
+  ['H 横回転（G と同じ、Δt = 1.2×10⁻⁴ s：05 §10.3 のステップ数の上限 10⁶）', sideSpin, maxStepParams, { ...settings, maxTime: 120 }],
 ];
 
-function run(state, s) {
-  const result = simulateKick(toKickInput(state), DEFAULT_PARAMETER_SET, s);
+function run(state, p, s) {
+  const result = simulateKick(toKickInput(state), p, s);
   if (!result.ok) throw new Error(result.error.message);
   return result.value;
 }
@@ -55,18 +59,18 @@ function quantile(sorted, q) {
 }
 
 const f = (x) => x.toFixed(2);
-console.log(`Node ${process.version}、計測回数 ${runs}、Δt = ${DEFAULT_PARAMETER_SET.timeStep.value} s`);
+console.log(`Node ${process.version}、計測回数 ${runs}、Δt = ${params.timeStep.value} s（H を除く）`);
 console.log('| 条件 | サンプル数 | 終わり方 | 最初の 1 回 ms | 中央値 ms | 95% ms | 最大 ms |');
 console.log('|---|---|---|---|---|---|---|');
-for (const [name, state, s] of conditions) {
+for (const [name, state, p, s] of conditions) {
   const t0 = performance.now();
-  const first = run(state, s);
+  const first = run(state, p, s);
   const cold = performance.now() - t0;
-  for (let i = 0; i < 10; i++) run(state, s);
+  for (let i = 0; i < 10; i++) run(state, p, s);
   const times = [];
   for (let i = 0; i < runs; i++) {
     const t = performance.now();
-    run(state, s);
+    run(state, p, s);
     times.push(performance.now() - t);
   }
   times.sort((a, b) => a - b);
