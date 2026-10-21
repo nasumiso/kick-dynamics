@@ -21,14 +21,23 @@ agent: general-purpose
 - **コミットメッセージ**：末尾に帰属の行（Co-Authored-By）を付ける。形式は、system-reminder に指示があればそれに従い、なければ `git log -5` の既存のコミットに合わせる。
 - **してはいけないこと**：
   - PR をマージする。
-  - ブランチを削除する。
+  - ブランチを削除する（worktree の片付けは除く）。
   - force push する。
   - 権限の設定や CLAUDE.md・AGENTS.md の規則を変える。
 - **人間の判断が必要な変更**：物理モデル・API・受入条件・パラメータ値の決定や仕様の方針の変更は、自分で決めて実装しない。「要判断」として報告に回す（ルール 6〜8）。
 
 ## 手順
 
-PR の head ブランチを `gh pr view $0 --json headRefName,baseRefName` で調べる。`git switch` で切り替え、`git pull --ff-only` で最新にする。そのあと、次を繰り返す。
+**作業場所**：メインのセッションと同じ作業ディレクトリでブランチを切り替えない。メイン側の作業と衝突するため。PR ごとに専用の worktree を作り、以降のすべての作業（読む・編集・`npm run check`・git）をそこで行う。
+
+1. PR の head ブランチを `gh pr view $0 --json headRefName,baseRefName` で調べる。
+2. `git fetch origin` の後、`git worktree add .worktrees/pr-$0 <head ブランチ>` を実行する。すでにあれば、それを使って `git -C .worktrees/pr-$0 pull --ff-only` を実行する。
+3. 新しく作った worktree では、`npm ci` で依存を入れる。ルートの `node_modules` は、メインの作業ツリーのパッケージへのリンクなので流用しない。
+4. 補助スクリプトは、worktree の中の `.claude/skills/pr-review-loop/scripts/` を使う。
+5. 積み重ねた PR に取り込むときは、そのブランチ用にも別の worktree（`.worktrees/pr-<番号>`）を作る。
+6. 終わったら `git worktree remove .worktrees/pr-$0` で片付ける。積み重ねた PR 用に作った worktree も同様に片付ける。
+
+そのあと、次を繰り返す。
 
 1. **レビューを待つ**：`.claude/skills/pr-review-loop/scripts/wait-for-codex-review.sh $0 540` を Bash で実行する（タイムアウトは 600000 ms）。
    - `TIMEOUT` なら最大 6 回まで繰り返す（約 1 時間）。それでも来なければ、ループを終えて報告する。

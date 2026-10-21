@@ -19,6 +19,9 @@ npm-debug.log*
 .env.*
 !.env.example
 
+# Worktrees for background agents (/pr-review-loop)
+.worktrees/
+
 # macOS
 .DS_Store
 
