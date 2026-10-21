@@ -137,6 +137,7 @@ const playback = createPlaybackPanel(
     if (line) {
       view.scene.remove(line);
       line.geometry.dispose();
+      (line.material as THREE.Material).dispose(); // createTrajectoryLine はキックごとに新しいマテリアルを作る
     }
     line = createTrajectoryLine(trajectory);
     view.scene.add(line);
