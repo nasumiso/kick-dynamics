@@ -46,6 +46,11 @@
 - `git add -A` や `git add .` を使わず、追加するパスを明示する（Codex が作業中のファイルを誤ってコミットしないため）。
 - `.github/workflows/` を変更する push には、`gh` の認証に `workflow` スコープが必要。
 - PR では CI（`npm run check`）と Codex の自動レビューが動く。レビューの観点は、ルートの AGENTS.md（全体に共通）と `packages/physics-core/AGENTS.md`（Core 固有）の「Code Review Rules」に置く。Codex のレビューは、変更したファイルに最も近い AGENTS.md の「Code Review Rules」を使う。
+- レビューへの対応は、Claude Code のスキル `/pr-review-loop <PR 番号>`（`.claude/skills/pr-review-loop/`）で繰り返せる。動きは次のとおり。
+  - バックグラウンドのサブエージェントで動く。
+  - Codex のレビューを待ち、未返信の指摘のうち重要なものだけ対応する。返信して再レビューを依頼し、新しい指摘がなくなるまで繰り返す。
+  - マージはしない。仕様の判断が必要な指摘は「要判断」として報告する。
+- 積み重ねた PR（ベースが別の PR のブランチ）は、ベースの PR をマージする前に、上の PR のベースを `main` に変える。ベースのブランチを削除すると、上の PR が自動でクローズされる（2026-10-20、#13）。
 
 ## 4. クラウドでの作業
 
