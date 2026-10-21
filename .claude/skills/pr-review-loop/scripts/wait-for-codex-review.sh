@@ -16,6 +16,21 @@ head="$(gh pr view "$pr" --json headRefOid -q .headRefOid)"
 deadline=$((SECONDS + timeout))
 
 while :; do
+  # 要約コメントの codex-review-state（JSON）：head に対するレビューが終わっていれば、指摘の有無で判定する。
+  # PR の作成時の自動レビューで指摘がない場合は、これ以外に完了の印が残らない（2026-10-21、#19）。
+  state="$(gh api "repos/$repo/issues/$pr/comments" --paginate \
+    --jq ".[] | select(.user.login == \"$bot\") | .body | capture(\"codex-review-state:v1 (?<s>\\\\{.*\\\\}) -->\") | .s" \
+    | tail -n 1)"
+  if [ -n "$state" ]; then
+    verdict="$(printf '%s' "$state" | jq -r --arg head "$head" '
+      .code_review | if .commit_sha == $head and .status == "completed"
+        then (if .has_any_findings then "REVIEWED" else "NO_FINDINGS" end) else "" end')"
+    if [ -n "$verdict" ]; then
+      echo "$verdict $head"
+      exit 0
+    fi
+  fi
+
   reviewed="$(gh api "repos/$repo/pulls/$pr/reviews" --paginate \
     --jq "[.[] | select(.user.login == \"$bot\" and .commit_id == \"$head\")] | length")"
   if [ "$reviewed" -gt 0 ]; then
