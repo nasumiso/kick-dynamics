@@ -32,6 +32,7 @@ agent: general-purpose
 
 1. PR の head ブランチを `gh pr view $0 --json headRefName,baseRefName` で調べる。
 2. `git fetch origin` の後、`git worktree add .worktrees/pr-$0 <head ブランチ>` を実行する。すでにあれば、それを使って `git -C .worktrees/pr-$0 pull --ff-only` を実行する。
+   - head ブランチがメインの作業ツリーで使われていて取り出せない場合は、`git worktree add --detach .worktrees/pr-$0 origin/<head ブランチ>` で作る。修正のコミットは `git push origin HEAD:<head ブランチ>` で push する。メインの作業ツリーのブランチは切り替えない。
 3. 新しく作った worktree では、`npm ci` で依存を入れる。ルートの `node_modules` は、メインの作業ツリーのパッケージへのリンクなので流用しない。
 4. 補助スクリプトは、メインの作業ツリー（リポジトリのルート）の `.claude/skills/pr-review-loop/scripts/` を使う。PR のブランチには、スクリプトが入っていないか古い場合がある。
 5. 積み重ねた PR に取り込むときは、そのブランチ用にも別の worktree（`.worktrees/pr-<番号>`）を作る。
