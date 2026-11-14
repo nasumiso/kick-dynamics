@@ -29,7 +29,7 @@ function heightAboveContact(state: RigidBodyState, ball: BallParams): number {
   return state.position[1] - GROUND_HEIGHT - ball.radius;
 }
 
-function validate(settings: FlightSimulationSettings): SimResult<void> {
+function validate(settings: FlightSimulationSettings, environment: FlightEnvironment): SimResult<void> {
   const positive: Array<[string, number]> = [
     ['timeStep', settings.timeStep], ['maxTime', settings.maxTime], ['eventTimeTolerance', settings.eventTimeTolerance],
   ];
@@ -53,6 +53,11 @@ function validate(settings: FlightSimulationSettings): SimResult<void> {
     const error = model.kind === 'spin-table' ? spinTableError(model) : null;
     if (error !== null) return fail('invalid-coefficient', `${name}: ${error}`);
   }
+  // η（P-11）は、係数を関数で与えるときの Re の計算にだけ使うので、そのときだけ正の有限値を確かめる（05 §10.3）。
+  if (models.some(([, model]) => model.kind === 'function')) {
+    const eta = environment.airViscosity;
+    if (!(Number.isFinite(eta) && eta > 0)) return fail('invalid-parameter', `air viscosity η must be finite and positive when a coefficient is a function of Re (${eta})`);
+  }
   return ok(undefined);
 }
 
@@ -60,7 +65,7 @@ export function simulateFlightRun(
   initial: RigidBodyState, ball: BallParams, environment: FlightEnvironment, settings: FlightSimulationSettings,
   onGroundContact: GroundContactHandler = terminateOnGroundContact,
 ): SimResult<FlightRun> {
-  const valid = validate(settings);
+  const valid = validate(settings, environment);
   if (!valid.ok) return valid;
   // 初期状態の成分がすべて有限であることを確かめる（IV-03-C2 の H01、2026-10-20 人間が判断）。
   // 積分の途中で極端な値により有限でなくなる場合は対象外（packages/physics-core/AGENTS.md）。

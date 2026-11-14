@@ -46,19 +46,41 @@ export interface VelocityArrow {
   readonly update: (geometry: ArrowGeometry | null) => void;
 }
 
+/** 軸の太さ（半径 m）と矢じりの大きさ m（見やすさのための表示の値）。 */
+const SHAFT_RADIUS = 0.006;
+const HEAD_RADIUS = 0.018;
+const HEAD_LENGTH = 0.045;
+
+/**
+ * 太い矢（円柱の軸＋円錐の矢じり）。線の太さは WebGL では 1 px に固定されるため、メッシュで作る。
+ * 形は +y 向きの長さ 1 で作り、update で向き・長さを合わせる。
+ */
 export function createVelocityArrow(): VelocityArrow {
-  const arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), MIN_LENGTH, APPROACH_COLOR);
+  const material = new THREE.MeshBasicMaterial({ color: APPROACH_COLOR });
+  const shaftGeometry = new THREE.CylinderGeometry(SHAFT_RADIUS, SHAFT_RADIUS, 1, 12);
+  shaftGeometry.translate(0, 0.5, 0); // 根元を原点に
+  const shaft = new THREE.Mesh(shaftGeometry, material);
+  const headGeometry = new THREE.ConeGeometry(HEAD_RADIUS, 1, 16);
+  headGeometry.translate(0, -0.5, 0); // 先端を原点に
+  const head = new THREE.Mesh(headGeometry, material);
+  const arrow = new THREE.Group();
+  arrow.name = 'foot-velocity-arrow';
+  arrow.add(shaft, head);
   const origin = new THREE.Vector3();
   const direction = new THREE.Vector3();
+  const up = new THREE.Vector3(0, 1, 0);
   return {
     object: arrow,
     update: (geometry) => {
       arrow.visible = geometry !== null;
       if (!geometry) return;
       arrow.position.copy(toThreeVector(geometry.origin, origin));
-      arrow.setDirection(toThreeVector(geometry.direction, direction));
-      arrow.setLength(geometry.length, Math.min(0.04, geometry.length * 0.3), 0.025);
-      arrow.setColor(geometry.approaching ? APPROACH_COLOR : SEPARATING_COLOR);
+      arrow.quaternion.setFromUnitVectors(up, toThreeVector(geometry.direction, direction));
+      const headLength = Math.min(HEAD_LENGTH, geometry.length * 0.4);
+      shaft.scale.set(1, geometry.length - headLength, 1);
+      head.scale.set(1, headLength, 1);
+      head.position.set(0, geometry.length, 0);
+      material.color.setHex(geometry.approaching ? APPROACH_COLOR : SEPARATING_COLOR);
     },
   };
 }
