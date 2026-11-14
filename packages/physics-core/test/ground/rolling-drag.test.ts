@@ -195,6 +195,20 @@ describe('VER-G09 boundary between pure rolling and sliding', () => {
     const back = modes.indexOf('rolling', 1);
     expect(length(states[back]!.linearVelocity)).toBeLessThanOrEqual(boundary);
   });
+
+  it('leaves pure rolling in a rotated direction as the x-axis case rotated (rounding residual of u, IV-05-C3 mismatch A)', () => {
+    // 球・無風・等方な摩擦・定数 C_D なので、水平の回転について対称。x 軸方向の 1 ステップを 0.1 rad 回した結果と一致するはず。
+    // 回した方向の拘束は丸め誤差の分だけ u ≠ 0 を残すが、その残りを滑りの向きにしてはいけない（離脱の向きは −v̂）。
+    const v0 = 40;
+    const angle = 0.1;
+    const rotate = (a: Vec3): Vec3 => [a[0] * Math.cos(angle) - a[2] * Math.sin(angle), a[1], a[0] * Math.sin(angle) + a[2] * Math.cos(angle)];
+    const axial = steps(onGround([v0, 0, 0], rollingSpin([v0, 0, 0])), params, 0.005, 1).at(-1)!;
+    const direction: Vec3 = [Math.cos(angle), 0, Math.sin(angle)];
+    const rotated = steps(onGround(scale(direction, v0), rollingSpin(scale(direction, v0))), params, 0.005, 1).at(-1)!;
+    const tol = { relative: 1e-12, absolute: 1e-12 };
+    expectAllClose(rotated.linearVelocity, rotate(axial.linearVelocity), tol);
+    expectAllClose(rollingContactVelocity(rotated, R), rotate(rollingContactVelocity(axial, R)), tol);
+  });
 });
 
 describe('VER-G10 drag ON/OFF consistency in pure rolling', () => {
@@ -215,16 +229,22 @@ describe('VER-G10 drag ON/OFF consistency in pure rolling', () => {
 });
 
 describe('VER-G11 accuracy of the switch to rolling', () => {
-  it('switches within one step after the slip-vanishing time for Δt, Δt/2 and Δt/4', () => {
+  it('switches within one step after the slip-vanishing time, and matches the velocity at a common later time (Δt, Δt/2, Δt/4)', () => {
     const v0 = 8;
     const start = onGround([v0, 0, 0], [0, 0, 0]);
     const rate = params.friction * g * (1 + 1 / kappa) + params.rollingResistance * g;
     const slipTime = v0 / rate;
+    // 共通の時刻 T = 1 s の速度：接触点まわりの角運動量 L_P = (κ+1) m R v（純転がり）の変化は、重心に働く一定の転がり抵抗の
+    // 力積のモーメントだけなので、v(T) = (v₀ − μ_r g T)/(1 + κ)（IV-05-C3 の不一致 B を受けて、記録を常設のテストに入れた）。
+    const T = 1;
+    const expected = (v0 - params.rollingResistance * g * T) / (1 + kappa);
     for (const h of [0.005, 0.0025, 0.00125]) {
-      const states = steps(start, { ...params, drag: null }, h, Math.ceil(slipTime / h) + 2);
+      const states = steps(start, { ...params, drag: null }, h, Math.round(T / h));
       const switchTime = states.findIndex(isRolling) * h;
       expect(switchTime - slipTime).toBeGreaterThanOrEqual(0);
       expect(switchTime - slipTime).toBeLessThan(h);
+      // 2026-11-14 の記録では誤差は 1e-13 程度（丸め誤差の水準）。
+      expectClose(states.at(-1)!.linearVelocity[0], expected, { relative: 1e-12, absolute: 1e-12 });
     }
   });
 });

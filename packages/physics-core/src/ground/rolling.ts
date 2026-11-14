@@ -101,12 +101,18 @@ const ROLLING_RELATIVE_SLIP = 64 * Number.EPSILON;
 
 type Mode = 'rest' | 'rolling' | 'sliding';
 
+/** 接触点の速さが丸め誤差の範囲で 0 か（純転がりとみなすか）。 */
+function isSlipNegligible(state: RigidBodyState, radius: number, slip: number): boolean {
+  const [vx, , vz] = state.linearVelocity;
+  const [wx, , wz] = state.angularVelocity;
+  return slip <= ROLLING_RELATIVE_SLIP * (Math.hypot(vx, vz) + radius * Math.hypot(wx, wz));
+}
+
 function modeOf(state: RigidBodyState, radius: number): Mode {
   const [vx, , vz] = state.linearVelocity;
   const [wx, , wz] = state.angularVelocity;
   if (vx === 0 && vz === 0 && wx === 0 && wz === 0) return 'rest';
-  const scaleOfSpeeds = Math.hypot(vx, vz) + radius * Math.hypot(wx, wz);
-  return length(rollingContactVelocity(state, radius)) <= ROLLING_RELATIVE_SLIP * scaleOfSpeeds ? 'rolling' : 'sliding';
+  return isSlipNegligible(state, radius, length(rollingContactVelocity(state, radius))) ? 'rolling' : 'sliding';
 }
 
 /** 重心に働く外力（転がり抵抗と抗力）を質量で割った加速度 F_e / m（05 §8.2）。|v| ≤ ε_v では 0 で、係数を評価しない。 */
@@ -154,13 +160,14 @@ function rollingDerivative(state: RigidBodyState, ball: BallParams, params: Roll
 /**
  * 滑りの運動方程式：dv/dt = F_e/m − μ_g g û、dω_h/dt = μ_g g (ŷ × û)/(κ R)。
  * u = 0 の段（純転がりから滑りへ入る最初のステップなど）では、û の代わりに fallback（試行の滑りの向き）を使う。
+ * 純転がりの判定と同じく、丸め誤差の範囲の u も 0 とみなす（残りの向きを滑りの向きにしない。IV-05-C3 の不一致 A）。
  */
 function slidingDerivative(state: RigidBodyState, ball: BallParams, params: RollingParameters, fallback: Vec3): SimResult<Derivative> {
   const external = externalAcceleration(state, ball, params);
   if (!external.ok) return external;
   const u = rollingContactVelocity(state, ball.radius);
   const slip = length(u);
-  const uHat = slip > 0 ? scale(u, 1 / slip) : fallback;
+  const uHat = isSlipNegligible(state, ball.radius, slip) ? fallback : scale(u, 1 / slip);
   const friction = params.friction * params.gravity;
   return ok({
     velocity: state.linearVelocity,
