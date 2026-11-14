@@ -47,7 +47,7 @@ export const DEFAULT_PARAMETER_SET: ParameterSet = {
   spinDecayLinear: undetermined('P-14', 'c_ω', 'kg·m²/s', 'OQ-08'),
   groundRestitution: { id: 'P-15', symbol: 'e_g', unit: '—', value: 0.6, confidence: 'provisional', source: '出典なし。OQ-09' },
   groundFriction: { id: 'P-16', symbol: 'μ_g', unit: '—', value: 0.6, confidence: 'provisional', source: '出典なし。OQ-09' },
-  rollingResistance: { id: 'P-17', symbol: 'μ_r', unit: '—', value: 0.05, confidence: 'provisional', source: '出典なし。OQ-09' },
+  rollingResistance: { id: 'P-17', symbol: 'μ_r', unit: '—', value: 0.15, confidence: 'provisional', source: 'FIFA の天然芝の評価（転がり距離 4–10 m）と Kolitzus（ISSS）の試験台の速さ 3.20 m/s からの間接の見積もり 0.09–0.22（05 §10.2）。OQ-09' },
   timeStep: { id: 'P-18', symbol: 'Δt', unit: 's', value: 0.005, confidence: 'provisional', source: '収束試験（VER-F02）に基づく暫定の候補。OQ-12' },
   restThresholds: {
     id: 'P-19', symbol: 'v_rest, v_stop, ω_stop', unit: 'm/s, rad/s', value: { rest: 0.1, stopSpeed: 0.05, stopSpin: 0.5 },

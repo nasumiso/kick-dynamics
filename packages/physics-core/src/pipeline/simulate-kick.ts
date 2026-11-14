@@ -101,7 +101,9 @@ function requiredEntries(parameters: ParameterSet, input: KickInput, settings: S
   // 縮退判定の閾値は、対応する力項を使うときだけ要求する（PR #12 のレビュー）。
   // P-27 は要求しない：未決定ならスピン成分を定義不能（null）とする（computeMetrics）。
   const f = settings.forces;
-  if (usesAero(settings)) entries.push(p.airDensity, p.zeroSpeedThreshold);
+  // ε_v（P-23）は転がりでも使う（低速で転がり抵抗・抗力を 0 とし、静止とする。05 §8.2）。
+  if (usesAero(settings) || settings.ground === 'bounce-and-roll') entries.push(p.zeroSpeedThreshold);
+  if (usesAero(settings)) entries.push(p.airDensity);
   if (f.drag) entries.push(p.dragCoefficient);
   if (f.magnus) entries.push(p.liftCoefficient, p.magnusThreshold);
   if (f.spinDecay === 'linear') entries.push(p.spinDecayLinear);
@@ -267,6 +269,11 @@ export function simulateKick(input: KickInput, parameters: ParameterSet, setting
       restitution: v(p.groundRestitution), friction: v(p.groundFriction), tangentialSpeedThreshold: v(p.tangentialSpeedThreshold),
       diagnosticRelativeTolerance: v(p.diagnosticRelativeTolerance),
       gravity, rollingResistance: v(p.rollingResistance), restSpeed: rest.rest, stopSpeed: rest.stopSpeed, stopSpin: rest.stopSpin,
+      zeroSpeed: v(p.zeroSpeedThreshold),
+      // 転がりの間も抗力の設定に従う（05 §8.2、2026-11-14）。係数のモデルは飛翔と同じ。
+      drag: settings.forces.drag
+        ? { coefficient: flightSettings.forces.drag.coefficient, airDensity: environment.airDensity, airViscosity: environment.airViscosity }
+        : null,
     });
     if (!handler.ok) return handler;
     onGround = handler.value;

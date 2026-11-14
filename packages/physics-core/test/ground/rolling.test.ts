@@ -1,5 +1,6 @@
 // T1.3-08：転がりと停止（05 §8.1・§8.2）。VER-G03（純転がりの拘束）、G04（停止判定）、G05（転がり抵抗）、
-// G06（転がりへの移行）と、総距離（05 §9）。係数・閾値はテスト用の任意の値（P-15〜P-17・P-19 は未決定）。
+// G06（転がりへの移行）と、総距離（05 §9）。係数・閾値はテスト用の任意の値（P-15〜P-17・P-19 の採用値ではない）。
+// 抗力を含む転がり（2026-11-14 の改定、VER-G07〜G11）は rolling-drag.test.ts。ここでは抗力 OFF（drag: null）。
 // 期待値は実装の式ではなく、接触点まわりの角運動量の保存、仕事とエネルギーの関係、05 §6.8 のソルバー（e_g = 0）から求める。
 import { describe, expect, it } from 'vitest';
 import { ballInertia, kineticEnergy } from '../../src/bodies/dynamics';
@@ -24,7 +25,7 @@ const UP: Vec3 = [0, 1, 0];
 
 const params: GroundParameters = {
   gravity: g, restitution: 0.6, friction: 0.4, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9, // ε_t・τ_diag は P-25・P-28 の仮置き
-  rollingResistance: 0.05, restSpeed: 0.3, stopSpeed: 0.01, stopSpin: 0.1,
+  rollingResistance: 0.05, restSpeed: 0.3, stopSpeed: 0.01, stopSpin: 0.1, zeroSpeed: thresholds.zeroSpeed, drag: null,
 };
 const dt = 0.005;
 const settings: FlightSimulationSettings = {
@@ -62,10 +63,16 @@ function totalKineticEnergy(s: RigidBodyState): number {
   return kineticEnergy({ mass: m, inertiaWorld: ballInertia(ball) }, s);
 }
 
+function advance(state: RigidBodyState, p: GroundParameters, duration: number): RigidBodyState {
+  const r = advanceRolling(state, ball, p, duration);
+  if (!r.ok) throw new Error(r.error.message);
+  return r.value;
+}
+
 /** 状態を Δt 刻みで n 回進めた列（先頭は初期状態）。 */
 function rollSteps(start: RigidBodyState, p: GroundParameters, n: number): RigidBodyState[] {
   const states = [start];
-  for (let i = 0; i < n; i++) states.push(advanceRolling(states[i]!, ball, p, dt));
+  for (let i = 0; i < n; i++) states.push(advance(states[i]!, p, dt));
   return states;
 }
 
@@ -110,6 +117,8 @@ describe('sliding on the ground (05 §8.2)', () => {
 
   it('dissipates energy only by friction: ΔT = −μ_g m g × (slip distance)', () => {
     // 接触点の速度の向きは一定で、大きさは時間に比例して減る（du/dt = −μ_g g (1 + 1/κ) û）。滑った距離は |u₀|² / (2 μ_g g (1 + 1/κ))。
+    // 移行のステップ（05 §8.2 の手順 3、1 次精度）でも、接触点に働く力積 P が u を一定の割合で 0 にした場合と同じ |P| |u_k| / 2 を
+    // 散逸するため、この関係は丸め誤差の範囲で成り立つ。
     const start = onGround([5, 0, 1], [2, -3, -10]);
     const u0 = length(pointVelocity(start, DOWN));
     const end = rollSteps(start, frictionOnly, 400).at(-1)!;
@@ -119,12 +128,13 @@ describe('sliding on the ground (05 §8.2)', () => {
 
   it('leaves a sliding state unchanged for a zero duration', () => {
     const start = onGround([5, 0, 1], [2, -3, -10]);
-    expect(advanceRolling(start, ball, params, 0)).toBe(start);
+    const r = advanceRolling(start, ball, params, 0);
+    expect(r.ok && r.value).toBe(start);
   });
 
   it('keeps sliding without force when μ_g = 0', () => {
     const start = onGround([5, 0, 1], [2, -3, -10]);
-    const end = advanceRolling(start, ball, { ...params, friction: 0, rollingResistance: 0 }, 1);
+    const end = advance(start, { ...params, friction: 0, rollingResistance: 0 }, 1);
     expectAllClose(end.linearVelocity, start.linearVelocity);
     expectAllClose(end.angularVelocity, start.angularVelocity);
     expectAllClose(end.position, add(start.position, start.linearVelocity));
@@ -151,11 +161,22 @@ describe('VER-G05 rolling resistance', () => {
     }
   });
 
-  it('comes to rest at distance v₀² / (2a) and stays there', () => {
-    const rest = advanceRolling(start, ball, params, speed0 / deceleration + 1);
-    expectAllClose(rest.linearVelocity, [0, 0, 0]);
-    expectAllClose(rest.angularVelocity, [0, 0, 0]);
-    expectAllClose(rest.position, add(start.position, scale(v0, speed0 / (2 * deceleration))));
+  it('comes to rest no later than the step containing v₀/a, near v₀² / (2a), and stays there', () => {
+    // 静止の判定（05 §8.2 の手順 2）：|v_k| ≤ a Δt のステップの終わりで静止し、位置は x_k + v_k Δt / 2。
+    // v_k ≤ a Δt なので、連続系の残りの距離 v_k² / (2a) に対する超過は v_k (Δt − v_k / a) / 2 で、0 以上 a Δt² / 8 以下。
+    const all = rollSteps(start, params, Math.ceil(speed0 / deceleration / dt) + 10);
+    const restIndex = all.findIndex((s) => s.linearVelocity[0] === 0 && s.linearVelocity[2] === 0);
+    expect(restIndex).toBeGreaterThan(0);
+    expect(restIndex).toBeLessThanOrEqual(Math.ceil(speed0 / deceleration / dt));
+    const distance = length(sub(all[restIndex]!.position, start.position));
+    const exact = (speed0 * speed0) / (2 * deceleration);
+    expect(distance - exact).toBeGreaterThanOrEqual(-1e-12);
+    expect(distance - exact).toBeLessThanOrEqual((deceleration * dt * dt) / 8 + 1e-12);
+    for (const s of all.slice(restIndex)) {
+      expect(s.linearVelocity).toEqual([0, 0, 0]);
+      expect(s.angularVelocity).toEqual([0, 0, 0]);
+      expect(s.position).toEqual(all[restIndex]!.position);
+    }
   });
 });
 
@@ -277,6 +298,7 @@ describe('ground parameter validation', () => {
     ['restitution', { restitution: 1.1 }], ['friction', { friction: -0.1 }], ['rolling resistance', { rollingResistance: Number.NaN }],
     ['rest speed', { restSpeed: -1 }], ['stop speed', { stopSpeed: Infinity }], ['zero stop speed', { stopSpeed: 0 }], ['stop spin', { stopSpin: -1 }], ['zero stop spin', { stopSpin: 0 }], ['gravity', { gravity: 0 }],
     ['diagnostic relative tolerance (NaN)', { diagnosticRelativeTolerance: Number.NaN }], ['zero diagnostic relative tolerance', { diagnosticRelativeTolerance: 0 }],
+    ['zero-speed threshold', { zeroSpeed: 0 }], ['air density for rolling drag', { drag: { coefficient: { kind: 'constant', value: 0.2 }, airDensity: -1, airViscosity: 1.8e-5 } }],
   ] as const)('rejects an invalid %s', (_, patch) => {
     const r = groundHandler(ball, { ...params, ...patch });
     expect(!r.ok && r.error.code).toBe('invalid-parameter');
@@ -301,7 +323,7 @@ describe('IV-05-C2 independent cases', () => {
     const unit: BallParams = { mass: 1, radius: 1, inertiaCoefficient: 2 / 5 };
     const p: GroundParameters = {
       gravity: 10, restitution: 1 / 2, friction: 1 / 5, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9,
-      rollingResistance: 0, restSpeed: 1, stopSpeed: 0.01, stopSpin: 0.01,
+      rollingResistance: 0, restSpeed: 1, stopSpeed: 0.01, stopSpin: 0.01, zeroSpeed: 1e-6, drag: null,
     };
     const h = groundHandler(unit, p);
     if (!h.ok) throw new Error(h.error.message);
@@ -318,7 +340,7 @@ describe('IV-05-C2 independent cases', () => {
     const unit: BallParams = { mass: 1, radius: 1, inertiaCoefficient: 1 };
     const p: GroundParameters = {
       gravity: 8, restitution: 1 / 2, friction: 1 / 4, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9,
-      rollingResistance: 1 / 4, restSpeed: 2, stopSpeed: 1 / 2, stopSpin: 1,
+      rollingResistance: 1 / 4, restSpeed: 2, stopSpeed: 1 / 2, stopSpin: 1, zeroSpeed: 1e-6, drag: null,
     };
     const gridSettings: FlightSimulationSettings = {
       timeStep: 1 / 4, maxTime: 5, eventTimeTolerance: 1e-9, forces: { ...allOff, gravity: true }, thresholds,
