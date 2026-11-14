@@ -46,6 +46,7 @@ const parameters: ParameterSet = {
   rollReferenceThreshold: entry('P-26', 1e-6),
   verticalLaunchThreshold: entry('P-27', 1e-6),
   diagnosticRelativeTolerance: entry('P-28', 1e-9),
+  spinFrictionLength: entry('P-29', 0.01),
 };
 
 /** ボールの後ろ下から、前方やや上へ蹴る入力。 */

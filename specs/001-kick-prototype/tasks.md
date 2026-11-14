@@ -665,11 +665,15 @@
 - 完了確認：`verification/independent/IV-05/` に導出資料が保存されている。仕様の問題は、期待値を含まない別ファイルに書き出す。
 - 結果（2026-11-14）：`verification/independent/IV-05/derivation-spin-friction.md`（Codex、`gpt-6.1-sol`・推論 `medium`、対象コミット `af27317`）。仕様の問題 6 件（T-01〜T-06）を `spec-issues-spin-friction.md` に分けて書き出してもらった。Claude Code は導出資料を読んでいない。
 
-### [ ] T1.5-14 ねじり摩擦の実装
+### [x] T1.5-14 ねじり摩擦の実装
 - 担当：Claude Code
 - 内容：05 §8.2 のとおりに `packages/physics-core/src/ground/rolling.ts` と接地の処理を改め（`RollingParameters` に `spinFrictionLength`）、パイプラインで P-29 を要求する。VER-G04・G12 のテストを加える。Lab の既定のパラメータセットに P-29 = 0.01 m を加える。
 - 依存：T1.5-13、IV-05-D4
 - 完了確認：`npm run check` が通る。Lab で、曲がるキックの後に回転が止まり、`stop` で終わる。
+- 結果（2026-11-14）：
+  - **実装**：`rolling.ts` で、$\omega_y$ を RK4 の状態から外し、閉形式 $\operatorname{sign}(\omega_{y,0})\max(\lvert\omega_{y,0}\rvert - \alpha_s t, 0)$ を各段・移行の候補・1 次精度のステップの姿勢・ステップの終わりに使う（05 §8.2 の「$\omega_y$ の更新」）。0 は +0 に揃える（負の $\omega_y$ から −0 を作らない）。`RollingParameters` に `spinFrictionLength`（P-29、$\ell_s \ge 0$ の有限値を検証）、`ParameterSet` に P-29 を加え、パイプラインは `bounce-and-roll` で P-29 を要求する。Lab の既定のパラメータセットに P-29 = 0.01 m（仮置き）を加えた。
+  - **テスト**：`test/ground/rolling-spin.test.ts` に VER-G12 (1)（純転がり・滑り・静止のそれぞれ、許容誤差は $4n\varepsilon_{\text{mach}}\lvert\omega_{y,0}\rvert$、0 の後は厳密に 0。0 に達する直前の 1 点は符号だけを確かめる）、(2)（$C_D$ 定数・抗力 ON で、滑り → 純転がり → 静止を通る構成の水平の状態と状態の種類が $\ell_s = 0$ と完全に一致）、(3)・VER-G04（鉛直軸まわりに 30 rad/s で回る低い弾道が、$\ell_s > 0$ で `stop`、$\ell_s = 0$ で `max-time`）、$\ell_s$ の検証。既存の VER-G03〜G11 のテストは $\ell_s = 0$ で動かす。
+  - **Lab**（`scripts/measure-kick.mjs`）：横回転の条件 C・G が `max-time` ではなく `stop` で終わるようになった（G は 24015 サンプル → 2482 サンプル）。計算時間は条件 A〜G で最大 7.4 ms（NFR-08 の 100 ms 以内）。
 
 ### [ ] IV-05-C4 / IV-05-R4 ねじり摩擦の照合と差異の解決
 - 担当：Codex（照合）、Claude Code（解決）

@@ -27,6 +27,7 @@ const drag = { coefficient: { kind: 'constant', value: cd }, airDensity: environ
 const params: GroundParameters = {
   gravity: g, restitution: 0.6, friction: 0.6, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9,
   rollingResistance: 0.15, restSpeed: 0.3, stopSpeed: 0.01, stopSpin: 0.1, zeroSpeed: thresholds.zeroSpeed, drag,
+  spinFrictionLength: 0, // VER-G07〜G11 は ω_y = 0 の構成（ねじり摩擦は VER-G12）
 };
 
 function onGround(v: Vec3, w: Vec3): RigidBodyState {

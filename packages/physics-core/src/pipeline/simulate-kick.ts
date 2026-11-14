@@ -108,7 +108,7 @@ function requiredEntries(parameters: ParameterSet, input: KickInput, settings: S
   if (f.magnus) entries.push(p.liftCoefficient, p.magnusThreshold);
   if (f.spinDecay === 'linear') entries.push(p.spinDecayLinear);
   if (f.spinDecay === 'torque-coefficient') entries.push(p.torqueCoefficient, p.zeroSpinThreshold);
-  if (settings.ground === 'bounce-and-roll') entries.push(p.groundRestitution, p.groundFriction, p.rollingResistance, p.restThresholds);
+  if (settings.ground === 'bounce-and-roll') entries.push(p.groundRestitution, p.groundFriction, p.rollingResistance, p.restThresholds, p.spinFrictionLength);
   return entries;
 }
 
@@ -270,6 +270,7 @@ export function simulateKick(input: KickInput, parameters: ParameterSet, setting
       diagnosticRelativeTolerance: v(p.diagnosticRelativeTolerance),
       gravity, rollingResistance: v(p.rollingResistance), restSpeed: rest.rest, stopSpeed: rest.stopSpeed, stopSpin: rest.stopSpin,
       zeroSpeed: v(p.zeroSpeedThreshold),
+      spinFrictionLength: v(p.spinFrictionLength),
       // 転がりの間も抗力の設定に従う（05 §8.2、2026-11-14）。係数のモデルは飛翔と同じ。
       drag: settings.forces.drag
         ? { coefficient: flightSettings.forces.drag.coefficient, airDensity: environment.airDensity, airViscosity: environment.airViscosity }

@@ -9,7 +9,7 @@ const entries = Object.values(DEFAULT_PARAMETER_SET) as Array<ParameterEntry<unk
 describe('default parameter set (a copy of 05 §10.2)', () => {
   it('covers every parameter ID of 05 §10.2 exactly once, with a meaning for each', () => {
     const ids = entries.map((e) => e.id).sort();
-    const expected = Array.from({ length: 28 }, (_, i) => `P-${String(i + 1).padStart(2, '0')}` as ParameterId);
+    const expected = Array.from({ length: 29 }, (_, i) => `P-${String(i + 1).padStart(2, '0')}` as ParameterId);
     expect(ids).toEqual(expected);
     for (const id of expected) expect(PARAMETER_MEANINGS[id]).toBeTruthy();
   });

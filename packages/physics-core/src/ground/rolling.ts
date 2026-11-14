@@ -5,7 +5,9 @@
 // - 重心に働く外力 F_e：転がり抵抗 μ_r m g（水平速度と逆向き）と空気抗力（§7.3。抗力 ON のとき）。|v| ≤ ε_v では 0。
 // 状態（静止・純転がり・滑り）の切り替えはステップごとに判定し、時刻は求めない（切り替えのステップは 1 次精度）。
 // 切り替えのないステップは RK4 で進める。
-// - 鉛直軸まわりの回転 ω_y は変えない（摩擦のトルクは水平で、外力は重心に働く）。
+// - 鉛直軸まわりの回転 ω_y は、接地面のねじり摩擦（トルク μ_g m g ℓ_s）で一定の割合 α_s = μ_g g ℓ_s/(κ R²) で減らし、
+//   0 で止める。ω_y は水平の状態によらないので RK4 の状態に含めず、ステップの途中の値も含めて閉形式で与える
+//   （C_D の評価・移行の候補・姿勢の積分に使う）。
 import type { BallParams, RigidBodyState } from '../bodies/types';
 import { evaluateCoefficient, type AeroContext } from '../flight/forces';
 import type { CoefficientModel } from '../flight/types';
@@ -23,7 +25,7 @@ export interface RollingDrag {
   readonly airViscosity: number;
 }
 
-/** 転がりと停止の係数・閾値（05 §8.2、P-16・P-17・P-19・P-23）。値は未決定で、Core は既定値を持たない。 */
+/** 転がりと停止の係数・閾値（05 §8.2、P-16・P-17・P-19・P-23・P-29）。値は未決定で、Core は既定値を持たない。 */
 export interface RollingParameters {
   /** g m/s² */
   readonly gravity: number;
@@ -39,6 +41,27 @@ export interface RollingParameters {
   readonly zeroSpeed: number;
   /** 抗力 OFF なら null */
   readonly drag: RollingDrag | null;
+  /** ℓ_s m（P-29）：接地面のねじり摩擦の有効長さ。0 なら ω_y は変わらない */
+  readonly spinFrictionLength: number;
+}
+
+/** ねじり摩擦による ω_y の角減速度 α_s = μ_g g ℓ_s / (κ R²)（05 §8.2）。 */
+export function spinFrictionDeceleration(ball: BallParams, params: RollingParameters): number {
+  return (params.friction * params.gravity * params.spinFrictionLength) / (ball.inertiaCoefficient * ball.radius * ball.radius);
+}
+
+/** ω_y の閉形式：時間 t 後の値 sign(ω_y0) max(|ω_y0| − α_s t, 0)（0 に達したら 0 のまま、符号は反転しない）。 */
+type SpinAt = (t: number) => number;
+
+function spinSchedule(omegaY: number, deceleration: number): SpinAt {
+  return (t) => {
+    const magnitude = Math.max(Math.abs(omegaY) - deceleration * t, 0);
+    return magnitude === 0 ? 0 : Math.sign(omegaY) * magnitude; // 0 は +0 に揃える（負の ω_y から −0 を作らない）
+  };
+}
+
+function withSpin(w: Vec3, omegaY: number): Vec3 {
+  return [w[0], omegaY, w[2]];
 }
 
 /** 接触点（−R ŷ）の速度 u = v + ω × (−R ŷ) = (v_x + R ω_z, 0, v_z − R ω_x)。 */
@@ -58,11 +81,14 @@ function upCross(a: Vec3): Vec3 {
   return [a[2], 0, -a[0]];
 }
 
-/** 区間内で一定の並進加速度 a と角加速度 α で進める。姿勢は ω(t) = ω0 + α t を使った RK4 の 1 ステップ。 */
-function advanceUniform(state: RigidBodyState, acceleration: Vec3, angularAcceleration: Vec3, duration: number): RigidBodyState {
+/**
+ * 区間内で一定の並進加速度 a と水平の角加速度 α で進める。ω_y は閉形式 spin。
+ * 姿勢は ω(t) = (ω0 + α t の水平成分, spin(t)) を使った RK4 の 1 ステップ。
+ */
+function advanceUniform(state: RigidBodyState, acceleration: Vec3, angularAcceleration: Vec3, duration: number, spin: SpinAt): RigidBodyState {
   const v0 = state.linearVelocity;
   const w0 = state.angularVelocity;
-  const omegaAt = (t: number): Vec3 => addScaled(w0, angularAcceleration, t);
+  const omegaAt = (t: number): Vec3 => withSpin(addScaled(w0, angularAcceleration, t), spin(t));
   const q0 = state.orientation;
   const h = duration;
   const step = (q: Quat, d: Quat, s: number): Quat => [q[0] + s * d[0], q[1] + s * d[1], q[2] + s * d[2], q[3] + s * d[3]];
@@ -176,14 +202,17 @@ function slidingDerivative(state: RigidBodyState, ball: BallParams, params: Roll
   });
 }
 
-/** 位置・速度・角速度・姿勢を同じ RK4 で 1 ステップ進める（各段の ω はその段の値。05 §8.2 の姿勢の積分）。 */
+/**
+ * 位置・速度・水平の角速度・姿勢を同じ RK4 で 1 ステップ進める（各段の ω はその段の値。05 §8.2 の姿勢の積分）。
+ * ω_y は RK4 の状態に含めず、各段と終わりに閉形式 spin の値を使う。
+ */
 function rk4(
-  state: RigidBodyState, h: number, f: (s: RigidBodyState) => SimResult<Derivative>,
+  state: RigidBodyState, h: number, f: (s: RigidBodyState) => SimResult<Derivative>, spin: SpinAt,
 ): SimResult<RigidBodyState> {
   const stage = (s: RigidBodyState, d: Derivative, dq: Quat, c: number): RigidBodyState => ({
     position: addScaled(s.position, d.velocity, c),
     linearVelocity: addScaled(s.linearVelocity, d.acceleration, c),
-    angularVelocity: addScaled(s.angularVelocity, d.angularAcceleration, c),
+    angularVelocity: withSpin(addScaled(s.angularVelocity, d.angularAcceleration, c), spin(c)),
     orientation: [s.orientation[0] + c * dq[0], s.orientation[1] + c * dq[1], s.orientation[2] + c * dq[2], s.orientation[3] + c * dq[3]],
   });
   const d1 = f(state);
@@ -212,18 +241,18 @@ function rk4(
   return ok({
     position: add(state.position, mix(d1.value.velocity, d2.value.velocity, d3.value.velocity, d4.value.velocity)),
     linearVelocity: add(state.linearVelocity, mix(d1.value.acceleration, d2.value.acceleration, d3.value.acceleration, d4.value.acceleration)),
-    angularVelocity: add(state.angularVelocity, mix(d1.value.angularAcceleration, d2.value.angularAcceleration, d3.value.angularAcceleration, d4.value.angularAcceleration)),
+    angularVelocity: withSpin(add(state.angularVelocity, mix(d1.value.angularAcceleration, d2.value.angularAcceleration, d3.value.angularAcceleration, d4.value.angularAcceleration)), spin(h)),
     orientation: normalizeQuat(q),
   });
 }
 
 /**
- * 1 次精度のステップ（静止・移行）：速度と角速度を終わりの値へ時間の 1 次式で変え、位置は台形、
- * 姿勢は補間した ω で RK4（05 §8.2）。
+ * 1 次精度のステップ（静止・移行）：速度と水平の角速度を終わりの値へ時間の 1 次式で変え、位置は台形、
+ * 姿勢は補間した ω（ω_y は閉形式）で RK4（05 §8.2）。angularVelocity の y 成分は使わない（終わりの ω_y は spin(h)）。
  */
-function linearStep(state: RigidBodyState, velocity: Vec3, angularVelocity: Vec3, h: number): RigidBodyState {
-  const moved = advanceUniform(state, scale(sub(velocity, state.linearVelocity), 1 / h), scale(sub(angularVelocity, state.angularVelocity), 1 / h), h);
-  return { ...moved, linearVelocity: velocity, angularVelocity };
+function linearStep(state: RigidBodyState, velocity: Vec3, angularVelocity: Vec3, h: number, spin: SpinAt): RigidBodyState {
+  const moved = advanceUniform(state, scale(sub(velocity, state.linearVelocity), 1 / h), scale(sub(angularVelocity, state.angularVelocity), 1 / h), h, spin);
+  return { ...moved, linearVelocity: velocity, angularVelocity: withSpin(angularVelocity, spin(h)) };
 }
 
 /**
@@ -235,9 +264,13 @@ export function advanceRolling(state: RigidBodyState, ball: BallParams, params: 
   const h = duration;
   const radius = ball.radius;
   const mode = modeOf(state, radius);
+  const spin = spinSchedule(state.angularVelocity[1], spinFrictionDeceleration(ball, params));
 
-  // 1. 静止：位置と水平の状態は変えず、姿勢だけ ω_y ŷ で回す。
-  if (mode === 'rest') return ok(advanceUniform(state, [0, 0, 0], [0, 0, 0], h));
+  // 1. 静止：位置と水平の状態は変えず、姿勢だけ ω_y ŷ で回す（ω_y はねじり摩擦で減る）。
+  if (mode === 'rest') {
+    const moved = advanceUniform(state, [0, 0, 0], [0, 0, 0], h, spin);
+    return ok({ ...moved, angularVelocity: [0, spin(h), 0] });
+  }
 
   const external = externalAcceleration(state, ball, params);
   if (!external.ok) return external;
@@ -247,10 +280,10 @@ export function advanceRolling(state: RigidBodyState, ball: BallParams, params: 
     const speed = length(state.linearVelocity);
     const deceleration = length(external.value) / (1 + ball.inertiaCoefficient);
     if (speed <= params.zeroSpeed || speed <= deceleration * h) {
-      // 静止の判定（数値上の規則）：このステップの間に速さが 0 になるとみなす。ω_y は残す。
-      return ok(linearStep(state, [0, 0, 0], [0, state.angularVelocity[1], 0], h));
+      // 静止の判定（数値上の規則）：このステップの間に速さが 0 になるとみなす。ω_y は閉形式に従う。
+      return ok(linearStep(state, [0, 0, 0], [0, 0, 0], h, spin));
     }
-    const stepped = rk4(state, h, (s) => rollingDerivative(s, ball, params));
+    const stepped = rk4(state, h, (s) => rollingDerivative(s, ball, params), spin);
     if (!stepped.ok) return stepped;
     return ok(enforceRolling(stepped.value, radius));
   }
@@ -263,7 +296,7 @@ export function advanceRolling(state: RigidBodyState, ball: BallParams, params: 
     // 移行の候補：滑りを 0 にした状態で維持条件を確かめ、成り立てば純転がりへ移る。
     const velocity = add(addScaled(state.linearVelocity, external.value, h), impulse);
     const [vx, , vz] = velocity;
-    const candidate = linearStep(state, velocity, [vz / radius, state.angularVelocity[1], -vx / radius], h);
+    const candidate = linearStep(state, velocity, [vz / radius, 0, -vx / radius], h, spin);
     const candidateExternal = externalAcceleration(candidate, ball, params);
     if (!candidateExternal.ok) return candidateExternal;
     if (sustainsRolling(candidateExternal.value, ball, params)) return ok(candidate);
@@ -271,5 +304,5 @@ export function advanceRolling(state: RigidBodyState, ball: BallParams, params: 
   // 候補は捨て、t_k の状態から滑りを RK4 で進める。u = 0 の段では試行の滑りの向きを使う。
   const trialLength = length(trialSlip);
   const fallback = trialLength > 0 ? scale(trialSlip, 1 / trialLength) : scale(state.linearVelocity, -1 / Math.max(length(state.linearVelocity), Number.MIN_VALUE));
-  return rk4(state, h, (s) => slidingDerivative(s, ball, params, fallback));
+  return rk4(state, h, (s) => slidingDerivative(s, ball, params, fallback), spin);
 }

@@ -62,6 +62,10 @@ export const DEFAULT_PARAMETER_SET: ParameterSet = {
   rollReferenceThreshold: { id: 'P-26', symbol: 'ε_φ', unit: '—', value: 1e-6, confidence: 'provisional', source: `${NUMERICAL}（T1.3-06）` },
   verticalLaunchThreshold: { id: 'P-27', symbol: 'ε_vert', unit: '—', value: 1e-6, confidence: 'provisional', source: `${NUMERICAL}（T1.2-09）` },
   diagnosticRelativeTolerance: { id: 'P-28', symbol: 'τ_diag', unit: '—', value: 1e-9, confidence: 'provisional', source: `${NUMERICAL}（T1.3-05）` },
+  spinFrictionLength: {
+    id: 'P-29', symbol: 'ℓ_s', unit: 'm', value: 0.01, confidence: 'provisional',
+    source: '出典なし。接地面の半径 約 1.5 cm、圧力一様の (2/3)a の目安（05 §10.2）。OQ-09',
+  },
 };
 
 /** 表示用のパラメータの意味（05 §10.2 の「意味」列）。 */
@@ -72,5 +76,5 @@ export const PARAMETER_MEANINGS: Record<ParameterId, string> = {
   'P-15': '地面の反発係数', 'P-16': '地面の摩擦係数', 'P-17': '転がり抵抗係数', 'P-18': '物理の時間刻み',
   'P-19': '転がり移行・停止の閾値', 'P-20': '風速', 'P-21': 'マグヌス力の縮退判定の閾値', 'P-22': '空力トルク係数',
   'P-23': 'ゼロ速度の判定閾値', 'P-24': '無回転の判定閾値', 'P-25': '接線速度がほぼ 0 とみなす閾値',
-  'P-26': 'φ の基準軸を切り替える閾値', 'P-27': 'スピン成分を定義不能とする閾値', 'P-28': '衝突診断の警告の判定幅',
+  'P-26': 'φ の基準軸を切り替える閾値', 'P-27': 'スピン成分を定義不能とする閾値', 'P-28': '衝突診断の警告の判定幅', 'P-29': '接地面のねじり摩擦の有効長さ',
 };

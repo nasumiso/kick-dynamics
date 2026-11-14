@@ -44,7 +44,7 @@ const conditions = [
   ['D 初期入力（最初の接地で終了）', INITIAL_KICK_STATE, params, { ...settings, ground: 'stop-at-first-contact' }],
   ['E 初期入力（無限質量の足）', { ...INITIAL_KICK_STATE, footModel: 'kinematic-wall' }, params, settings],
   ['F 初期入力（最大時間 120 s：05 §10.3 の上限）', INITIAL_KICK_STATE, params, { ...settings, maxTime: 120 }],
-  ['G 横回転（C と同じ、最大時間 120 s：Δt = 0.005 s では停止しないため最も長い）', sideSpin, params, { ...settings, maxTime: 120 }],
+  ['G 横回転（C と同じ、最大時間 120 s。ねじり摩擦の導入前は停止せず最も長かった）', sideSpin, params, { ...settings, maxTime: 120 }],
   ['H 横回転（G と同じ、Δt = 1.2×10⁻⁴ s：05 §10.3 のステップ数の上限 10⁶）', sideSpin, maxStepParams, { ...settings, maxTime: 120 }],
 ];
 
