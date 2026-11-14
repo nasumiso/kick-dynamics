@@ -9,7 +9,7 @@ import { INITIAL_KICK_STATE, toKickInput, type KickState } from './kick/kick-sta
 import { WORKING_BALL, WORKING_FOOT, WORKING_GEOMETRY } from './params/working-values';
 import { createBallMesh } from './render/ball-mesh';
 import { createContactMarker, installContactPicker } from './render/contact-picker';
-import { addField } from './render/field';
+import { addField, followSun } from './render/field';
 import { createFootMesh } from './render/foot-mesh';
 import { createSceneView } from './render/scene-view';
 import { createVelocityArrow, velocityArrowGeometry } from './render/velocity-arrow';
@@ -17,7 +17,7 @@ import { createContactPanel } from './ui/contact-panel';
 import { createKickPanel } from './ui/kick-panel';
 import { createParameterPanel } from './ui/parameter-panel';
 import { createPlaybackPanel } from './ui/playback-panel';
-import { applyTrajectoryPose, createTrajectoryLine } from './render/trajectory-view';
+import { applyTrajectoryPose, createTrajectoryView, type TrajectoryView } from './render/trajectory-view';
 import { PLAYBACK_SPEEDS, PlaybackClock } from './playback/playback-clock';
 import { DEFAULT_PARAMETER_SET } from './params/default-parameter-set';
 import { DEFAULT_SIMULATION_SETTINGS, runKick } from './simulation/run-kick';
@@ -32,7 +32,7 @@ const viewport = document.querySelector<HTMLElement>('#viewport');
 const panel = document.querySelector<HTMLElement>('#panel');
 if (!viewport || !panel) throw new Error('#viewport or #panel element is missing');
 const view = createSceneView(viewport);
-addField(view.scene);
+const sun = addField(view.scene);
 
 const radius = WORKING_BALL.radius;
 const ball = createBallMesh(radius);
@@ -99,12 +99,13 @@ let lastResult: KickSimulationResult | null = null;
 /** 直前の描画フレームの時刻 ms。再生・再開・リプレイのときは現在時刻に戻し、操作前の経過時間（計算時間を含む）を再生時刻に加えない。 */
 let lastFrame = performance.now();
 let duration = 0;
-let line: THREE.Line | null = null;
+let trajectoryView: TrajectoryView | null = null;
 // ボールを動かすときは、カメラも同じだけ平行移動する（視点の向きと距離はユーザーの操作のまま）。
 const previous = new THREE.Vector3();
 function followBall(move: () => void): void {
   previous.copy(ball.position);
   move();
+  followSun(sun, ball.position);
   const delta = ball.position.clone().sub(previous);
   view.camera.position.add(delta);
   view.controls.target.add(delta);
@@ -112,7 +113,7 @@ function followBall(move: () => void): void {
 function resetBall(): void {
   clock = null;
   playback.showPlaying(null);
-  if (line) line.visible = false;
+  if (trajectoryView) trajectoryView.object.visible = false;
   followBall(() => ball.position.set(0, radius, 0));
   ball.quaternion.identity();
   playback.showTime(0, duration);
@@ -134,17 +135,17 @@ const playback = createPlaybackPanel(
     playback.showSavable(true);
     trajectory = outcome.result.trajectory;
     duration = trajectory.time[trajectory.time.length - 1]!;
-    if (line) {
-      view.scene.remove(line);
-      line.geometry.dispose();
-      (line.material as THREE.Material).dispose(); // createTrajectoryLine はキックごとに新しいマテリアルを作る
+    if (trajectoryView) {
+      view.scene.remove(trajectoryView.object);
+      trajectoryView.dispose(); // createTrajectoryView はキックごとに新しいジオメトリとマテリアルを作る
     }
-    line = createTrajectoryLine(trajectory);
-    view.scene.add(line);
+    trajectoryView = createTrajectoryView(trajectory);
+    view.scene.add(trajectoryView.object);
     playback.showMessage(summarize(outcome.result), true);
     // 前回の再生の着地点などから開始位置へ移るときも、カメラを同じだけ動かす。
     const current = trajectory;
     followBall(() => applyTrajectoryPose(ball, current, 0));
+    trajectoryView.update(0, ball.position);
     clock = new PlaybackClock(duration);
     clock.setSpeed(speed);
     clock.play();
@@ -198,5 +199,6 @@ view.onFrame(() => {
   const current = trajectory;
   const t = clock.t;
   followBall(() => applyTrajectoryPose(ball, current, t));
+  trajectoryView?.update(t, ball.position);
   playback.showTime(t, duration);
 });
