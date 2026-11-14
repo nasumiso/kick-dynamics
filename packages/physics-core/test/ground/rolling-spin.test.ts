@@ -74,10 +74,9 @@ describe('VER-G12 torsional friction', () => {
           // 0 に達した後は厳密に 0（max(…, 0) のため。符号は反転しない）
           expect(wy).toBe(0);
         } else {
-          // 逐次の引き算の丸め誤差の上界 c n ε |ω_y0|（c = 4 は仮置き、06 VER-G12 の T-06）。
-          // 0 に達する直前のステップは、閉形式の max が効く前後で 1 ステップぶん食い違いうるので、その 1 点は大小だけを確かめる。
-          if (t + h > zeroTime) expect(Math.sign(wy) === Math.sign(w0) || wy === 0).toBe(true);
-          else expect(Math.abs(wy - exact)).toBeLessThanOrEqual(4 * Math.max(i, 1) * Number.EPSILON * Math.abs(w0));
+          // 逐次の引き算の丸め誤差の上界 c n ε |ω_y0|（c = 4 は仮置き、06 VER-G12 の T-06）。0 に達する直前の格子も同じ判定
+          // （IV-05-C4 の C14 を受けて、直前の 1 点を符号だけで確かめていたのを改めた）。
+          expect(Math.abs(wy - exact)).toBeLessThanOrEqual(4 * Math.max(i, 1) * Number.EPSILON * Math.abs(w0));
         }
       }
       // 終わりまでに 0 に達している
@@ -104,31 +103,49 @@ describe('VER-G12 torsional friction', () => {
 });
 
 describe('VER-G12 (3) / VER-G04: a curving ball ends with stop when ℓ_s > 0 and max-time when ℓ_s = 0', () => {
+  // 構成と期待値は IV-05-D4 の導出資料 §6（verification/independent/IV-05/derivation-spin-friction.md）による（IV-05-C4 の C16 を受けて、
+  // マグヌス力 OFF の直線の弾道から、マグヌス力で曲がる弾道に改めた）。
+  // R = 0.69/(2π)（P-02）、抗力 OFF、マグヌス力 ON（P-13 の折れ線。飛翔中は S > 0.25 で C_L = 0.3）、回転減衰 OFF、e_g = 0、最大時間 12 s。
+  const curveBall = { ...ball, radius: 0.69 / (2 * Math.PI) };
   const settings: FlightSimulationSettings = {
-    timeStep: 0.005, maxTime: 60, eventTimeTolerance: 1e-9, forces: { ...allOff, gravity: true, drag: { enabled: true, coefficient: drag.coefficient } }, thresholds,
+    timeStep: 0.005, maxTime: 12, eventTimeTolerance: 1e-9, thresholds,
+    forces: { ...allOff, gravity: true, magnus: { enabled: true, coefficient: { kind: 'spin-table', points: [[0, 0], [0.25, 0.3], [1, 0.3]] } } },
   };
-  // 低い弾道で、鉛直軸まわりに回る（曲がるキックの後の状態に相当）。空中では ω_y は変わらない（回転減衰 OFF）。
-  const launch: RigidBodyState = { position: [0, R + 0.3, 0], orientation: IDENTITY_QUAT, linearVelocity: [8, 1, 0], angularVelocity: [0, 30, 0] };
+  const ground: GroundParameters = { ...params, restitution: 0, restSpeed: 0.1, drag: null };
+  const launch: RigidBodyState = {
+    position: [0, curveBall.radius + 1, 0], orientation: IDENTITY_QUAT, linearVelocity: [5, 0, 0], angularVelocity: [0, 50, 0],
+  };
 
   function run(p: GroundParameters) {
-    const handler = groundHandler(ball, p);
+    const handler = groundHandler(curveBall, p);
     if (!handler.ok) throw new Error(handler.error.message);
-    const r = simulateFlight(launch, ball, environment, settings, handler.value);
+    const r = simulateFlight(launch, curveBall, environment, settings, handler.value);
     if (!r.ok) throw new Error(r.error.message);
     return r.value;
   }
 
-  it('stops once ω_y has decayed (ℓ_s > 0)', () => {
-    const t = run(params);
-    const last = t.events.at(-1)!;
-    expect(last.type).toBe('stop');
-    const i = last.sampleIndex;
-    expect(Math.abs(t.angularVelocity[3 * i + 1]!)).toBeLessThan(params.stopSpin);
+  it('curves in the air (+x toward −z) before rolling', () => {
+    const t = run(ground);
+    const contact = t.events.find((e) => e.type === 'ground-contact')!;
+    // 接地の位置の参考値 (x, z) ≈ (2.2573, −0.0467) m（導出資料 §6。RK4・求根の誤差を含む参考値なので、向きと大きさの水準だけを確かめる）
+    const z = t.position[3 * contact.sampleIndex + 2]!;
+    expect(z).toBeLessThan(-0.04);
+    expect(z).toBeGreaterThan(-0.05);
   });
 
-  it('runs to max-time while |ω_y| ≥ ω_stop remains (ℓ_s = 0)', () => {
-    const t = run(noSpinFriction);
-    expect(t.events.at(-1)!.type).toBe('max-time');
+  it('stops at t = 7.220 s once ω_y has decayed (ℓ_s > 0)', () => {
+    const t = run(ground);
+    const last = t.events.at(-1)!;
+    expect(last.type).toBe('stop');
+    expect(t.time[last.sampleIndex]).toBeCloseTo(7.22, 9); // 番号 1444 の格子（導出資料 §6）
+    expect(Math.abs(t.angularVelocity[3 * last.sampleIndex + 1]!)).toBeLessThan(ground.stopSpin);
+  });
+
+  it('runs to max-time at 12 s while |ω_y| ≥ ω_stop remains (ℓ_s = 0)', () => {
+    const t = run({ ...ground, spinFrictionLength: 0 });
+    const last = t.events.at(-1)!;
+    expect(last.type).toBe('max-time');
+    expect(t.time[last.sampleIndex]).toBeCloseTo(12, 9);
   });
 });
 
