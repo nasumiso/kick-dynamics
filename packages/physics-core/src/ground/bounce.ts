@@ -59,6 +59,10 @@ function validateGround(ball: BallParams, params: GroundParameters): SimResult<v
   const drag = params.drag;
   if (drag !== null) {
     if (!(Number.isFinite(drag.airDensity) && drag.airDensity >= 0)) return fail('invalid-parameter', `air density must be finite and non-negative (${drag.airDensity})`);
+    // η は、係数を関数で与えるときの Re の計算にだけ使う（05 §10.3。飛翔と同じ扱い）。
+    if (drag.coefficient.kind === 'function' && !(Number.isFinite(drag.airViscosity) && drag.airViscosity > 0)) {
+      return fail('invalid-parameter', `air viscosity η must be finite and positive when C_D is a function of Re (${drag.airViscosity})`);
+    }
     if (drag.coefficient.kind === 'spin-table') {
       const error = spinTableError(drag.coefficient);
       if (error !== null) return fail('invalid-coefficient', `C_D: ${error}`);

@@ -102,3 +102,26 @@ describe('Trajectory output format', () => {
     expect(bouncing.at(-1)!.type).toBe('max-time');
   });
 });
+
+// η（P-11）は係数を関数で与えるときの Re の計算にだけ使うので、そのときだけ正の有限値を確かめる（05 §10.3）。
+// 定数の係数では使わないので、未決定（NaN）でもよい（simulateKick は未決定の η を NaN で渡す）。
+describe('air viscosity validation', () => {
+  const launch: RigidBodyState = { position: [0, 1, 0], orientation: IDENTITY_QUAT, linearVelocity: [10, 5, 0], angularVelocity: [0, 0, 0] };
+  const withDrag = (coefficient: FlightSimulationSettings['forces']['drag']['coefficient']): FlightSimulationSettings => ({
+    timeStep: 0.01, maxTime: 5, eventTimeTolerance: 1e-9, thresholds, forces: { ...allOff, gravity: true, drag: { enabled: true, coefficient } },
+  });
+  const byRe = withDrag({ kind: 'function', evaluate: (re) => (re > 2e5 ? 0.2 : 0.45) });
+
+  for (const eta of [0, -1e-5, Number.NaN, Infinity]) {
+    it(`rejects η = ${eta} when C_D is a function of Re`, () => {
+      const r = simulateFlight(launch, ball, { ...environment, airViscosity: eta }, byRe);
+      expect(!r.ok && r.error.code).toBe('invalid-parameter');
+    });
+  }
+
+  it('does not require η for a constant coefficient or when the term is off', () => {
+    expect(simulateFlight(launch, ball, { ...environment, airViscosity: Number.NaN }, withDrag({ kind: 'constant', value: 0.2 })).ok).toBe(true);
+    const off: FlightSimulationSettings = { ...byRe, forces: { ...byRe.forces, drag: { ...byRe.forces.drag, enabled: false } } };
+    expect(simulateFlight(launch, ball, { ...environment, airViscosity: Number.NaN }, off).ok).toBe(true);
+  });
+});

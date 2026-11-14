@@ -289,6 +289,10 @@ describe('a kick that flies, bounces, rolls and stops', () => {
 });
 
 describe('ground parameter validation', () => {
+  it('does not require η for a constant C_D (it is used only for the Re of a coefficient function, 05 §10.3)', () => {
+    expect(groundHandler(ball, { ...params, drag: { coefficient: { kind: 'constant', value: 0.2 }, airDensity: 1.225, airViscosity: Number.NaN } }).ok).toBe(true);
+  });
+
   it('rejects μ_r that pure rolling cannot sustain: κ μ_r / (1 + κ) > μ_g (05 §8.2)', () => {
     const limit = (params.friction * (1 + kappa)) / kappa;
     expect(groundHandler(ball, { ...params, rollingResistance: limit * 1.001 }).ok).toBe(false);
@@ -300,6 +304,7 @@ describe('ground parameter validation', () => {
     ['rest speed', { restSpeed: -1 }], ['stop speed', { stopSpeed: Infinity }], ['zero stop speed', { stopSpeed: 0 }], ['stop spin', { stopSpin: -1 }], ['zero stop spin', { stopSpin: 0 }], ['gravity', { gravity: 0 }],
     ['diagnostic relative tolerance (NaN)', { diagnosticRelativeTolerance: Number.NaN }], ['zero diagnostic relative tolerance', { diagnosticRelativeTolerance: 0 }],
     ['zero-speed threshold', { zeroSpeed: 0 }], ['air density for rolling drag', { drag: { coefficient: { kind: 'constant', value: 0.2 }, airDensity: -1, airViscosity: 1.8e-5 } }],
+    ...[0, -1e-5, Number.NaN, Infinity].map((eta) => [`air viscosity η = ${eta} for a C_D function of Re`, { drag: { coefficient: { kind: 'function', evaluate: () => 0.2 }, airDensity: 1.225, airViscosity: eta } }] as const),
   ] as const)('rejects an invalid %s', (_, patch) => {
     const r = groundHandler(ball, { ...params, ...patch });
     expect(!r.ok && r.error.code).toBe('invalid-parameter');
