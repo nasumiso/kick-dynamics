@@ -11,6 +11,7 @@ import { createBallMesh } from './render/ball-mesh';
 import { createContactMarker, installContactPicker } from './render/contact-picker';
 import { addField, followSun } from './render/field';
 import { createFootMesh } from './render/foot-mesh';
+import { createDisplayPanel, DEFAULT_DISPLAY_SETTINGS, type DisplaySettings } from './ui/display-panel';
 import { createSceneView } from './render/scene-view';
 import { createVelocityArrow, velocityArrowGeometry } from './render/velocity-arrow';
 import { createContactPanel } from './ui/contact-panel';
@@ -60,6 +61,9 @@ const kickPanel = createKickPanel(toFormValues(kick), (values) => {
   render();
 });
 panel.append(kickPanel.root);
+/** 表示の設定（表示専用）。変更はすぐに反映する。 */
+let display: DisplaySettings = DEFAULT_DISPLAY_SETTINGS;
+panel.append(createDisplayPanel(display, (next) => { display = next; render(); }));
 panel.append(createSettingsPanel(settings, DEFAULT_PARAMETER_SET, (next) => { settings = next; }));
 panel.append(createParameterPanel(DEFAULT_PARAMETER_SET));
 
@@ -77,7 +81,7 @@ function render(): void {
   // 足の速度 v_A^p の矢印（入力の確認用）。ボールは原点で静止している前提で接触点を求める。
   velocityArrow.update(atRest ? velocityArrowGeometry([0, radius, 0], radius, kick.contactDirection, input.footContactPointVelocity) : null);
   const pose = footPose(input, WORKING_GEOMETRY);
-  foot.visible = atRest && pose.ok;
+  foot.visible = display.foot && atRest && pose.ok;
   if (pose.ok) {
     toThreeVector(pose.value.position, foot.position);
     toThreeQuaternion(pose.value.orientation, foot.quaternion);
