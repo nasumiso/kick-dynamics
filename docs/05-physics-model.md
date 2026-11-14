@@ -382,15 +382,35 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 ### 8.2 転がりと停止（暫定・優先度は調整可、[OQ-09](research/references-and-open-questions.md)）
 
 - 拘束：$y = R$、$v_y = 0$。
-- **滑りを伴う転がり**：接触点の速度 $\mathbf u_t = \mathbf v_t + \boldsymbol\omega\times(-R\hat{\mathbf y}) \ne \mathbf 0$ の間、大きさ $\mu_g m g$ の動摩擦力が $\mathbf u_t$ と逆向きに働き、並進と回転を同時に変化させる。
-- **純転がり**：$\mathbf u_t = \mathbf 0$ を保つ。転がり抵抗は、重心に働く大きさ $\mu_r m g$ の力（水平速度と逆向き）とし、接触点の静止摩擦力が純転がりの拘束を保つ拘束力として働くものとする。このとき並進と回転は同時に減速し、減速度の大きさは $\mu_r g/(1+\kappa)$ になる。必要な静止摩擦力の大きさ $\kappa\,\mu_r m g/(1+\kappa)$ が $\mu_g m g$ を超える場合は、滑りを伴う転がりとして扱う。
-- 鉛直軸まわりの回転（$\omega_y$）は減衰させない（Phase 1 の決定、2026-10-18）。
-- **停止**：各ステップの終了時に $|\mathbf v| < v_{\text{stop}}$ かつ $|\boldsymbol\omega| < \omega_{\text{stop}}$ を判定し、最初に満たしたステップの終了時刻を停止イベントの時刻とする（ステップ内の時刻は求めない。閾値は未決定）。
-- **停止の保証はしない**：$\omega_y \ne 0$ が残る場合や $\mu_r = 0$ の場合は、停止条件を満たさないことがある。その場合は最大シミュレーション時間で終了し、`max-time` イベントとして記録する。
-- **転がりの間の空力**：転がりの間は空力（抗力・マグヌス力・§7.5 の回転減衰）を無視し、接地の力（動摩擦・転がり抵抗・純転がりの拘束力）だけを扱う（決定、2026-10-19）。根拠：上の減速度 $\mu_r g/(1+\kappa)$ と整合し、マグヌス力の鉛直成分による離地を扱わずに済む。転がりの速度域で抗力が無視できるかは未確認で、Phase 1 の適用限界とする。
-- **滑りの間の転がり抵抗**：滑りを伴う転がりの間は、動摩擦力だけが働き、転がり抵抗は加えない（上の記述どおり、決定 2026-10-19）。このとき $\mathbf u_t$ の向きは変わらず、大きさは $\mu_g g\,(1 + 1/\kappa)$ の割合で減る（$d\mathbf u_t/dt = -\mu_g g\,(1+1/\kappa)\,\hat{\mathbf u}_t$）。
-- **純転がりを保てない係数**：$\kappa\,\mu_r/(1+\kappa) > \mu_g$ の構成は扱わず、パラメータの範囲外（`invalid-parameter`）とする（決定、2026-10-19）。上の「滑りを伴う転がりとして扱う」は、この構成を許す場合の記述で、Phase 1 では使わない。$\mathbf u_t = \mathbf 0$ から滑りへ移るときの向きが、滑りの間に転がり抵抗を加えない上のモデルでは決まらないため。
-- **積分**（T1.3-08）：滑り・純転がりの間はどちらも加速度と角加速度が一定なので、各ステップを、滑り → 純転がり → 静止の区間に分けて閉形式で進める（区間の切り替わりの時刻はステップ内で正確に求める。§7.7 の RK4 は使わない）。純転がりに入るときは、水平の角速度を拘束 $\mathbf u_t = \mathbf 0$ から $\omega_x = v_z/R$、$\omega_z = -v_x/R$ と定める。静止した後は水平の速度と回転を 0 とし、$\omega_y$ だけを残す。姿勢は力学に影響しないため、閉形式の $\boldsymbol\omega(t)$ を使って区間ごとに RK4 で積分し、正規化する。
+- **働く力**（2026-11-14 に改定、それ以前は空力を無視していた）：転がりの間（滑り・純転がりとも）、水平方向に次の力が働く。
+  - 接触点の摩擦：滑りの間は動摩擦、純転がりの間は拘束を保つ静止摩擦。
+  - 転がり抵抗：重心に働く大きさ $\mu_r m g$ の力で、水平速度 $\mathbf v$ と逆向き（$\hat{\mathbf v} = \mathbf v/\lvert\mathbf v\rvert$）。$\lvert\mathbf v\rvert \le \varepsilon_v$（P-23）のときは 0 とする（向きが定まらないため）。
+  - 空気抗力：§7.3 の $\mathbf F_D$（重心に働く。抗力の ON/OFF の設定に従う）。$\mathbf v$ は水平なので $\mathbf F_D$ も水平。以下、$\mathbf F_D = -m\,k\,\lvert\mathbf v\rvert\,\mathbf v$、$k = \rho A C_D/(2m)$ と書く（$C_D$ は §7.3 と同じモデルを、そのときの $\mathbf v$・$\boldsymbol\omega$ で評価する）。
+  - 無視するもの：マグヌス力（§7.4）と回転減衰（§7.5）。純転がりで $\omega_y = 0$ ならマグヌス力は鉛直で、地面の反力に吸収される。$\omega_y \ne 0$ のときの水平成分（転がりながら曲がる効果）と、鉛直成分による垂直抗力の変化は扱わない（適用限界）。
+- **滑りを伴う転がり**：接触点の速度 $\mathbf u_t = \mathbf v_t + \boldsymbol\omega\times(-R\hat{\mathbf y}) \ne \mathbf 0$ の間、大きさ $\mu_g m g$ の動摩擦力が $\hat{\mathbf u}_t$ と逆向きに働く。
+  $$
+  \dot{\mathbf v} = -\mu_g g\,\hat{\mathbf u}_t - \mu_r g\,\hat{\mathbf v} - k\lvert\mathbf v\rvert\mathbf v,\qquad
+  \dot{\boldsymbol\omega}_h = \frac{\mu_g g}{\kappa R}\,(\hat{\mathbf y}\times\hat{\mathbf u}_t),\qquad
+  \dot{\mathbf u}_t = -\mu_g g\Bigl(1 + \frac1\kappa\Bigr)\hat{\mathbf u}_t - \mu_r g\,\hat{\mathbf v} - k\lvert\mathbf v\rvert\mathbf v
+  $$
+  （$\boldsymbol\omega_h$ は水平成分。転がり抵抗と抗力は重心に働くので回転を変えない。）$\mathbf u_t$ の向きは、$\hat{\mathbf v} \parallel \hat{\mathbf u}_t$ で $k = 0$ の場合を除いて変わりうる。
+- **純転がり**：$\mathbf u_t = \mathbf 0$ を保つ。必要な静止摩擦力は $\mathbf F_s = \dfrac{\kappa}{1+\kappa}\,m\,(\mu_r g + k\lvert\mathbf v\rvert^2)\,\hat{\mathbf v}$ で、並進と回転は同時に減速する。
+  $$
+  \dot{\mathbf v} = -\frac{\mu_r g + k\lvert\mathbf v\rvert^2}{1+\kappa}\,\hat{\mathbf v}
+  $$
+  速度の向きは変わらない。$k$ が定数（$C_D$ が定数）なら閉形式で解ける：$a = \mu_r g/(1+\kappa)$、$c = k/(1+\kappa)$、$\theta_0 = \arctan(v_0\sqrt{c/a})$ として、$v(t) = \sqrt{a/c}\,\tan(\theta_0 - \sqrt{ac}\,t)$、停止までの時間 $\theta_0/\sqrt{ac}$、距離 $\ln(1 + c v_0^2/a)/(2c)$（VER-G07 の期待値）。
+- **純転がりと滑りの境目**：純転がりを保てるのは $\lvert\mathbf F_s\rvert \le \mu_g m g$、すなわち
+  $$
+  \frac{\kappa\,(\mu_r g + k\lvert\mathbf v\rvert^2)}{1+\kappa} \le \mu_g g
+  $$
+  の間（等号では純転がり）。満たさないときは滑りとして扱う。純転がりから滑りへ移るときの $\hat{\mathbf u}_t$ は $-\hat{\mathbf v}$（動摩擦が $\hat{\mathbf v}$ の向きに働き、回転が並進より速くなる）。上の滑りの式で $\hat{\mathbf u}_t = -\hat{\mathbf v}$ とすると、$\dot{\mathbf u}_t\cdot\hat{\mathbf v} = \mu_g g(1+1/\kappa) - \mu_r g - k\lvert\mathbf v\rvert^2$ で、これが負（$\mathbf u_t$ が $-\hat{\mathbf v}$ の向きに育つ）になる条件は上の不等式の否定と一致する。滑りの間にも転がり抵抗をかけることで、境目が 1 つに揃う（2026-11-14 に決定。それ以前は滑りの間は動摩擦だけだった）。
+- **純転がりを保てない係数**：$\kappa\,\mu_r/(1+\kappa) > \mu_g$ の構成（速さによらず純転がりを保てない）は扱わず、パラメータの範囲外（`invalid-parameter`）とする（決定、2026-10-19）。
+- **積分**（暫定、2026-11-14。それ以前は閉形式）：抗力が速さに依存するため、一般には閉形式で解けない。各ステップは、そのときの状態（滑り／純転がり）の運動方程式を §7.7 と同じ RK4 で積分する。状態が変わる時刻は、§7.7 の地面イベントと同じく、ステップの開始状態から部分刻みで積分し直す二分法（打ち切り幅 $\delta_t$）で求め、その時刻で状態を切り替えて残り時間を積分する。判定量は次のとおり。
+  - 滑り → 純転がり：$\mathbf u_t(\tau)\cdot\mathbf u_t(t_k) \le 0$（ステップの開始時の向きに対して逆転した）。切り替えでは水平の角速度を拘束から $\omega_x = v_z/R$、$\omega_z = -v_x/R$ と定める（このとき境目の不等式を満たさなければ、滑りを続ける）。
+  - 純転がり → 滑り：境目の不等式が破れた（$C_D$ が速さに依存する場合は、減速の途中で起こりうる）。
+  - 純転がり → 静止：$\mathbf v(\tau)\cdot\mathbf v(t_k) \le 0$。静止した後は水平の速度と回転を 0 とし、$\omega_y$ だけを残す。
+  - 滑りの間に $\lvert\mathbf v\rvert$ が 0 を通る場合（強いバックスピンなど）は、転がり抵抗の向きがステップの途中で反転する。この不連続は時刻を求めずに RK4 で積分する（精度は落ちる。適用限界）。
+  - 姿勢は力学に影響しないため、各区間の $\boldsymbol\omega(t)$ を使って RK4 で積分し、正規化する。
 - 芝の変形・芝目・人工芝の挙動は扱わない。
 
 ### 8.3 キックの瞬間の地面
@@ -453,7 +473,7 @@ $S$ の定義に $|\boldsymbol\omega_\perp|$ を用いる流儀もあり、採�
 | P-14 | $c_\omega$ | 線形の回転減衰係数（§7.5 (b)） | kg·m²/s | 未決定 | 未決定 | $c_\omega \ge 0$。OQ-08 |
 | P-15 | $e_g$ | 地面の反発係数 | — | 0.6 | 仮置き | 出典なし（2026-10-19、人間が承認）。FIFA の人工芝の品質基準に垂直反発 60–100 cm の範囲がある（試験法 FIFA 01）が、落下の高さを一次情報で確認していないため換算していない。地面の種類に依存。OQ-09 |
 | P-16 | $\mu_g$ | 地面の摩擦係数 | — | 0.6 | 仮置き | 出典なし（2026-10-19、人間が承認）。OQ-09 |
-| P-17 | $\mu_r$ | 転がり抵抗係数 | — | 0.05 | 仮置き | 出典なし（2026-10-19、人間が承認）。$\kappa\,\mu_r/(1+\kappa) \le \mu_g$ の条件あり（§8.2。P-03・P-16 の仮置きでは 0.02 ≤ 0.6）。OQ-09 |
+| P-17 | $\mu_r$ | 転がり抵抗係数 | — | 0.15 | 仮置き（文献からの間接の見積もり） | 2026-11-14、人間が承認（それ以前は 0.05、出典なし）。見積もり：FIFA の天然芝の評価（FIFA natural pitch rating system、https://digitalhub.fifa.com/m/58aa765dd3e85f26/original/FIFA-natural-pitch-rating-system_EN.pdf）の最上位の区分の転がり距離 4.0–10.0 m と、H. J. Kolitzus, "Ball Roll Behavior"（ISSS、https://www.isss-sportsurfacescience.org/downloads/documents/ZPKPAJJUWY_Ball_Roll_BehaviorKS.pdf）の試験台を出たボールの速さ 3.20 m/s（FIFA 承認球での実測とされる値）から、平均減速度 $v^2/2s$ = 0.51–1.28 m/s²、$\mu_r = a(1+\kappa)/g$ = 0.09–0.22（P-03 の $\kappa = 2/3$、抗力は約 0.07 m/s² 以下で無視）。同じ資料の「約 2.5 m/s で 0.8–1.0 m/s²」（$\mu_r$ 0.14–0.17）とも整合する。2 つの資料を組み合わせた見積もりで、両者の試験条件が同じかは確認していない。実際の減速度は速さに依存する（Kolitzus は $a + b\,v$ の形を示す）が、モデルは一定の $\mu_r$ と抗力だけで表す。$\kappa\,\mu_r/(1+\kappa) \le \mu_g$ の条件あり（§8.2。P-03・P-16 の仮置きでは 0.06 ≤ 0.6）。OQ-09 |
 | P-18 | $\Delta t$ | 物理の時間刻み | s | 候補 0.005 | 仮置き | 収束試験（VER-F02、06 §4.2 の記録）で精度は制約にならないことを確認し、他の制約に余裕を持たせた暫定の候補（T1.2-04）。確定は OQ-12 |
 | P-19 | $v_{\text{rest}},\ v_{\text{stop}},\ \omega_{\text{stop}}$ | 転がり移行・停止の閾値 | m/s, rad/s | 0.1、0.05、0.5 | 仮置き | 数値上の閾値で、出典なし（2026-10-19、人間が承認）。$e_g v_{\text{rest}} \ge g\Delta t/2$ の条件あり（§7.7、接地のたびに確認し、満たさなければ `invalid-parameter`。P-15・P-18 の仮置きでは 0.06 ≥ 0.0245）。$v_{\text{stop}},\ \omega_{\text{stop}} > 0$（停止の判定が厳密な不等号のため、0 では静止しても停止しない）。OQ-09 |
 | P-20 | $\mathbf w$ | 風速 | m/s | $\mathbf 0$ | 仮定 | Phase 1 は無風 |
