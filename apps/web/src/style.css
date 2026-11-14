@@ -183,10 +183,21 @@ button {
   border-radius: 3px;
   padding: 5px 10px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 button:hover {
   background: #3a6fb8;
+}
+
+button kbd {
+  display: inline-block;
+  margin-left: 2px;
+  padding: 0 4px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 3px;
+  font: 11px/1.4 ui-monospace, monospace;
+  opacity: 0.85;
 }
 
 table.results {

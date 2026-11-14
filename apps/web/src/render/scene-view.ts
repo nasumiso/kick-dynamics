@@ -14,8 +14,8 @@ export interface SceneView {
 
 export function createSceneView(container: HTMLElement): SceneView {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1b1f24);
-  const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 500);
+  scene.background = new THREE.Color(0xaeb7c1);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 500);
   camera.position.set(-1.2, 0.8, 2.0);
   camera.lookAt(0, 0.11, 0);
 
