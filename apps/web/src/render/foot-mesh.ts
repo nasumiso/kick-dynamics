@@ -22,21 +22,20 @@ const FACE_OPACITY = 0.55;
 export const FOOT_AXIS_COLORS = { x: 0xe03131, y: 0x2f9e44, z: 0x1c7ed6 } as const;
 /** 軸が面から突き出す長さ m */
 const AXIS_OVERHANG = 0.07;
-const AXIS_LABEL_HEIGHT = 0.032;
 
 /**
- * 物体座標の軸（原点は直方体の中心）。足と一緒に回る。どの面の向きかが分かるよう、ラベルに面の名前を添える。
+ * 物体座標の軸（原点は直方体の中心）。足と一緒に回る。軸の名前は出さず、面のラベル（Toe・Instep・Sole）と色で対応を示す。
  * 足の面やボールに隠れないよう、深度判定をせずに描く。
  */
 function createBodyAxes(lx: number, ly: number, lz: number): THREE.Group {
   const group = new THREE.Group();
   group.name = 'foot-axes';
-  const axes: Array<[THREE.Vector3, number, number, string]> = [
-    [new THREE.Vector3(1, 0, 0), lx / 2 + AXIS_OVERHANG, FOOT_AXIS_COLORS.x, '+x_b  Toe'],
-    [new THREE.Vector3(0, 1, 0), ly / 2 + AXIS_OVERHANG, FOOT_AXIS_COLORS.y, '+y_b'],
-    [new THREE.Vector3(0, 0, 1), lz / 2 + AXIS_OVERHANG, FOOT_AXIS_COLORS.z, '+z_b  Instep (contact)'],
+  const axes: Array<[THREE.Vector3, number, number]> = [
+    [new THREE.Vector3(1, 0, 0), lx / 2 + AXIS_OVERHANG, FOOT_AXIS_COLORS.x],
+    [new THREE.Vector3(0, 1, 0), ly / 2 + AXIS_OVERHANG, FOOT_AXIS_COLORS.y],
+    [new THREE.Vector3(0, 0, 1), lz / 2 + AXIS_OVERHANG, FOOT_AXIS_COLORS.z],
   ];
-  for (const [direction, length, color, text] of axes) {
+  for (const [direction, length, color] of axes) {
     const arrow = new THREE.ArrowHelper(direction, new THREE.Vector3(), length, color, 0.025, 0.014);
     for (const part of [arrow.line, arrow.cone]) {
       const m = part.material as THREE.Material;
@@ -44,9 +43,7 @@ function createBodyAxes(lx: number, ly: number, lz: number): THREE.Group {
       m.transparent = true;
       part.renderOrder = 9;
     }
-    const label = createTextLabel(text, AXIS_LABEL_HEIGHT);
-    label.position.copy(direction).multiplyScalar(length + 0.03);
-    group.add(arrow, label);
+    group.add(arrow);
   }
   // −z_b（足の裏）は軸の逆向き。破線で示す。
   const soleLine = new THREE.Line(
@@ -76,7 +73,7 @@ export function createFootMesh(foot: FootParams): THREE.Mesh {
   toe.position.set(lx / 2 + LABEL_GAP, 0, 0);
   const instep = createTextLabel('Instep (contact)', LABEL_HEIGHT);
   instep.position.set(lx / 2, ly / 2 + LABEL_GAP, lz / 2);
-  const sole = createTextLabel('Sole  −z_b', LABEL_HEIGHT);
+  const sole = createTextLabel('Sole', LABEL_HEIGHT);
   sole.position.set(0, 0, -lz / 2 - LABEL_GAP);
   mesh.add(toe, instep, sole, createBodyAxes(lx, ly, lz));
   return mesh;
