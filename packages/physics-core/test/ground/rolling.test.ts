@@ -26,6 +26,7 @@ const UP: Vec3 = [0, 1, 0];
 const params: GroundParameters = {
   gravity: g, restitution: 0.6, friction: 0.4, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9, // ε_t・τ_diag は P-25・P-28 の仮置き
   rollingResistance: 0.05, restSpeed: 0.3, stopSpeed: 0.01, stopSpin: 0.1, zeroSpeed: thresholds.zeroSpeed, drag: null,
+  spinFrictionLength: 0, // ねじり摩擦なし（VER-G03〜G06 は ω_y を変えない構成で確かめる。ねじり摩擦は VER-G12）
 };
 const dt = 0.005;
 const settings: FlightSimulationSettings = {
@@ -323,7 +324,7 @@ describe('IV-05-C2 independent cases', () => {
     const unit: BallParams = { mass: 1, radius: 1, inertiaCoefficient: 2 / 5 };
     const p: GroundParameters = {
       gravity: 10, restitution: 1 / 2, friction: 1 / 5, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9,
-      rollingResistance: 0, restSpeed: 1, stopSpeed: 0.01, stopSpin: 0.01, zeroSpeed: 1e-6, drag: null,
+      rollingResistance: 0, restSpeed: 1, stopSpeed: 0.01, stopSpin: 0.01, zeroSpeed: 1e-6, drag: null, spinFrictionLength: 0,
     };
     const h = groundHandler(unit, p);
     if (!h.ok) throw new Error(h.error.message);
@@ -340,7 +341,7 @@ describe('IV-05-C2 independent cases', () => {
     const unit: BallParams = { mass: 1, radius: 1, inertiaCoefficient: 1 };
     const p: GroundParameters = {
       gravity: 8, restitution: 1 / 2, friction: 1 / 4, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9,
-      rollingResistance: 1 / 4, restSpeed: 2, stopSpeed: 1 / 2, stopSpin: 1, zeroSpeed: 1e-6, drag: null,
+      rollingResistance: 1 / 4, restSpeed: 2, stopSpeed: 1 / 2, stopSpin: 1, zeroSpeed: 1e-6, drag: null, spinFrictionLength: 0,
     };
     const gridSettings: FlightSimulationSettings = {
       timeStep: 1 / 4, maxTime: 5, eventTimeTolerance: 1e-9, forces: { ...allOff, gravity: true }, thresholds,

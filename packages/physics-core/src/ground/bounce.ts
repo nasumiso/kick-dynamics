@@ -32,7 +32,7 @@ export function groundBounceHandler(ball: BallParams, coefficients: ContactCoeff
   };
 }
 
-/** 地面の係数・閾値（05 §8、P-15〜P-17・P-19・P-23・P-25）と転がりの間の抗力。値は未決定で、Core は既定値を持たない。 */
+/** 地面の係数・閾値（05 §8、P-15〜P-17・P-19・P-23・P-25・P-29）と転がりの間の抗力。値は未決定で、Core は既定値を持たない。 */
 export interface GroundParameters extends ContactCoefficients, RollingParameters {
   /** v_rest m/s（P-19）：衝突直前の法線速度 |u_n⁻| がこれ以下なら転がりへ移る（05 §8.1） */
   readonly restSpeed: number;
@@ -45,7 +45,7 @@ function validateGround(ball: BallParams, params: GroundParameters): SimResult<v
   if (!(Number.isFinite(e) && e >= 0 && e <= 1)) return fail('invalid-parameter', `ground restitution must be in [0, 1] (${e})`);
   const nonNegative: Array<[string, number]> = [
     ['ground friction μ_g', mu], ['rolling resistance μ_r', muR], ['tangential speed threshold ε_t', params.tangentialSpeedThreshold],
-    ['rest speed v_rest', params.restSpeed],
+    ['rest speed v_rest', params.restSpeed], ['spin friction length ℓ_s', params.spinFrictionLength],
   ];
   for (const [name, value] of nonNegative) {
     if (!(Number.isFinite(value) && value >= 0)) return fail('invalid-parameter', `${name} must be finite and non-negative (${value})`);

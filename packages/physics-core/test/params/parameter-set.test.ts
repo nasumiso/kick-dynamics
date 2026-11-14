@@ -51,12 +51,13 @@ const phase1Table: ParameterSet = {
   rollReferenceThreshold: { id: 'P-26', symbol: 'ε_φ', unit: '—', value: 1e-6, confidence: 'provisional', source: '正規化の精度の見積もり（T1.3-06）' },
   verticalLaunchThreshold: { id: 'P-27', symbol: 'ε_vert', unit: '—', value: 1e-6, confidence: 'provisional', source: 'スピン成分の定義不能の判定（T1.2-09）' },
   diagnosticRelativeTolerance: { id: 'P-28', symbol: 'τ_diag', unit: '—', value: 1e-9, confidence: 'provisional', source: '衝突診断の警告の判定幅（T1.3-05）' },
+  spinFrictionLength: undetermined('P-29', 'ℓ_s', 'm', 'OQ-09'),
 };
 
 describe('ParameterSet', () => {
   it('covers every parameter ID of 05 §10.2 exactly once', () => {
     const ids = Object.values(phase1Table).map((entry) => entry.id).sort();
-    const expected = Array.from({ length: 28 }, (_, i) => `P-${String(i + 1).padStart(2, '0')}`);
+    const expected = Array.from({ length: 29 }, (_, i) => `P-${String(i + 1).padStart(2, '0')}`);
     expect(ids).toEqual(expected);
   });
 
