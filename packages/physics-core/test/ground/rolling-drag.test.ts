@@ -106,9 +106,10 @@ describe('VER-G07 pure rolling with drag (closed form)', () => {
       expect(isRolling(s)).toBe(true);
       expectClose(dot(s.linearVelocity, direction), length(s.linearVelocity)); // 向きは変わらない
     }
-    // 静止の前の各格子時刻（v > ε_v）で閉形式と一致する（RK4 の誤差の範囲。Δt = 0.005 s では 1e-9 m/s 未満）
-    for (let i = 0; i < restIndex; i += 50) {
+    // 静止の前の各格子時刻（v > ε_v）で、速さと距離がそれぞれ閉形式と一致する（RK4 の誤差の範囲。Δt = 0.005 s では 1e-9 未満）
+    for (let i = 0; i < restIndex; i++) {
       expectClose(length(states[i]!.linearVelocity), exact.speed(i * h), { relative: 1e-9, absolute: 1e-9 });
+      expectClose(dot(sub(states[i]!.position, start.position), direction), exact.distance(i * h), { relative: 1e-9, absolute: 1e-9 });
     }
   });
 });
