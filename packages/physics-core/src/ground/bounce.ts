@@ -5,6 +5,7 @@ import { validateBall } from '../bodies/validate';
 import { solveContact, type ContactCoefficients } from '../contact/solver';
 import type { ImpactResult } from '../contact/types';
 import { GROUND_HEIGHT, WORLD_UP } from '../frames';
+import { spinTableError } from '../flight/forces';
 import type { GroundContactHandler } from '../flight/types';
 import { IDENTITY_QUAT } from '../math/quat';
 import type { Vec3 } from '../math/vec3';
@@ -31,7 +32,7 @@ export function groundBounceHandler(ball: BallParams, coefficients: ContactCoeff
   };
 }
 
-/** 地面の係数・閾値（05 §8、P-15〜P-17・P-19・P-25）。値は未決定で、Core は既定値を持たない。 */
+/** 地面の係数・閾値（05 §8、P-15〜P-17・P-19・P-23・P-25）と転がりの間の抗力。値は未決定で、Core は既定値を持たない。 */
 export interface GroundParameters extends ContactCoefficients, RollingParameters {
   /** v_rest m/s（P-19）：衝突直前の法線速度 |u_n⁻| がこれ以下なら転がりへ移る（05 §8.1） */
   readonly restSpeed: number;
@@ -54,6 +55,15 @@ function validateGround(ball: BallParams, params: GroundParameters): SimResult<v
     if (!(Number.isFinite(value) && value > 0)) return fail('invalid-parameter', `${name} must be finite and positive (${value})`);
   }
   if (!(Number.isFinite(params.gravity) && params.gravity > 0)) return fail('invalid-parameter', `gravity must be finite and positive (${params.gravity})`);
+  if (!(Number.isFinite(params.zeroSpeed) && params.zeroSpeed > 0)) return fail('invalid-parameter', `zero-speed threshold ε_v must be finite and positive (${params.zeroSpeed})`);
+  const drag = params.drag;
+  if (drag !== null) {
+    if (!(Number.isFinite(drag.airDensity) && drag.airDensity >= 0)) return fail('invalid-parameter', `air density must be finite and non-negative (${drag.airDensity})`);
+    if (drag.coefficient.kind === 'spin-table') {
+      const error = spinTableError(drag.coefficient);
+      if (error !== null) return fail('invalid-coefficient', `C_D: ${error}`);
+    }
+  }
   const tau = params.diagnosticRelativeTolerance;
   if (!(Number.isFinite(tau) && tau > 0)) return fail('invalid-parameter', `diagnostic relative tolerance must be finite and positive (${tau})`);
   // 純転がりを保つのに必要な静止摩擦力 κ μ_r m g / (1 + κ) が μ_g m g を超える構成は扱わない（05 §8.2、決定 2026-10-19）。

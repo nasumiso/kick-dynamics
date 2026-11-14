@@ -255,6 +255,14 @@ describe('simulateKick', () => {
       if (!finite.ok) expect(finite.error.details?.['missing']).toEqual(['P-04', 'P-05']);
     });
 
+    it('requires ε_v (P-23) for bounce-and-roll even without aerodynamic terms (05 §8.2, 2026-11-14)', () => {
+      const forces: SimulationSettings['forces'] = { gravity: true, drag: false, magnus: false, spinDecay: 'none' };
+      const rolling = simulateKick(input, withValue('zeroSpeedThreshold', null), { ...settings, forces, ground: 'bounce-and-roll' });
+      expect(rolling.ok).toBe(false);
+      if (!rolling.ok) expect(rolling.error.details?.['missing']).toEqual(['P-23']);
+      expect(simulateKick(input, withValue('zeroSpeedThreshold', null), { ...settings, forces, ground: 'stop-at-first-contact' }).ok).toBe(true);
+    });
+
     it('requires the ground parameters for bounce-and-roll', () => {
       const result = simulateKick(input, withValue('restThresholds', null), settings);
       expect(result.ok).toBe(false);

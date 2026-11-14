@@ -86,10 +86,11 @@ export interface GroundContact {
 
 /**
  * 地面上の転がり（05 §8.2）。拘束 y = R、v_y = 0 を満たす状態を duration だけ進め、停止を判定する。
- * 飛翔の積分は、転がりに移った後は空力を使わずにこれで進める（決定、2026-10-19）。
+ * 飛翔の積分は、転がりに移った後はこれで進める（転がりの間は抗力だけを使い、マグヌス力・回転減衰は使わない。2026-11-14 に改定）。
+ * 抗力の係数の評価が失敗しうるため、advance は SimResult を返す。
  */
 export interface GroundRolling {
-  readonly advance: (state: RigidBodyState, duration: number) => RigidBodyState;
+  readonly advance: (state: RigidBodyState, duration: number) => SimResult<RigidBodyState>;
   readonly isStopped: (state: RigidBodyState) => boolean;
 }
 

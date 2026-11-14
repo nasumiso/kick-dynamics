@@ -120,7 +120,9 @@ export function simulateFlightRun(
     const end = (k + 1) * dt;
     const rolling = mode.rolling;
     if (rolling !== null) {
-      state = rolling.advance(state, dt);
+      const rolled = rolling.advance(state, dt);
+      if (!rolled.ok) return rolled;
+      state = rolled.value;
       samples.push({ time: end, state });
       if (rolling.isStopped(state)) return ok({ samples, events: [...events, { type: 'stop', time: end, sampleIndex: samples.length - 1 }] });
       continue;
@@ -161,7 +163,13 @@ export function simulateFlightRun(
       const rollingAfter = mode.rolling;
       if (rollingAfter !== null) {
         // 接地がステップの終了時刻と一致する場合は、処理後の状態（追加済みのサンプル）がそのまま時刻 t_{k+1} の状態。
-        state = remaining > 0 ? rollingAfter.advance(handled.value, remaining) : handled.value;
+        if (remaining > 0) {
+          const rolled = rollingAfter.advance(handled.value, remaining);
+          if (!rolled.ok) return rolled;
+          state = rolled.value;
+        } else {
+          state = handled.value;
+        }
         if (remaining > 0) samples.push({ time: end, state });
         if (rollingAfter.isStopped(state)) return ok({ samples, events: [...events, { type: 'stop', time: end, sampleIndex: samples.length - 1 }] });
         continue;
