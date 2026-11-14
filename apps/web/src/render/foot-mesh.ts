@@ -26,7 +26,7 @@ export const FOOT_AXIS_COLORS = { x: 0xe03131, y: 0x2f9e44, z: 0x1c7ed6 } as con
 const AXIS_OVERHANG = 0.07;
 
 /**
- * 物体座標の軸（原点は直方体の中心）。足と一緒に回る。軸の名前は出さず、面のラベル（つま先・甲・裏・内側）と色で対応を示す。
+ * 物体座標の軸（原点は直方体の中心）。足と一緒に回る。軸の名前は出さず、面のラベル（つま先・甲・足裏・内側）と色で対応を示す。
  * 足の面やボールに隠れないよう、深度判定をせずに描く。
  */
 function createBodyAxes(lx: number, ly: number, lz: number): THREE.Group {
@@ -74,9 +74,9 @@ export function createFootMesh(foot: FootParams): THREE.Mesh {
   // ラベルは物体座標で各面の外側に置く（足と一緒に回る）。接触面のラベルはボールと重ならないよう、つま先寄りの縁に置く。
   const toe = createTextLabel('つま先', LABEL_HEIGHT, FOOT_FACE_COLORS.toe);
   toe.position.set(lx / 2 + LABEL_GAP, 0, 0);
-  const instep = createTextLabel('甲（接触面）', LABEL_HEIGHT, FOOT_FACE_COLORS.instep);
+  const instep = createTextLabel('甲', LABEL_HEIGHT, FOOT_FACE_COLORS.instep);
   instep.position.set(lx / 2, -ly / 2 - LABEL_GAP, lz / 2);
-  const sole = createTextLabel('裏', LABEL_HEIGHT, FOOT_FACE_COLORS.sole);
+  const sole = createTextLabel('足裏', LABEL_HEIGHT, FOOT_FACE_COLORS.sole);
   sole.position.set(0, 0, -lz / 2 - LABEL_GAP);
   const inside = createTextLabel('内側', LABEL_HEIGHT, FOOT_FACE_COLORS.inside);
   inside.position.set(-lx / 4, ly / 2 + LABEL_GAP, 0);
