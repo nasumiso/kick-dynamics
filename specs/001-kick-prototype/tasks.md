@@ -621,11 +621,12 @@
 - 完了確認：`verification/independent/IV-05/` に導出資料が保存されている。
 - 結果（2026-11-14）：`verification/independent/IV-05/derivation-rolling-drag.md`（Codex、`gpt-6.1-sol`・推論 `medium`、対象コミット `3f06545`）。Codex の報告では、仕様の誤り・曖昧さ・矛盾（依頼の項目 6）が 8 件。Claude Code は内容を読んでいない。
 
-### [ ] IV-05-D3b ステップごとの切り替えの独立導出（追加）
+### [x] IV-05-D3b ステップごとの切り替えの独立導出（追加）
 - 担当：Codex
 - 内容：`a3ed969` の 05 §8.2 の「積分」（ステップごとの判定）から、移行のステップの式、純転がり・静止の判定、VER-G07〜G11 の期待値（移行のステップの位置、収束の次数を含む）を独立に導出する。IV-05-D3 の導出資料は参照してよい（同じ Codex の資料）。実装・テストは読まない。
 - 依存：T1.5-11（改定）
 - 完了確認：`verification/independent/IV-05/` に追加の導出資料が保存されている。
+- 結果（2026-11-14）：`verification/independent/IV-05/derivation-rolling-step.md`（Codex、`gpt-6.1-sol`・推論 `medium`、対象コミット `e9edc58`）。仕様の問題 10 件（S-01〜S-10）を、期待値を含まない `spec-issues-rolling-step.md` に分けて書き出してもらい、Claude Code はこれだけを読んだ（導出資料は読んでいない）。
 
 ### [ ] T1.5-12 転がりの間の抗力の実装
 - 担当：Claude Code
