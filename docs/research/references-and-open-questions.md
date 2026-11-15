@@ -61,7 +61,13 @@
 - 注意：これは計算（シミュレーション）の結果で、実測ではない。[L-04] の本文は、右 80 mm の回転を 10.2 回転/s（64 rad/s）と書いており、表の 10.5 と合わない。左右が非対称なのは足の形状のため、と [L-04] は書いている。足のモデル・摩擦係数・ずれの定義は本文を確認できていない。
 - 扱い：比較の結論には使わない（spec §4）。本文を入手できれば「本文確認」に上げる。
 
-### 2.2 空力（V1-01 で読んだ範囲。残りは V1-02）
+**[L-07] H. Shinkai, H. Nunome, M. Isokawa, Y. Ikegami, "Ball impact dynamics of instep soccer kicking", Medicine & Science in Sports & Exercise 41(4), 889–897 (2009), doi:10.1249/MSS.0b013e31818e8044, PMID 19276844.** 区分：抄録のみ（PubMed の抄録を、取得の道具の要約を通して読んだ。原文の一字一句は確認していない。2026-11-15）。本文は未入手。
+
+- 抄録の値：熟練者 11 名の最大努力のインステップキック、高速度カメラ 5000 Hz。接触時間 9.0 ± 0.4 ms。ボールの変形の最大 6.2 ± 0.6 cm（このとき、ボールの重心の速度が足の速度を上回る）。ボールの反力のピーク 2926 ± 509 N、平均 1403 ± 129 N。ボールの重心は、変形を考えた球殻のモデルで推定。
+- L-02 の値（2926 N、加速に有効な時間は接触時間の約 3/4）と一致する。L-02 はこの論文のまとめと考えられる。
+- 扱い：抄録のみなので、Phase 2 の目標値の候補として記録する（比較の結論に使うのは本文を確認してから）。
+
+### 2.2 空力（V1-01・V1-02）
 
 **[L-04] M. J. Carré, S. R. Goodwill, S. J. Haake, "Understanding the effect of seams on the aerodynamics of an association football", Proc. IMechE Part C: J. Mechanical Engineering Science 219(7), 657–666 (2005), doi:10.1243/095440605X31463.** 区分：本文確認（著者版、https://eprints.whiterose.ac.uk/11156/ ）。
 
@@ -72,6 +78,28 @@
 - 低い $Re$（90,000）・小さい $S_p$ では、逆向きのマグヌス力（負の $C_m$、最小で約 −0.3）が測られた。
 - 回転の減衰：ボールでは詳しく調べられていない。ゴルフボールのデータからの最悪の場合の見積もりで、フリーキック 1 本（約 1.4 s）の間の減少は 1% 程度、と本文にある。
 - 限界：実物大のボールではなく模型。回転軸は気流に垂直（$\lvert\boldsymbol\omega\rvert = \lvert\boldsymbol\omega_\perp\rvert$）なので、$S$ の定義の違い（05 §7.6）は区別されない。
+
+**[L-05] J. E. Goff, M. J. Carré, "Investigations into soccer aerodynamics via trajectory analysis and dust experiments", Procedia Engineering 34, 158–163 (2012), doi:10.1016/j.proeng.2012.04.028.** 区分：本文確認（CC BY-NC-ND の公開版、https://eprints.whiterose.ac.uk/id/eprint/98035/ ）。V1-02（2026-11-15）。
+
+- 方法：発射装置で打ち出したボールの軌道を高速度カメラで撮り、運動方程式の数値解を当てはめて係数を求める（軌道解析）。初速は 20 m/s 未満、回転は 1700 rpm 未満。回転は純粋なバックスピンかトップスピンだけ（力は 1 つの平面内）。
+- 定義：$Re = vD/\nu$（$D \approx 0.218$ m、$\nu \approx 1.54\times10^{-5}$ m²/s）、$S_p = r\omega/v$。揚力は通常 $\boldsymbol\omega\times\mathbf v$ の向きで、大きさ $\tfrac12 C_L\rho A v^2$。質量 0.424 kg、$\rho \approx 1.2$ kg/m³、$A \approx 0.0375$ m²。
+- 抗力：回転なし、$2.23 < Re\times10^{-5} < 2.76$（15.6〜19.3 m/s）で $C_D \approx 0.17$。抗力危機より下に速さが落ちない（約 14 m/s 以上）なら $C_D$ を定数とみなせる、と本文にある。
+- 揚力：$S_p$ 0〜1、$Re$ 130,000〜300,000 で $C_L$ を求めた。32 枚パネルのボールでは $S_p < 0.3$ で風洞のデータ（L-04 と Asai ら 2007）と一致し、$S_p > 0.3$ では $C_L$ が頭打ちになる。Teamgeist のボールでも頭打ち。例：$v \approx 14$ m/s（$Re \approx 2\times10^5$）、$S_p \approx 0.5$ で $C_L \approx 0.35$（本文の記述）。
+- 図の読み取り（Fig. 3(a)、32 枚パネル、軌道解析の 4 点）：$\lvert C_L\rvert$ は約 0.27〜0.31、$S_p$ は約 0.24〜0.71（05 §10.2 の P-13 が引く Goff & Carré 2009 の 4 例と同じ水準）。
+- 境界層のはく離（ほこりの実験、回転なし、6.58〜19.63 m/s）：抗力危機の前後ではく離角が変わる。危機を過ぎた後に、説明のつかない飛び（はく離角が危機の前の水準に戻る試行）がある、と本文にある。
+
+**[L-06] J. E. Goff, J. Kelley, C. M. Hobson, K. Seo, T. Asai, S. B. Choppin, "Creating drag and lift curves from soccer trajectories", European Journal of Physics 38(4) (2017).** 区分：本文確認（著者の受理版、https://shura.shu.ac.uk/15728/ 。出版版の頁番号・DOI は受理版に書かれていないため未確認）。V1-02（2026-11-15）。
+
+- 方法：32 枚パネルのボール（Puma League、0.424 kg）を発射装置で 29 本打ち出し、2 組のステレオカメラ（200 fps）で 3D の軌道を測った。初速 9.3〜29.9 m/s。全試行にトップスピンがあり、$S_p$ は平均 0.10（時間平均の $\omega$ と $v$ から。側面からの撮影のため、トップスピンの成分を大きく見積もった可能性がある、と本文にある）。$\rho = 1.2$ kg/m³、$A \simeq 0.0333$ m²（本文の値。L-05 の 0.0375 m² と異なる）。
+- 結果：$C_D(v)$・$C_L(v)$ を速さの 5 次多項式で当てはめた（係数は Table 2。27 本を使い、2 本は除外）。当てはめの式で再計算した軌道と実測の差は、二乗平均で水平 0.028 m、鉛直 0.034 m。
+- 抗力危機：軌道解析では約 12.5 m/s（$Re = 1.7\times10^5$）、同じボールの風洞（回転なし、7〜35 m/s）では約 15 m/s（$Re = 2.0\times10^5$）。危機より上の $C_D$ は、軌道解析のほうが風洞より高い。
+- 図の読み取り（Fig. 4・5、読み取りの不確かさ ±0.02 程度）：軌道解析の $C_D$ は危機の後に約 0.16 まで下がり、約 18 m/s 以上で約 0.29〜0.30。風洞の $C_D$ は危機より上で約 0.15〜0.19。$C_L$ はトップスピンで負の符号で示され、約 18 m/s 以上で約 −0.23〜−0.25、約 1.5×10⁵ 付近（揚力の危機）で 0 付近まで小さくなる。
+- 注意：$S_p \approx 0.1$ で $\lvert C_L\rvert \approx 0.24$ は、L-04（$Re = 2.1\times10^5$、$S_p = 0.1$ で $C_m$ 約 0.13、図の読み取り）より大きい。原因（定常と非定常の違い、回転の見積もり、ボールの違い）は本文では特定されていない。
+
+**本文を入手できなかった空力の文献**（2026-11-15）：
+
+- T. Asai, K. Seo, O. Kobayashi, R. Sakashita, "Fundamental aerodynamics of the soccer ball", Sports Engineering 10, 101–110 (2007)（書誌は L-05・L-06 の文献表による）。公開版を取得できなかった。
+- 筑波大学のグループによる W 杯公式球の風洞試験（Scientific Reports, 2026）。出版社のサイトが認証に転送したため、本文を読めなかった（回避はしていない）。
 
 ### 2.3 05 §10.2 で引用済みの文献
 
@@ -114,12 +142,12 @@
 | T. Asai, M. J. Carré, T. Akatsuka, S. J. Haake, "The curve kick of a football I: impact with the foot", Sports Engineering 5(4), 183–192 (2002), doi:10.1046/j.1460-2687.2002.00108.x | R-02、VAL-01、VAL-02 | 抄録のみ・本文は未入手（§2.1 の L-03）。機関リポジトリの記録：https://shura.shu.ac.uk/2127 |
 | 同 II（"The curve kick of a football II: flight through the air"） | R-05、VAL-04 | 未確認（題名だけ確認）。https://shura.shu.ac.uk/2161 |
 | H. Nunome, M. Lake, A. Georgakis, L. K. Stergioulas, "Impact phase kinematics of instep kicking in soccer", Journal of Sports Sciences 24, 11–22 (2006) | R-02、VAL-01、D-04 | 未確認（検索結果で書誌だけ確認） |
-| H. Shinkai, H. Nunome, M. Isokawa, Y. Ikegami, "Ball impact dynamics of instep soccer kicking", Medicine & Science in Sports & Exercise 41(4), 889–897 (2009) | R-02、D-04〜D-06 | 本文は未入手（書誌は L-02 の文献表による。内容の一部は L-02 のまとめで確認） |
+| H. Shinkai, H. Nunome, M. Isokawa, Y. Ikegami, "Ball impact dynamics of instep soccer kicking", Medicine & Science in Sports & Exercise 41(4), 889–897 (2009) | R-02、D-04〜D-06 | 抄録のみ（§2.1 の L-07）。本文は未入手 |
 | ISBS の会議録の関連発表 | R-02、D-04 | 2 件を本文確認（§2.1 の L-01、L-02） |
-| T. Asai, K. Seo, O. Kobayashi, R. Sakashita, "Fundamental aerodynamics of the soccer ball", Sports Engineering (2007) | R-04、R-05、VAL-10 | 未確認（検索結果で書誌だけ確認。巻・頁は未確認） |
-| J. E. Goff, M. J. Carré, Procedia Engineering (2012) の論文（題名は未確認） | R-04、R-05、VAL-10 | 未確認。機関リポジトリの版：https://eprints.whiterose.ac.uk/id/eprint/98035/ |
-| "Creating drag and lift curves from soccer trajectories"（Goff ら、著者版） | R-04、R-05、VAL-04、VAL-10 | 未確認。https://shura.shu.ac.uk/15728/ |
-| 筑波大学のグループによる W 杯公式球の風洞試験（Scientific Reports, 2026） | R-04、VAL-10 | 未確認。https://link.springer.com/10.1038/s41598-026-56275-1 |
+| T. Asai, K. Seo, O. Kobayashi, R. Sakashita, "Fundamental aerodynamics of the soccer ball", Sports Engineering 10, 101–110 (2007) | R-04、R-05、VAL-10 | 本文は未入手（§2.2 の末尾） |
+| J. E. Goff, M. J. Carré, Procedia Engineering 34 (2012) | R-04、R-05、VAL-10 | 本文確認（§2.2 の L-05） |
+| "Creating drag and lift curves from soccer trajectories"（Goff ら 2017） | R-04、R-05、VAL-04、VAL-10 | 本文確認（§2.2 の L-06） |
+| 筑波大学のグループによる W 杯公式球の風洞試験（Scientific Reports, 2026） | R-04、VAL-10 | 本文は未入手（§2.2 の末尾）。https://link.springer.com/10.1038/s41598-026-56275-1 |
 
 ## 5. 類似事例・参考 UI の候補（未確認）
 
@@ -140,12 +168,12 @@
 | D-01 | 足（接触部）の速度・向きと、ボールの初速・打ち出し方向の同時計測 | VAL-01、VAL-03、$e$ と足の質量特性の同定 | 複数台の高速度カメラによる 3D 計測、文献値 | 文献値あり（§2.1 の L-01：足とボールの速度、プロ 2 名）。打ち出し方向は未収集 |
 | D-02 | ボールの回転量と回転軸 | VAL-02、$\mu$ の同定 | 高速度カメラ（ボールの模様を追跡）、市販の計測機器（機種未調査） | 実測は未収集。計算の結果の二次情報だけ（§2.1 の L-03、比較の結論には使わない） |
 | D-03 | ボールの 3D 軌道（時系列の位置） | VAL-04、空力係数の同定 | 複数カメラ、市販の計測機器（機種未調査）、文献値 | 未収集 |
-| D-04 | 接触時間 | VAL-06（Phase 2） | 高速度カメラ、文献値 | 文献値あり（§2.1 の L-01：8.3〜9.3 ms、L-02：8.2〜9.8 ms は図の読み取り） |
-| D-05 | 接触力・圧力の時間履歴 | VAL-07（Phase 2） | 文献値（自前の計測は難度が高い） | 文献値あり（§2.1 の L-02：ピーク 2926 N。時間履歴は未収集） |
-| D-06 | ボールの変形量 | VAL-08（Phase 2） | 高速度カメラ、文献値 | 文献値あり（§2.1 の L-02：最大 約 6 cm、図の読み取り・代表例 1 本） |
+| D-04 | 接触時間 | VAL-06（Phase 2） | 高速度カメラ、文献値 | 文献値あり（§2.1。本文確認：L-01 の 8.3〜9.3 ms（2 名）、L-02 の 8.2〜9.8 ms（図の読み取り）。抄録のみ：L-07 の 9.0 ± 0.4 ms（11 名）） |
+| D-05 | 接触力・圧力の時間履歴 | VAL-07（Phase 2） | 文献値（自前の計測は難度が高い） | 文献値あり（§2.1。L-02 のピーク 2926 N（本文確認）、L-07 のピーク 2926 ± 509 N・平均 1403 ± 129 N（抄録のみ）。時間履歴の数値は未収集） |
+| D-06 | ボールの変形量 | VAL-08（Phase 2） | 高速度カメラ、文献値 | 文献値あり（§2.1。L-02 の最大 約 6 cm（図の読み取り・代表例 1 本）、L-07 の 6.2 ± 0.6 cm（抄録のみ、11 名）） |
 | D-07 | 地面でのバウンド・転がり（地面の種類ごと） | VAL-05、$e_g$・$\mu_g$・$\mu_r$ の同定 | ボールの落下・投射試験と撮影（自作の簡易実験が可能） | 未収集 |
 | D-08 | キック種別ごとの足の姿勢・接触部位・速度 | VAL-09（Phase 3）、入力プリセット | 文献値、モーションキャプチャ | 未収集 |
-| D-09 | 空力係数（$C_D$、$C_L$ と $Re$、$S$ の関係） | VAL-10、OQ-07 | 文献値（風洞試験）、D-03 からの同定 | 未収集 |
+| D-09 | 空力係数（$C_D$、$C_L$ と $Re$、$S$ の関係） | VAL-10、OQ-07 | 文献値（風洞試験）、D-03 からの同定 | 文献値あり（§2.2 の L-04〜L-06：風洞と軌道解析の $C_D(Re)$、$C_L(S_p)$、$C_L(v)$） |
 | D-10 | ボールの物性（質量・半径・内圧・慣性モーメント・反発特性） | P-01〜P-03、P-07 | 計量・計測（質量・外周は自前で可能）、文献値 | 未収集 |
 | D-11 | 足・靴の質量特性と表面の摩擦 | P-04〜P-06、P-08 | 文献値（人体の質量特性）、簡易な摩擦試験 | 未収集 |
 
