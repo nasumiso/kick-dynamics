@@ -2,8 +2,8 @@
 
 *The Physics Behind Every Kick.*
 
-> **開発段階：ドキュメント初版のみ（実装未着手）**
-> 現時点でこのリポジトリには、アプリケーション、物理ソルバー、テストコード、依存パッケージは含まれていません。
+> **開発段階：Phase 1（点接触・瞬間衝突・剛体モデルのブラウザ MVP）完了（2026-11-15）**
+> モデルは「実装検証済み・実測未照合」です。数式どおりに計算されることは自動テストで確かめていますが、実際のキックを再現しているかは実測と比べていません。表示される軌道・測定値を、現実の予測として使わないでください。
 
 ## 概要
 
@@ -34,16 +34,20 @@ KickDynamics は、キックの物理現象を解明・再現することを目�
 
 ## 現在の状態
 
+2026-11-15 時点。
+
 | 項目 | 状態 |
 |---|---|
-| ドキュメント | 初版（2026-10-18） |
-| KickDynamics Core（`packages/physics-core/`） | 未作成・未実装 |
-| KickDynamics Lab（`apps/web/`） | 未作成・未実装 |
-| 自動テスト | 未実装 |
-| 実測データとの照合 | 未実施（データ未収集） |
+| 成熟度 | 物理モデル PM-1、機能 UI UM-2（[03 §2](docs/03-roadmap.md)） |
+| KickDynamics Core（`packages/physics-core/`） | Phase 1 のモデル（瞬間点接触・飛翔・バウンドと転がり）を実装。モデルの版 `0.1.0`（[ADR-0008](docs/decisions/0008-model-version.md)） |
+| KickDynamics Lab（`apps/web/`） | キック入力・3D 表示・軌道の再生・測定値と衝突診断・パラメータの確からしさの表示・結果の JSON 出力を実装。静的ビルドで配信できる。対象ブラウザはデスクトップの Chrome の最新版だけ（OQ-20） |
+| 数理・実装検証（VER） | Phase 1 の項目はすべて自動テストで合格（[検証レポート](docs/reports/phase1-verification-report.md)）。許容誤差は、厳密な判定を除いて仮置き（OQ-13） |
+| 独立検証（IV） | IV-01〜IV-05 の照合と差異の解決が終わった。IV-06 は Phase 1 では実施しない |
+| 実測データとの照合（VAL） | 未実施（データ未収集、OQ-14） |
+| パラメータ | 大半が仮置き（[05 §10.2](docs/05-physics-model.md)） |
 | ライセンス | 未決定 |
 
-次の段階は Phase 1「点接触・瞬間衝突・剛体モデルによるブラウザ MVP」です（[ロードマップ](docs/03-roadmap.md)、[Phase 1 仕様](specs/001-kick-prototype/spec.md)）。
+次の段階は Phase 2 以降です。Phase 2（有限時間接触・変形）と Phase 3（面接触・足形状）の順序は未決定です（[03 §5](docs/03-roadmap.md)）。
 
 ## 技術方針（暫定）
 
@@ -54,7 +58,7 @@ KickDynamics は、キックの物理現象を解明・再現することを目�
 | 言語・ビルド | TypeScript / Vite | 採用（導入承認済み 2026-10-18、ADR-0004） |
 | 3D 描画 | Three.js（初期は WebGLRenderer） | 採用（導入承認済み 2026-10-18、ADR-0004） |
 | 座標系 | 右手系・y 上向き、四元数は `[x, y, z, w]` | 採用（[ADR-0005](docs/decisions/0005-coordinate-and-quaternion-conventions.md)） |
-| UI | 素の HTML/CSS ＋ 軽量コントロール。React 等は必須としない | 暫定採用（ライブラリは未決定） |
+| UI | 素の HTML/CSS。UI コントロール用ライブラリは使わない | 採用（Phase 1、OQ-17。ゲーム UI で再検討） |
 | 物理計算 | 独自の TypeScript 製 Physics Core。汎用剛体エンジンに衝突モデルの中核を委ねない | 暫定採用（[ADR-0002](docs/decisions/0002-independent-physics-core.md)） |
 | 初期接触モデル | 有限質量の剛体足 × 剛体球の瞬間点接触。無限質量の動く壁を比較基準に併置 | 暫定採用（[ADR-0003](docs/decisions/0003-finite-mass-initial-contact.md)） |
 | 自動テスト | Vitest | 採用（導入承認済み 2026-10-18、ADR-0004） |
@@ -85,6 +89,9 @@ KickDynamics は、キックの物理現象を解明・再現することを目�
 - [ADR-0003 初期接触モデルに有限質量の剛体足を採用](docs/decisions/0003-finite-mass-initial-contact.md) — Accepted (provisional)
 - [ADR-0004 npm workspaces と初期の依存パッケージ](docs/decisions/0004-npm-workspaces-and-initial-dependencies.md) — Accepted
 - [ADR-0005 座標系と四元数の規約](docs/decisions/0005-coordinate-and-quaternion-conventions.md) — Accepted
+- [ADR-0006 結果の出力形式（JSON 1 ファイル）](docs/decisions/0006-result-json-format.md) — Accepted
+- [ADR-0007 Phase 1 の計算はメインスレッドで行う](docs/decisions/0007-main-thread-simulation.md) — Accepted
+- [ADR-0008 モデルの版の付け方](docs/decisions/0008-model-version.md) — Accepted
 
 初期の合意事項は [soccer_kick_simulator_docs_prompt.md](soccer_kick_simulator_docs_prompt.md)（引き継ぎプロンプト）に記録されています。以後の正本は上表の各文書です。
 
@@ -108,22 +115,22 @@ Claude Code が設計の具体化・実装・テストを、Codex が物理モ�
 
 ## 未実装・未決定の主な事項
 
-- アプリケーション、物理ソルバー、テストはすべて未実装です。
-- 足の簡略形状、キック入力の自由度と UI、反発・摩擦・空力係数、接地モデル、検証用実測データの入手方法などは未決定です（[未決事項一覧](docs/research/references-and-open-questions.md)）。
-- 物理パラメータの多くは出典未確認・未検証です。
+- 反発・摩擦・空力・接地の係数、足の質量と寸法、時間刻み、テストの許容誤差は、仮置きのまま Phase 1 を終えました。値は実測データ（OQ-14）や Phase 2 以降の検討で決めます（[未決事項一覧](docs/research/references-and-open-questions.md)）。
+- 実測データとの照合（VAL）は未実施です。
+- 接触時間・変形・面接触・足の形状は、Phase 2 以降の対象です。
 - Phase 1 の完了時点でも、本プロジェクトは「実際のキックを高精度に再現している」とは主張しません。
 
-## 予定するリポジトリ構成
+## リポジトリ構成
 
 ```text
 .
 ├── README.md / AGENTS.md / CLAUDE.md
-├── docs/                      # 設計文書（作成済み）
-├── specs/001-kick-prototype/  # Phase 1 の仕様・計画・タスク（作成済み）
-├── apps/web/                  # 未作成：KickDynamics Lab（Vite + Three.js の Web アプリ）
-├── packages/physics-core/     # 未作成：KickDynamics Core（描画非依存の物理計算コア）
-├── tools/validation/          # 未作成・候補：検証用スクリプト
-└── verification/independent/  # 未作成・予定：独立検証の記録（実装側のテストとは分けて管理）
+├── docs/                      # 設計文書、ADR（decisions/）、検証レポート（reports/）、調査（research/）
+├── specs/001-kick-prototype/  # Phase 1 の仕様・計画・タスク
+├── apps/web/                  # KickDynamics Lab（Vite + Three.js の Web アプリ）
+├── packages/physics-core/     # KickDynamics Core（描画非依存の物理計算コア）
+├── scripts/                   # 計測などの補助スクリプト
+└── verification/independent/  # 独立検証の記録（実装側のテストとは分けて管理）
 ```
 
 詳細は [docs/04-architecture.md](docs/04-architecture.md) を参照してください。
