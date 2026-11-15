@@ -19,7 +19,7 @@ KickDynamics（サッカーキック軌道シミュレータ）で作業する A
 | 要求・ロードマップ | [docs/02-requirements.md](docs/02-requirements.md)、[docs/03-roadmap.md](docs/03-roadmap.md) |
 | 未決事項（OQ）・実測データ（D） | [docs/research/references-and-open-questions.md](docs/research/references-and-open-questions.md) |
 | Phase 1 受入条件・タスク | [specs/001-kick-prototype/](specs/001-kick-prototype/) |
-| V1（文献による妥当性確認）受入条件・タスク | [specs/002-literature-validation/](specs/002-literature-validation/)（Draft） |
+| V1（文献による妥当性確認）受入条件・タスク | [specs/002-literature-validation/](specs/002-literature-validation/) |
 | AI エージェントの運用（Codex への依頼、Git、クラウド） | [docs/ai-workflow.md](docs/ai-workflow.md) |
 
 ## 役割と独立検証
