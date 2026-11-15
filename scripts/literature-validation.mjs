@@ -256,6 +256,146 @@ sections[9] = () => {
   }
 };
 
+/**
+ * VAL-10：空力係数（V2-04）。文献の値は research §2.2（L-04〜L-06）の記録の写しで、ここでは計算に使う式と境目の速さだけを置く。
+ * - L-04 の当てはめの式（Carré ら 2005、Table 2）。Re は文献の定義（v D / ν）の値で、適用範囲は 9e4 < Re < 2.9e5、0 < S_p < 0.5。
+ * - 抗力危機の速さ（実物大）：L-04 の風洞 6.1〜9.1 m/s（本文の換算）、L-06 の軌道解析 約 12.5 m/s・風洞 約 15 m/s、
+ *   L-05 は「約 14 m/s 以上なら C_D を定数とみなせる」。
+ */
+function carreMagnus(re, sp) {
+  const a = 0.35;
+  const b = 2.39e-5 * re;
+  const c = 12150 * Math.exp(-8.22e-5 * re);
+  const d = 1.42e-4 * re;
+  return a * (1 - Math.exp(-b * sp)) - c * sp * (1 - Math.exp(-d * sp));
+}
+
+const CRISIS_SPEEDS = [
+  ['9.1', 9.1, 'L-04 風洞の危機の上端'],
+  ['12.5', 12.5, 'L-06 軌道解析の危機'],
+  ['15', 15, 'L-06 風洞の危機'],
+];
+
+/** 最初の接地までの飛翔の、速さ・S・ω の垂直成分の割合の記録。 */
+function flightProfile(o) {
+  const { time, linearVelocity: v, angularVelocity: w } = o.value.trajectory;
+  const radius = P.ballRadius.value;
+  const n = time.length;
+  let vmin = Infinity;
+  let smin = Infinity;
+  let smax = -Infinity;
+  let perpMin = Infinity;
+  const below = CRISIS_SPEEDS.map(() => 0);
+  for (let i = 0; i < n; i++) {
+    const vi = [v[3 * i], v[3 * i + 1], v[3 * i + 2]];
+    const wi = [w[3 * i], w[3 * i + 1], w[3 * i + 2]];
+    const speed = norm(vi);
+    const spin = norm(wi);
+    vmin = Math.min(vmin, speed);
+    const s = (radius * spin) / speed;
+    smin = Math.min(smin, s);
+    smax = Math.max(smax, s);
+    if (spin > 0) perpMin = Math.min(perpMin, norm(cross(wi, vi)) / (spin * speed));
+    if (i + 1 < n) {
+      const dt = time[i + 1] - time[i];
+      CRISIS_SPEEDS.forEach(([, threshold], k) => { if (speed < threshold) below[k] += dt; });
+    }
+  }
+  return { duration: time[n - 1], vmin, smin, smax, perpMin: Number.isFinite(perpMin) ? perpMin : null, below };
+}
+
+/** VAL-10 の掃引に使うキックの例（任意の例で、物理的な根拠はない）。 */
+const AERO_KICKS = [
+  ['正面 20 m/s、仰角 10°（Lab の初期入力）', K0],
+  ['下へ 20°、20 m/s、水平', { ...K0, footSpeed: 20, footElevation: 0, contactDirection: contactAt(0, -20) }],
+  ['下へ 20°、25 m/s、水平', { ...K0, footSpeed: 25, footElevation: 0, contactDirection: contactAt(0, -20) }],
+  ['下へ 20°、30 m/s、水平', { ...K0, footSpeed: 30, footElevation: 0, contactDirection: contactAt(0, -20) }],
+  ['下へ 30°、25 m/s、水平（節 5 の例）', { ...K0, footSpeed: 25, footElevation: 0, contactDirection: contactAt(0, -30) }],
+  ['下へ 40°、30 m/s、水平', { ...K0, footSpeed: 30, footElevation: 0, contactDirection: contactAt(0, -40) }],
+  ['右へ 20°、25 m/s、仰角 15°（節 3 の例）', SIDE20],
+  ['右へ 20°・下へ 25°、24 m/s、水平（節 6 の例）', { ...K0, footSpeed: 24, footElevation: 0, contactDirection: contactAt(20, -25) }],
+];
+
+sections[10] = () => {
+  const rho = P.airDensity.value;
+  const eta = P.airViscosity.value;
+  const radius = P.ballRadius.value;
+  const reOf = (speed) => (rho * speed * 2 * radius) / eta;
+  const flight = { ...S, ground: 'stop-at-first-contact' };
+
+  console.log('\n### 10. VAL-10：空力係数（V2-04）\n');
+  console.log(`モデルの Re = ρ v (2R) / η（05 §7.6、ρ = ${rho}、η = ${eta}、R = ${f(radius, 4)} m）：1 m/s あたり Re = ${f(reOf(1), 0)}。\n`);
+  console.log('**10a. 文献の境目の速さとモデルの Re**\n');
+  console.log('| 速さ m/s | モデルの Re | 文献 |');
+  console.log('|---|---|---|');
+  for (const [speed, label] of [[6.1, 'L-04 風洞の危機の下端（Re 9.0e4、本文の換算）'], [9.1, 'L-04 風洞の危機の上端（Re 1.3e5、本文の換算）'], [12.5, 'L-06 軌道解析の危機（Re 1.7e5）'], [14, 'L-05 C_D を定数とみなせる下限の目安'], [15, 'L-06 風洞の危機（Re 2.0e5）'], [15.6, 'L-05 C_D ≈ 0.17 の下端（Re 2.23e5）'], [19.3, 'L-05 C_D ≈ 0.17 の上端（Re 2.76e5）']]) {
+    console.log(`| ${speed} | ${f(reOf(speed), 0)} | ${label} |`);
+  }
+
+  console.log('\n**10b. C_L：P-13 の折れ線と L-04 の当てはめの式**（L-04 の Re は文献の定義の値。式の適用範囲は 9e4 < Re < 2.9e5、0 < S_p < 0.5）\n');
+  const res = [1.3e5, 1.7e5, 2.1e5, 2.5e5, 2.9e5];
+  console.log(`| S | P-13 | ${res.map((re) => `L-04 Re = ${(re / 1e5).toFixed(1)}e5`).join(' | ')} |`);
+  console.log(`|---|---|${res.map(() => '---').join('|')}|`);
+  const table13 = P.liftCoefficient.value.points;
+  const p13 = (s) => {
+    for (let i = 1; i < table13.length; i++) {
+      const [s0, c0] = table13[i - 1];
+      const [s1, c1] = table13[i];
+      if (s <= s1) return c0 + ((c1 - c0) * (s - s0)) / (s1 - s0);
+    }
+    return table13[table13.length - 1][1];
+  };
+  for (const s of [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5]) {
+    console.log(`| ${s} | ${f(p13(s), 3)} | ${res.map((re) => f(carreMagnus(re, s), 3)).join(' | ')} |`);
+  }
+  console.log('\nL-04 の式の Re = 9.0e4 の値（S = 0.05・0.1・0.2）：' + [0.05, 0.1, 0.2].map((s) => f(carreMagnus(9e4, s), 3)).join('・') + '（低い Re では第 2 項が大きく、負になる）。');
+
+  console.log('\n**10c. キックの例の飛翔：速さ・S の範囲と、危機より遅い時間**（最初の接地まで、既定のパラメータ）\n');
+  console.log(`| 例 | 球速 m/s | 打ち出しの Re | 打ち出しの S | 飛翔中の S | min |ω⊥|/|ω| | 飛翔時間 s | 最小の速さ m/s | ${CRISIS_SPEEDS.map(([l]) => `${l} m/s 未満の時間 s`).join(' | ')} | キャリー m |`);
+  console.log(`|---|---|---|---|---|---|---|---|${CRISIS_SPEEDS.map(() => '---').join('|')}|---|`);
+  for (const [name, state] of AERO_KICKS) {
+    const o = run(state, P, flight);
+    if (!o.ok) { console.log(`| ${name} | エラー：${o.code} |`); continue; }
+    const m = o.value.metrics;
+    const pr = flightProfile(o);
+    console.log(`| ${name} | ${f(m.launchSpeed)} | ${f(reOf(m.launchSpeed), 0)} | ${f((radius * m.spinRate) / m.launchSpeed, 3)} | ${f(pr.smin, 3)}〜${f(pr.smax, 3)} | ${pr.perpMin === null ? '—' : f(pr.perpMin, 3)} | ${f(pr.duration)} | ${f(pr.vmin)} | ${pr.below.map((t) => f(t)).join(' | ')} | ${f(m.carry)} |`);
+  }
+  console.log('\n|ω⊥|/|ω| は、回転のうち速度に垂直な成分の割合の飛翔中の最小値（1 なら S を |ω| と |ω⊥| のどちらで定義しても同じ、05 §7.6）。');
+
+  console.log('\n**10d. C_D を文献の範囲で振ったときのキャリーと横ずれ**（最初の接地まで。C_D 以外は既定）\n');
+  const cds = [0.17, 0.2, 0.25, 0.3];
+  console.log(`| 例 | ${cds.map((cd) => `C_D = ${cd}：キャリー m・横ずれ m`).join(' | ')} |`);
+  console.log(`|---|${cds.map(() => '---').join('|')}|`);
+  for (const [name, state] of AERO_KICKS) {
+    const cellsText = cds.map((cd) => {
+      const o = run(state, withParam('dragCoefficient', cd), flight);
+      return o.ok ? `${f(o.value.metrics.carry)}・${f(o.value.metrics.lateralDeviation)}` : `エラー：${o.code}`;
+    });
+    console.log(`| ${name} | ${cellsText.join(' | ')} |`);
+  }
+
+  console.log('\n**10e. C_L を変えたときのキャリーと横ずれ**（P-13 を一律に倍率で変えたもの、L-04 の式の折れ線。最初の接地まで）\n');
+  // L-04 の式を、Re を固定して S = 0〜0.5 の 0.05 刻みの折れ線にしたもの（S > 0.5 は 0.5 の値。式の範囲の外への外挿はしない）。
+  const carreTable = (re) => ({ kind: 'spin-table', points: Array.from({ length: 11 }, (_, i) => [i * 0.05, i === 0 ? 0 : carreMagnus(re, i * 0.05)]) });
+  const variants = [
+    ['C_L × 0.5', { kind: 'spin-table', points: table13.map(([s, c]) => [s, 0.5 * c]) }],
+    ['P-13（既定）', P.liftCoefficient.value],
+    ['C_L × 1.2', { kind: 'spin-table', points: table13.map(([s, c]) => [s, 1.2 * c]) }],
+    ['L-04 の式、Re = 2.1e5', carreTable(2.1e5)],
+    ['L-04 の式、Re = 2.9e5', carreTable(2.9e5)],
+  ];
+  console.log(`| 例 | ${variants.map(([n]) => `${n}：キャリー m・横ずれ m`).join(' | ')} |`);
+  console.log(`|---|${variants.map(() => '---').join('|')}|`);
+  for (const [name, state] of AERO_KICKS) {
+    const cellsText = variants.map(([, table]) => {
+      const o = run(state, withParam('liftCoefficient', table), flight);
+      return o.ok ? `${f(o.value.metrics.carry)}・${f(o.value.metrics.lateralDeviation)}` : `エラー：${o.code}`;
+    });
+    console.log(`| ${name} | ${cellsText.join(' | ')} |`);
+  }
+  console.log('\nL-04 の式の折れ線は、Re を 1 つに固定した近似（飛翔中の Re の変化は入れていない）。');
+};
+
 const selected = process.argv.slice(2);
 console.log(`# V1 の掃引（MODEL_VERSION ${MODEL_VERSION}、Node ${process.version}）`);
 console.log('\nパラメータは Lab の既定（05 §10.2）。特記のない入力は Lab の初期入力（spec 001 §4）。球速 / 足速の足速は、接触点での足の速さ |v_A^p|。');
