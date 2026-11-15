@@ -1,0 +1,141 @@
+// V1（文献による妥当性確認）の掃引と感度解析（specs/002-literature-validation、V2-01）。
+//
+// 使い方：node scripts/literature-validation.mjs [節の番号 ...]（省略時はすべて）
+// - 依存を追加しないため、scripts/measure-kick.mjs と同じ方法（Node の型の除去と registerHooks）で Lab と Core の .ts を読み込む。
+// - パラメータは Lab の既定のパラメータセット（05 §10.2 の写し）、設定は Lab の既定の計算設定を使う。
+// - 入力の値は掃引のための任意の例で、物理的な根拠はない。出力はモデルの挙動の記録で、実測との比較ではない。
+// - 結果は Markdown の表で標準出力に書く。
+import { existsSync } from 'node:fs';
+import { registerHooks } from 'node:module';
+import { fileURLToPath } from 'node:url';
+
+const root = new URL('../', import.meta.url);
+const coreEntry = new URL('packages/physics-core/src/index.ts', root).href;
+
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (specifier === '@kick-dynamics/physics-core') return nextResolve(coreEntry, context);
+    if ((specifier.startsWith('./') || specifier.startsWith('../')) && !/\.[cm]?[jt]s$/.test(specifier) && context.parentURL) {
+      const candidate = new URL(`${specifier}.ts`, context.parentURL);
+      if (existsSync(fileURLToPath(candidate))) return nextResolve(candidate.href, context);
+    }
+    return nextResolve(specifier, context);
+  },
+});
+
+const { DEFAULT_PARAMETER_SET: P } = await import(new URL('apps/web/src/params/default-parameter-set.ts', root).href);
+const { DEFAULT_SIMULATION_SETTINGS: S } = await import(new URL('apps/web/src/simulation/run-kick.ts', root).href);
+const { INITIAL_KICK_STATE: K0, toKickInput } = await import(new URL('apps/web/src/kick/kick-state.ts', root).href);
+const { simulateKick, MODEL_VERSION } = await import(coreEntry);
+
+const deg = (x) => (x * Math.PI) / 180;
+const toDeg = (x) => (x * 180) / Math.PI;
+const toRpm = (w) => (w * 60) / (2 * Math.PI);
+const f = (x, n = 2) => (x === null || x === undefined ? '—' : Number(x).toFixed(n));
+
+/** ボール中心 → 接触点の向き d。az：右（+z）へのずれ（度）、el：上（+y）へのずれ（度）。0, 0 はボールの真後ろ（−x）。 */
+function contactAt(az, el) {
+  return [-Math.cos(deg(el)) * Math.cos(deg(az)), Math.sin(deg(el)), Math.cos(deg(el)) * Math.sin(deg(az))];
+}
+
+/** パラメータセットの 1 つの値を置き換える（確からしさ・出典は元のまま。掃引の用途に限る）。 */
+function withParam(id, value, base = P) {
+  return { ...base, [id]: { ...base[id], value } };
+}
+
+function run(state, params = P, settings = S) {
+  const result = simulateKick(toKickInput(state), params, settings);
+  return result.ok ? { ok: true, value: result.value } : { ok: false, code: result.error.code };
+}
+
+const COLUMNS = '| 球速 m/s | 球速 / 足速 | 打ち出し角 ° | 方向 ° | 回転 rpm | バック rpm | サイド rpm | キャリー m | 横ずれ m | 衝突 |';
+const RULE = '|---|---|---|---|---|---|---|---|---|---|';
+
+function cells(o, footSpeed) {
+  if (!o.ok) return `| エラー：${o.code} |||||||||`;
+  const m = o.value.metrics;
+  const c = m.spinComponents;
+  return `| ${f(m.launchSpeed)} | ${f(m.launchSpeed / footSpeed)} | ${f(toDeg(m.launchAngle), 1)} | ${f(toDeg(m.launchDirection), 1)} | ${f(toRpm(m.spinRate), 0)} | ${c ? f(toRpm(c.back), 0) : '—'} | ${c ? f(toRpm(c.side), 0) : '—'} | ${f(m.carry)} | ${f(m.lateralDeviation)} | ${o.value.impact.regime} |`;
+}
+
+function table(title, label, rows) {
+  console.log(`\n### ${title}\n`);
+  console.log(`| ${label} ${COLUMNS}`);
+  console.log(`|---${RULE}`);
+  for (const [name, state, params, settings] of rows) console.log(`| ${name} ${cells(run(state, params, settings), state.footSpeed)}`);
+}
+
+/** 接触点を右へ 20° ずらした例（spec §3、レビュー §2 の基準の条件）。 */
+const SIDE20 = { ...K0, footSpeed: 25, footElevation: deg(15), contactDirection: contactAt(20, 0) };
+
+const sections = {
+  1: () => table('1. 正面の衝突と足のモデル（真後ろ、足の仰角 10°）', '条件', [
+    ...[10, 20, 25, 30].flatMap((v) => [
+      [`${v} m/s、有限質量`, { ...K0, footSpeed: v }],
+      [`${v} m/s、無限質量`, { ...K0, footSpeed: v, footModel: 'kinematic-wall' }],
+    ]),
+  ]),
+  2: () => table('2. 足の上の接触位置（真後ろ、25 m/s）', '(s_x, s_y) m', [
+    ...[-0.12, -0.06, 0, 0.06, 0.12].flatMap((sx) => [-0.04, 0, 0.04].map((sy) => [
+      `(${sx}, ${sy})`, { ...K0, footSpeed: 25, footContactLocation: [sx, sy] },
+    ])),
+  ]),
+  3: () => {
+    table('3a. 接触点を右へ 20° ずらす：摩擦係数 μ', 'μ', [0, 0.05, 0.1, 0.2, 0.3, 0.5, 1].map((mu) => [`${mu}`, SIDE20, withParam('friction', mu)]));
+    table('3b. 同：反発係数 e', 'e', [0.3, 0.5, 0.7, 0.9].map((e) => [`${e}`, SIDE20, withParam('restitution', e)]));
+    table('3c. 同：慣性係数 κ', 'κ', [0.4, 0.55, 2 / 3].map((k) => [f(k), SIDE20, withParam('ballInertiaCoefficient', k)]));
+    table('3d. 同：法線まわりの足の回転 φ', 'φ °', [-180, -135, -90, -45, 0, 45, 90].map((ph) => [`${ph}`, { ...SIDE20, footRoll: deg(ph) }]));
+  },
+  4: () => table('4. 接触点の右へのずれ（25 m/s、仰角 15°、μ = 0.5）', 'ずれ °', [
+    ...[0, 5, 10, 15, 20, 30, 40, 50, 55, 60, 65, 70, 75, 80].map((az) => [`${az}`, { ...SIDE20, contactDirection: contactAt(az, 0) }]),
+  ]),
+  5: () => table('5. 接触点を下へずらす（25 m/s、足は水平）', '下へ °', [
+    ...[0, -10, -20, -30, -40, -50, -60].map((el) => [`${-el}`, { ...K0, footSpeed: 25, footElevation: 0, contactDirection: contactAt(0, el) }]),
+  ]),
+  6: () => {
+    console.log('\n### 6. 右下を蹴る例（24 m/s）：25 m 先での打ち出しの直線からの曲がり\n');
+    console.log('| 右へ ° | 下へ ° | 足の仰角 ° | 球速 m/s | 回転 rpm | 25 m 地点の時刻 s | 高さ m | 横 m | 直線なら 横 m | 曲がり m |');
+    console.log('|---|---|---|---|---|---|---|---|---|---|');
+    for (const [az, el, fe] of [[15, -20, 0], [20, -25, 0], [25, -25, 5], [20, -30, 0]]) {
+      const o = run({ ...K0, footSpeed: 24, footElevation: deg(fe), contactDirection: contactAt(az, el) });
+      if (!o.ok) { console.log(`| ${az} | ${-el} | ${fe} | エラー：${o.code} ||||||`); continue; }
+      const { time, position } = o.value.trajectory;
+      const m = o.value.metrics;
+      let i = 0;
+      while (i < time.length && position[3 * i] < 25) i++;
+      if (i >= time.length) { console.log(`| ${az} | ${-el} | ${fe} | ${f(m.launchSpeed)} | ${f(toRpm(m.spinRate), 0)} | 25 m に届かない |||||`); continue; }
+      const straight = 25 * Math.tan(m.launchDirection);
+      const z = position[3 * i + 2];
+      console.log(`| ${az} | ${-el} | ${fe} | ${f(m.launchSpeed)} | ${f(toRpm(m.spinRate), 0)} | ${f(time[i])} | ${f(position[3 * i + 1])} | ${f(z)} | ${f(straight)} | ${f(z - straight)} |`);
+    }
+    console.log('\n25 m 地点は、x が初めて 25 m 以上になったサンプル（Δt ごと）。補間はしていない。');
+  },
+  7: () => {
+    const count = new Map();
+    let total = 0;
+    const settings = { ...S, ground: 'stop-at-first-contact', maxTime: 5 };
+    for (let az = -60; az <= 60; az += 15) for (let el = -60; el <= 30; el += 15) for (const fa of [-20, 0, 20]) for (const fe of [-10, 10, 30])
+      for (const ph of [-90, 0, 45]) for (const sx of [-0.1, 0, 0.1]) for (const sy of [-0.04, 0, 0.04]) {
+        const state = {
+          ...K0, footSpeed: 25, footAzimuth: deg(fa), footElevation: deg(fe), footRoll: deg(ph), footContactLocation: [sx, sy], contactDirection: contactAt(az, el),
+        };
+        const o = run(state, P, settings);
+        total++;
+        const key = o.ok
+          ? `${o.value.impact.regime}${o.value.impact.diagnostics.warnings.length ? `（警告：${o.value.impact.diagnostics.warnings.join('、')}）` : ''}`
+          : `エラー：${o.code}`;
+        count.set(key, (count.get(key) ?? 0) + 1);
+      }
+    console.log('\n### 7. 入力の格子の走査（有限質量、25 m/s、最初の接地で終了）\n');
+    console.log('格子：右へのずれ −60〜60°（15° 刻み）× 上下のずれ −60〜30°（15° 刻み）× 足の方位角 −20・0・20° × 足の仰角 −10・10・30° × φ −90・0・45° × s_x −0.1・0・0.1 m × s_y −0.04・0・0.04 m\n');
+    console.log('| 結果 | 件数 |');
+    console.log('|---|---|');
+    for (const [key, n] of [...count].sort((a, b) => b[1] - a[1])) console.log(`| ${key} | ${n} |`);
+    console.log(`| 合計 | ${total} |`);
+  },
+};
+
+const selected = process.argv.slice(2);
+console.log(`# V1 の掃引（MODEL_VERSION ${MODEL_VERSION}、Node ${process.version}）`);
+console.log('\nパラメータは Lab の既定（05 §10.2）。特記のない入力は Lab の初期入力（spec 001 §4）。球速 / 足速の足速は、接触点での足の速さ |v_A^p|。');
+for (const [id, fn] of Object.entries(sections)) if (selected.length === 0 || selected.includes(id)) fn();
