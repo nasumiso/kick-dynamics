@@ -396,6 +396,66 @@ sections[10] = () => {
   console.log('\nL-04 の式の折れ線は、Re を 1 つに固定した近似（飛翔中の Re の変化は入れていない）。');
 };
 
+/**
+ * 感度解析（V2-06）。既定の値のまわりで各パラメータを ±10 % 変え、中心差分で弾性値 (Δy/y)/(Δp/p) を出す。
+ * 角度（打ち出し角・方向）は弾性値の代わりに、パラメータ +10 % あたりの変化（度）を出す。
+ * 飛翔は最初の接地まで。地面のパラメータ（P-15〜P-17、P-29）は、この範囲の出力に効かないので対象外（VAL-05 は対象外）。
+ */
+const scaleTable = (k, base = P) => withParam('liftCoefficient', { kind: 'spin-table', points: base.liftCoefficient.value.points.map(([s, c]) => [s, k * c]) }, base);
+const scaleVec = (v, k) => v.map((x) => k * x);
+const SENSITIVITY_PARAMS = [
+  ['P-01 m_B', 'ボールの質量', (k) => withParam('ballMass', k * P.ballMass.value)],
+  ['P-02 R', 'ボールの半径', (k) => withParam('ballRadius', k * P.ballRadius.value)],
+  ['P-03 κ', 'ボールの慣性係数', (k) => withParam('ballInertiaCoefficient', k * P.ballInertiaCoefficient.value)],
+  ['P-04 m_A', '足の質量（慣性テンソルも同じ寸法で計算し直す）', (k) => withFootMass(k * P.footMass.value)],
+  ['P-05 I_A', '足の慣性テンソル（質量は既定）', (k) => withParam('footInertiaBody', scaleVec(P.footInertiaBody.value, k))],
+  ['P-06 L', '足の寸法（3 辺を同じ倍率。慣性テンソルも計算し直す）', (k) => {
+    const dims = scaleVec(P.footDimensions.value, k);
+    return { ...withParam('footDimensions', dims), footInertiaBody: { ...P.footInertiaBody, value: boxInertia(P.footMass.value, dims) } };
+  }],
+  ['P-07 e', '反発係数', (k) => withParam('restitution', k * P.restitution.value)],
+  ['P-08 μ', '摩擦係数', (k) => withParam('friction', k * P.friction.value)],
+  ['P-10 ρ', '空気の密度', (k) => withParam('airDensity', k * P.airDensity.value)],
+  ['P-12 C_D', '抗力係数', (k) => withParam('dragCoefficient', k * P.dragCoefficient.value)],
+  ['P-13 C_L', '揚力係数（折れ線の値を同じ倍率）', (k) => scaleTable(k)],
+];
+
+const SENSITIVITY_KICKS = [
+  ['A. 正面 20 m/s、仰角 10°（Lab の初期入力）', K0],
+  ['B. 下へ 20°、25 m/s、水平', { ...K0, footSpeed: 25, footElevation: 0, contactDirection: contactAt(0, -20) }],
+  ['C. 右へ 20°、25 m/s、仰角 15°（節 3 の例）', SIDE20],
+  ['D. 右へ 20°・下へ 25°、24 m/s、水平（節 6 の例）', { ...K0, footSpeed: 24, footElevation: 0, contactDirection: contactAt(20, -25) }],
+];
+
+sections[11] = () => {
+  const flight = { ...S, ground: 'stop-at-first-contact' };
+  const h = 0.1;
+  const outputs = (o) => {
+    const m = o.value.metrics;
+    return { speed: m.launchSpeed, spin: m.spinRate, angle: toDeg(m.launchAngle), direction: toDeg(m.launchDirection), carry: m.carry, lateral: m.lateralDeviation };
+  };
+  const elasticity = (plus, minus, base) => (Math.abs(base) < 1e-6 ? null : (plus - minus) / (2 * h * base));
+  console.log('\n### 11. 感度解析（V2-06）：パラメータを ±10 % 変えたときの弾性値\n');
+  console.log('弾性値 = (y(+10 %) − y(−10 %)) / (2 × 0.1 × y(既定))。角度は (y(+10 %) − y(−10 %)) / 2（度、+10 % あたり）。飛翔は最初の接地まで。基準の値が 0 の量は —。\n');
+  for (const [name, state] of SENSITIVITY_KICKS) {
+    const base = run(state, P, flight);
+    if (!base.ok) { console.log(`\n**${name}**：エラー：${base.code}\n`); continue; }
+    const b = outputs(base);
+    console.log(`\n**${name}**：球速 ${f(b.speed)} m/s、回転 ${f(toRpm(b.spin), 0)} rpm、打ち出し角 ${f(b.angle, 1)}°、方向 ${f(b.direction, 1)}°、キャリー ${f(b.carry)} m、横ずれ ${f(b.lateral)} m、衝突 ${base.value.impact.regime}\n`);
+    console.log('| パラメータ | 球速 | 回転 | 打ち出し角 ° | 方向 ° | キャリー | 横ずれ | 衝突（−10 %・+10 %） |');
+    console.log('|---|---|---|---|---|---|---|---|');
+    for (const [id, label, make] of SENSITIVITY_PARAMS) {
+      const op = run(state, make(1 + h), flight);
+      const om = run(state, make(1 - h), flight);
+      if (!op.ok || !om.ok) { console.log(`| ${id} ${label} | エラー：${op.ok ? '' : op.code} ${om.ok ? '' : om.code} |||||||`); continue; }
+      const p = outputs(op);
+      const m = outputs(om);
+      const e = (k) => f(elasticity(p[k], m[k], b[k]));
+      console.log(`| ${id} ${label} | ${e('speed')} | ${e('spin')} | ${f((p.angle - m.angle) / 2)} | ${f((p.direction - m.direction) / 2)} | ${e('carry')} | ${e('lateral')} | ${om.value.impact.regime}・${op.value.impact.regime} |`);
+    }
+  }
+};
+
 const selected = process.argv.slice(2);
 console.log(`# V1 の掃引（MODEL_VERSION ${MODEL_VERSION}、Node ${process.version}）`);
 console.log('\nパラメータは Lab の既定（05 §10.2）。特記のない入力は Lab の初期入力（spec 001 §4）。球速 / 足速の足速は、接触点での足の速さ |v_A^p|。');
