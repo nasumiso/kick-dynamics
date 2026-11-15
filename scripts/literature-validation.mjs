@@ -2,7 +2,7 @@
 //
 // 使い方：node scripts/literature-validation.mjs [節の番号 ...]（省略時はすべて）
 // - 依存を追加しないため、scripts/measure-kick.mjs と同じ方法（Node の型の除去と registerHooks）で Lab と Core の .ts を読み込む。
-// - パラメータは Lab の既定のパラメータセット（05 §10.2 の写し）、設定は Lab の既定の計算設定を使う。
+// - パラメータは V1 の時点の既定（Lab の既定のパラメータセットのうち κ を 2/3 に戻したもの。下の V1_KAPPA）、設定は Lab の既定の計算設定を使う。
 // - 入力の値は掃引のための任意の例で、物理的な根拠はない。出力はモデルの挙動の記録で、実測との比較ではない。
 // - 結果は Markdown の表で標準出力に書く。
 import { existsSync } from 'node:fs';
@@ -23,7 +23,13 @@ registerHooks({
   },
 });
 
-const { DEFAULT_PARAMETER_SET: P } = await import(new URL('apps/web/src/params/default-parameter-set.ts', root).href);
+const { DEFAULT_PARAMETER_SET: LAB_DEFAULTS } = await import(new URL('apps/web/src/params/default-parameter-set.ts', root).href);
+// V1 の比較は、V1 の時点の既定（MODEL_VERSION 0.1.0）で行った。その後 P-03（κ）を 2/3 から 0.61 に置き換えた（ADR-0009）ので、
+// V1 検証レポートの数値を再現するため、κ だけ V1 の時点の値に戻す。Lab の現在の既定で計算するには、環境変数 V1_USE_LAB_DEFAULTS=1 を付ける。
+const V1_KAPPA = 2 / 3;
+const P = process.env.V1_USE_LAB_DEFAULTS === '1'
+  ? LAB_DEFAULTS
+  : { ...LAB_DEFAULTS, ballInertiaCoefficient: { ...LAB_DEFAULTS.ballInertiaCoefficient, value: V1_KAPPA, confidence: 'provisional', source: 'V1 の時点の仮置き（ADR-0009 の前）' } };
 const { DEFAULT_SIMULATION_SETTINGS: S } = await import(new URL('apps/web/src/simulation/run-kick.ts', root).href);
 const { INITIAL_KICK_STATE: K0, toKickInput } = await import(new URL('apps/web/src/kick/kick-state.ts', root).href);
 const { simulateKick, simulateFlight, boxInertia, MODEL_VERSION } = await import(coreEntry);
@@ -541,5 +547,5 @@ sections[12] = () => {
 
 const selected = process.argv.slice(2);
 console.log(`# V1 の掃引（MODEL_VERSION ${MODEL_VERSION}、Node ${process.version}）`);
-console.log('\nパラメータは Lab の既定（05 §10.2）。特記のない入力は Lab の初期入力（spec 001 §4）。球速 / 足速の足速は、接触点での足の速さ |v_A^p|。');
+console.log(`\nパラメータは ${process.env.V1_USE_LAB_DEFAULTS === '1' ? 'Lab の現在の既定' : 'V1 の時点の既定（Lab の既定のうち κ = 2/3。ADR-0009 の前）'}（05 §10.2）。` + '特記のない入力は Lab の初期入力（spec 001 §4）。球速 / 足速の足速は、接触点での足の速さ |v_A^p|。');
 for (const [id, fn] of Object.entries(sections)) if (selected.length === 0 || selected.includes(id)) fn();

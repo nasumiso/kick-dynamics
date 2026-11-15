@@ -23,7 +23,7 @@ import { fail, ok, type SimErrorCode, type SimResult } from '../result';
 import { ACCEPTED_RANGES, describeRange, inRange, type AcceptedRange } from './ranges';
 
 // 版の付け方は ADR-0008。結果が変わりうる変更では MINOR を上げる。
-export const MODEL_VERSION = '0.1.0';
+export const MODEL_VERSION = '0.1.1';
 
 /** 回転減衰のモデルの選択（05 §7.5）。'linear' は P-14、'torque-coefficient' は P-22 の定数を使う。 */
 export type SpinDecaySelection = 'none' | 'linear' | 'torque-coefficient';

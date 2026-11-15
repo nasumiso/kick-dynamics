@@ -20,7 +20,10 @@ export const DEFAULT_PARAMETER_SET: ParameterSet = {
     candidateRange: { min: 0.68 / (2 * Math.PI), max: 0.7 / (2 * Math.PI) }, confidence: 'provisional',
     source: '規格の外周の範囲（IFAB 競技規則 第 2 条 1 項、照合済み）68–70 cm の中央から換算した仮置き',
   },
-  ballInertiaCoefficient: { id: 'P-03', symbol: 'κ', unit: '—', value: 2 / 3, confidence: 'provisional', source: '出典なし。薄い球殻の式。OQ-06' },
+  ballInertiaCoefficient: {
+    id: 'P-03', symbol: 'κ', unit: '—', value: 0.61, confidence: 'literature',
+    source: 'Barber & Carré (2010) Sports Eng. 13:47–55 の Table 1（4 種類のボールの慣性モーメントの実測）から 0.600–0.626。ADR-0009、OQ-06',
+  },
   footMass: { id: 'P-04', symbol: 'm_A', unit: 'kg', value: 1.2, confidence: 'provisional', source: '出典なし（T0-08）。OQ-02' },
   footInertiaBody: {
     id: 'P-05', symbol: 'I_A^body', unit: 'kg·m²', value: boxInertia(1.2, footDimensions),

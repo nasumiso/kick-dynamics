@@ -4,7 +4,7 @@ import * as core from '../src/index';
 
 describe('package entry point', () => {
   it('exposes the implemented Core API', () => {
-    expect(core.MODEL_VERSION).toBe('0.1.0');
+    expect(core.MODEL_VERSION).toBe('0.1.1');
     expect(typeof core.vec3.cross).toBe('function');
     expect(typeof core.mat3.inverse).toBe('function');
     expect(typeof core.quat.multiply).toBe('function');
