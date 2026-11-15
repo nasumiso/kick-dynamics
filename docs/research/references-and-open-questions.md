@@ -43,6 +43,15 @@
 | J. E. Goff、M. J. Carré らによるサッカーボールの軌道・空力に関する研究 | R-04、R-05 | 未確認（対象文献の特定が必要） |
 | 国際サッカー評議会（IFAB）競技規則 第 2 条（ボール） | R-12、P-01、P-02 | 未確認（一次情報との照合が必要） |
 | 国際標準大気（ISA） | P-10、P-11 | 未確認（一次情報との照合が必要） |
+| T. Asai, M. J. Carré, T. Akatsuka, S. J. Haake, "The curve kick of a football I: impact with the foot", Sports Engineering 5(4), 183–192 (2002), doi:10.1046/j.1460-2687.2002.00108.x | R-02、VAL-01、VAL-02 | 未確認（2026-11-15、検索結果で書誌だけ確認。本文は未確認）。機関リポジトリの記録：https://shura.shu.ac.uk/2127 |
+| 同 II（"The curve kick of a football II: flight through the air"） | R-05、VAL-04 | 未確認（題名だけ確認）。https://shura.shu.ac.uk/2161 |
+| H. Nunome, M. Lake, A. Georgakis, L. K. Stergioulas, "Impact phase kinematics of instep kicking in soccer", Journal of Sports Sciences 24, 11–22 (2006) | R-02、VAL-01、D-04 | 未確認（検索結果で書誌だけ確認） |
+| H. Shinkai, H. Nunome, M. Isokawa, Y. Ikegami, "Ball impact dynamics of instep soccer kicking", Medicine & Science in Sports & Exercise (2009) | R-02、D-04〜D-06 | 未確認（題名と著者だけ確認。巻・頁は未確認） |
+| ISBS の会議録の関連発表（"Ball impact kinematics and dynamics in soccer kicking" など） | R-02、D-04 | 未確認。https://ojs.ub.uni-konstanz.de/cpa/article/view/5153 |
+| T. Asai, K. Seo, O. Kobayashi, R. Sakashita, "Fundamental aerodynamics of the soccer ball", Sports Engineering (2007) | R-04、R-05、VAL-10 | 未確認（検索結果で書誌だけ確認。巻・頁は未確認） |
+| J. E. Goff, M. J. Carré, Procedia Engineering (2012) の論文（題名は未確認） | R-04、R-05、VAL-10 | 未確認。機関リポジトリの版：https://eprints.whiterose.ac.uk/id/eprint/98035/ |
+| "Creating drag and lift curves from soccer trajectories"（Goff ら、著者版） | R-04、R-05、VAL-04、VAL-10 | 未確認。https://shura.shu.ac.uk/15728/ |
+| 筑波大学のグループによる W 杯公式球の風洞試験（Scientific Reports, 2026） | R-04、VAL-10 | 未確認。https://link.springer.com/10.1038/s41598-026-56275-1 |
 
 ## 5. 類似事例・参考 UI の候補（未確認）
 
