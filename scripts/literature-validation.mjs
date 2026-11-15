@@ -26,7 +26,7 @@ registerHooks({
 const { DEFAULT_PARAMETER_SET: P } = await import(new URL('apps/web/src/params/default-parameter-set.ts', root).href);
 const { DEFAULT_SIMULATION_SETTINGS: S } = await import(new URL('apps/web/src/simulation/run-kick.ts', root).href);
 const { INITIAL_KICK_STATE: K0, toKickInput } = await import(new URL('apps/web/src/kick/kick-state.ts', root).href);
-const { simulateKick, boxInertia, MODEL_VERSION } = await import(coreEntry);
+const { simulateKick, simulateFlight, boxInertia, MODEL_VERSION } = await import(coreEntry);
 
 const deg = (x) => (x * Math.PI) / 180;
 const toDeg = (x) => (x * 180) / Math.PI;
@@ -454,6 +454,89 @@ sections[11] = () => {
       console.log(`| ${id} ${label} | ${e('speed')} | ${e('spin')} | ${f((p.angle - m.angle) / 2)} | ${f((p.direction - m.direction) / 2)} | ${e('carry')} | ${e('lateral')} | ${om.value.impact.regime}・${op.value.impact.regime} |`);
     }
   }
+};
+
+/**
+ * VAL-04 の参考（V2-05）：L-06（Goff ら 2017）の発射装置の軌道と、同じ初期条件での飛翔の比較。
+ * - 初期条件は L-06 の Table 1（初速 v0、打ち出し角 θ0、時間平均の角速度 <ω>、トップスピン）。
+ *   回転は時間平均の値を初期値として使い、モデルでは回転減衰なし（Lab の既定）。
+ * - 実測は Fig. 6 の赤線（実測の位置に当てはめた多項式）を画素から読み取った値（docs/reports/v1-validation-report.md §6）。
+ *   発射点を原点とし、高さ z が 0・−0.5・−0.9 m に下がる位置 x と、最高点の高さ。
+ * - 飛翔だけを計算する（キックの衝突は使わない）。地面に触れないよう、発射点を地面から 5 m の高さに置く。
+ */
+const L06_TRAJECTORIES = [
+  // [番号, v0 m/s, θ0 rad, <ω> rad/s, 実測：最高点の高さ m, x(z=0), x(z=−0.5), x(z=−0.9) m, 確認用の一定の係数（図の読み取りの水準）C_D, |C_L|]
+  [2, 29.93, 0.106, 21.69, 0.24, 9.12, 12.40, 14.09, 0.30, 0.24],
+  [14, 20.60, 0.096, 23.72, 0.14, 5.67, 8.69, 10.23, 0.28, 0.22],
+  [18, 17.12, 0.161, 12.59, 0.33, 7.47, 9.75, 11.06, 0.25, 0.17],
+  [20, 11.39, -0.066, 17.58, 0.00, 0.33, 2.94, 4.08, 0.17, 0.02],
+];
+
+function flightFrom(v0, theta, omega, drag, lift, ball) {
+  const h0 = 5;
+  const initial = {
+    position: [0, h0, 0],
+    orientation: [0, 0, 0, 1],
+    linearVelocity: [v0 * Math.cos(theta), v0 * Math.sin(theta), 0],
+    angularVelocity: [0, 0, -omega], // +x へ飛ぶボールのトップスピン（05 §7.4 の符号の確認）
+  };
+  const environment = { gravity: P.gravity.value, airDensity: P.airDensity.value, airViscosity: P.airViscosity.value, wind: [0, 0, 0] };
+  const settings = {
+    timeStep: P.timeStep.value,
+    maxTime: 3,
+    eventTimeTolerance: S.eventTimeTolerance,
+    forces: { gravity: true, drag: { enabled: true, coefficient: drag }, magnus: { enabled: true, coefficient: lift }, spinDecay: { kind: 'none' } },
+    thresholds: { magnus: P.magnusThreshold.value, zeroSpeed: P.zeroSpeedThreshold.value, zeroSpin: P.zeroSpinThreshold.value },
+  };
+  const result = simulateFlight(initial, ball, environment, settings);
+  if (!result.ok) return null;
+  const { position: p, time } = result.value;
+  const n = time.length;
+  let peak = -Infinity;
+  const crossings = [0, -0.5, -0.9].map(() => null);
+  for (let i = 0; i < n; i++) {
+    const z = p[3 * i + 1] - h0;
+    peak = Math.max(peak, z);
+    if (i === 0) continue;
+    const zPrev = p[3 * (i - 1) + 1] - h0;
+    [0, -0.5, -0.9].forEach((level, k) => {
+      if (crossings[k] === null && zPrev > level && z <= level && (level < 0 || p[3 * i] > 0.5)) {
+        const t = (zPrev - level) / (zPrev - z);
+        crossings[k] = p[3 * (i - 1)] + t * (p[3 * i] - p[3 * (i - 1)]);
+      }
+    });
+  }
+  return { peak, crossings };
+}
+
+sections[12] = () => {
+  const defaultBall = { mass: P.ballMass.value, radius: P.ballRadius.value, inertiaCoefficient: P.ballInertiaCoefficient.value };
+  const radius = P.ballRadius.value;
+  console.log('\n### 12. VAL-04 の参考：L-06 の発射装置の軌道（V2-05）\n');
+  console.log('初期条件は L-06 の Table 1。実測は Fig. 6 の赤線の画素からの読み取り。z は発射点からの高さ、x は水平距離（m）。z = 0 の x は、上がってから発射の高さに戻る位置（軌道 20 は下向きに打ち出すので参考にならない）。\n');
+  console.log('| 軌道 | v0 m/s | θ0 ° | <ω> rad/s | S0 | 構成 | 最高点 m | x(z = 0) | x(z = −0.5) | x(z = −0.9) | x(z = −0.9) の差 m |');
+  console.log('|---|---|---|---|---|---|---|---|---|---|---|');
+  for (const [id, v0, theta, omega, peak, x0, x5, x9, cd, cl] of L06_TRAJECTORIES) {
+    const head = `| ${id} | ${f(v0)} | ${f(toDeg(theta), 1)} | ${f(omega)} | ${f((radius * omega) / v0, 3)}`;
+    console.log(`${head} | 実測（Fig. 6） | ${f(peak)} | ${f(x0)} | ${f(x5)} | ${f(x9)} | — |`);
+    // L-06 の係数は断面積 A = 0.0333 m² で定義されている（本文）。モデルの A = πR² で同じ力になるよう、係数に面積の比をかける。
+    const k = 0.0333 / (Math.PI * radius * radius);
+    const dragL06 = { kind: 'constant', value: k * cd };
+    const liftL06 = { kind: 'constant', value: k * cl };
+    const variants = [
+      ['モデル（P-12・P-13）', { kind: 'constant', value: P.dragCoefficient.value }, P.liftCoefficient.value, defaultBall],
+      ['確認用：C_D・C_L とも L-06 の水準', dragL06, liftL06, defaultBall],
+      ['C_D だけ L-06 の水準（C_L は P-13）', dragL06, P.liftCoefficient.value, defaultBall],
+      ['C_L だけ L-06 の水準（C_D は P-12）', { kind: 'constant', value: P.dragCoefficient.value }, liftL06, defaultBall],
+    ];
+    for (const [name, drag, lift, ball] of variants) {
+      const o = flightFrom(v0, theta, omega, drag, lift, ball);
+      if (!o) { console.log(`${head} | ${name} | エラー ||||`); continue; }
+      const [c0, c5, c9] = o.crossings;
+      console.log(`${head} | ${name} | ${f(o.peak)} | ${f(c0)} | ${f(c5)} | ${f(c9)} | ${c9 === null ? '—' : f(c9 - x9)} |`);
+    }
+  }
+  console.log(`\nL-06 の水準：Fig. 4・5 から読み取った各軌道の速度域の C_D・|C_L|（表の右の 2 列、読み取りの不確かさ ±0.02 程度）を一定とし、断面積の比 0.0333 / πR² = ${f(0.0333 / (Math.PI * radius * radius), 3)} をかけた。「確認用」は、比較の設定（初期条件の対応づけ）が実測を再現できるかを確かめるためのもので、モデルの検証ではない。質量を L-06 の 0.424 kg にしても、x(z = −0.9) の変化は 0.1 m 未満（2026-11-15 に確認）。`);
 };
 
 const selected = process.argv.slice(2);
