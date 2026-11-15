@@ -250,7 +250,7 @@ Rust/WASM への移行は決定していない。移行するかどうかは、�
 
 - Core では `Math.random`、現在時刻、環境依存の状態を使わない。
 - 同一環境・同一入力では同一結果を返す（NFR-05）。`Math.sin` などの初等関数は JS エンジン間で末尾の桁が異なりうるため、異なるブラウザ間のビット単位の一致は保証しない。テストは許容誤差付きで比較する（[06](06-validation.md)）。
-- 結果に `modelVersion`、パラメータ一式、設定を含め、出力ファイルから再計算できるようにする（NFR-06）。
+- 結果に `modelVersion`、パラメータ一式、設定を含め、出力ファイルから再計算できるようにする（NFR-06）。`modelVersion` の付け方は [ADR-0008](decisions/0008-model-version.md)（`MAJOR.MINOR.PATCH`。Phase 1 の完了時点を `0.1.0` とし、結果が変わりうる変更では MINOR を上げる）。
 
 ## 11. 開発ワークフローとの関係
 
@@ -266,4 +266,4 @@ verification/                 # 予定（未作成）
 
 ## 12. 未決定事項
 
-OQ-12（積分法・刻み）、OQ-17（UI ライブラリ）、OQ-18（実行スレッド）。OQ-11（座標系）、OQ-15（データ表現）、OQ-16（ワークスペース）、OQ-19（出力形式）は決定済み。詳細は [research/references-and-open-questions.md](research/references-and-open-questions.md)。
+OQ-12（積分法・刻み）。OQ-11（座標系）、OQ-15（データ表現）、OQ-16（ワークスペース）、OQ-17（UI ライブラリ、Phase 1 は使わない）、OQ-18（実行スレッド、Phase 1 はメインスレッド）、OQ-19（出力形式）は決定済み。詳細は [research/references-and-open-questions.md](research/references-and-open-questions.md)。

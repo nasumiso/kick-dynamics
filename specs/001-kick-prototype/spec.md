@@ -113,4 +113,4 @@
 
 ## 9. 未決定事項
 
-OQ-02（足の質量・寸法）、OQ-03（入力の UI での表現。パラメータ化は決定済み）、OQ-04〜OQ-09（係数と接地モデル）、OQ-12（積分法）、OQ-13（許容誤差）、OQ-17（UI ライブラリ）、OQ-19（出力形式）、OQ-20（対象ブラウザ）。詳細は [references-and-open-questions.md](../../docs/research/references-and-open-questions.md)。
+Phase 1 の完了時点（2026-11-15）で、OQ-02（足の質量・寸法）、OQ-04〜OQ-09（係数と接地モデル）、OQ-12（時間刻み）、OQ-13（許容誤差）は仮置きのまま残した。OQ-03（入力の UI での表現）は暫定。OQ-17（UI ライブラリ）、OQ-19（出力形式）、OQ-20（対象ブラウザ）は決定済み。詳細は [references-and-open-questions.md](../../docs/research/references-and-open-questions.md)。

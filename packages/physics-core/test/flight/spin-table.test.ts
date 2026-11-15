@@ -15,7 +15,7 @@ function body(velocity: Vec3, angularVelocity: Vec3): RigidBodyState {
   return { position: [0, 1, 0], orientation: IDENTITY_QUAT, linearVelocity: velocity, angularVelocity };
 }
 
-describe('spin coefficient table', () => {
+describe('VER-F14: spin coefficient table', () => {
   it('returns the node values, interpolates linearly between nodes and holds the last value beyond the table', () => {
     expect(evaluateSpinTable(table, 0)).toBe(0);
     expect(evaluateSpinTable(table, 0.25)).toBe(0.3);
