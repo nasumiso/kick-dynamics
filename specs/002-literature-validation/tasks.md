@@ -1,6 +1,6 @@
 # 002 文献による妥当性確認（V1）タスク
 
-> 状態：V0、V1、V2-01、V2-02 は完了（2026-11-15）。次は V2-03。受入条件は [spec.md](spec.md)。
+> 状態：V0、V1、V2-01、V2-02 は完了（2026-11-15）。V2-03 は作業中（途中の状態は V2-03 の欄）。受入条件は [spec.md](spec.md)。
 > 使い方は [001 の tasks.md](../001-kick-prototype/tasks.md) の「使い方」と同じ（上から順に 1 タスクずつ。完了したら結果欄を書く）。
 
 ## V0 着手前の決定
@@ -75,6 +75,15 @@
 - 内容：接触のずれと回転の関係、摩擦係数への依存、球速と回転の兼ね合いを比べる。
 - 依存：V1-01、V2-01
 - 完了確認：V2-02 と同じ。
+- 途中の状態（2026-11-15、作業中。セッションを Web へ移すために記録）：
+  - **文献**（research §2 には未記録）：
+    - Asai ら 2002（L-03）の本文を入手した：https://vision.ime.usp.br/~jb/research/soccer_simulation/curve_kick_I.pdf （出版社ではなく大学の個人ページの写し）。回転と当てる位置の関係（Table 2、Fig. 6）は **FEM の計算**（脚 4.0 kg、足のヤング率 30 MPa、足速 25 m/s、μ = 0.4）で、実測ではない。実験（6 名、4500 fps）は Table 1 の球速 25.44 m/s・足（点 7）の速度 23.12 m/s・接触時間 9.12 ms などで、回転は測っていない。
+    - Whiteside, Alderson, Elliott "'Bend it like Beckham': ball rotation in the curved football kick"（ISBS、年は未確認）：https://ojs.ub.uni-konstanz.de/cpa/article/view/4446 。回転の**実測**（4 名、250 Hz の Vicon）。カーブ 36.4 ± 5.1 rad/s・球速 19.2 ± 2.1 m/s、ストレート 22.6 ± 4.5 rad/s・22.1 ± 2.9 m/s、回転軸の仰角 62.6°・30.4°。Table 1 の回転の「範囲」（3.1–4.7、4.8–6.6）は回転/s と見られ、単位が表の見出し（rad/s）と食い違う。足の速度・当てた位置の数値はない。
+    - 検索の要約だけ（未確認）：Sheffield Hallam の infront カーブキック（https://shura.shu.ac.uk/2206 、アクセスを拒否された）で平均 7.8 回転/s、足 24.2 m/s、球 27.1 m/s。Griffiths ら 2005 で 25〜59 rad/s（Whiteside らの引用）。
+  - **Codex の読み取りの照合**：Asai ら 2002 と Whiteside らについて依頼したが、ローカルのセッションで実行中のまま移行した。**Web では、ai-workflow §2 のクラウドの手順で依頼し直す**（照合が済むまで、比較の結論に使わない）。
+  - **比較**：`node scripts/literature-validation.mjs 9`（Asai らの FEM と同じ条件。b = R sin(接触点の方位角) と対応づけた）。4.0 kg・μ = 0.4 で、b = 40 mm はモデル 31.7 m/s・7.2 r/s 対 FEM 23.1 m/s・4.0 r/s、b = 80 mm は 24.1 m/s・14.5 r/s 対 18.5 m/s・10.5 r/s。μ = 0 でモデルの回転は 0、FEM は 40 mm で約 3 r/s（Fig. 6 の読み取り）。
+  - **VAL-01 への影響**：Asai らの実験の球速 / 足速は 25.44/23.12 = 1.10 で、L-01 の 1.39〜1.41 と違う（足の速度を測った点・平滑化の違いの可能性）。照合の後、検証レポート §2 の結論を「文献値に幅がある」に直す。
+  - 残り：照合 → research §2 に L-08（Whiteside ら）を追加・L-03 を本文確認に更新 → 検証レポート §3（VAL-02）と §2 の修正 → 完了。
 
 ### [ ] V2-04 VAL-10（空力係数）の比較
 - 担当：Claude Code

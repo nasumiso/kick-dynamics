@@ -208,6 +208,54 @@ sections[8] = () => {
   }
 };
 
+/**
+ * VAL-02 の参考：Asai ら（2002）の FEM 計算と同じ条件。足は水平に +x へ 25 m/s、ボールの赤道上で横に当てる。
+ * 当てる位置の横のずれ b（Asai らの offset distance）を、接触点の方位角 az で b = R sin(az) と対応づける（対応づけの仮定）。
+ * Asai らの「右」のずれを、モデルの +z（右）へのずれとする。符号の対応は確かめていない。
+ */
+const RPS = (w) => w / (2 * Math.PI);
+
+function offsetState(b, footSpeed = 25) {
+  const radius = P.ballRadius.value;
+  const az = toDeg(Math.asin(Math.max(-1, Math.min(1, b / radius))));
+  return { ...K0, footSpeed, footElevation: 0, contactDirection: contactAt(az, 0) };
+}
+
+sections[9] = () => {
+  const models = [
+    ['有限質量 1.2 kg', 'finite-mass', withParam('friction', 0.4)],
+    ['有限質量 4.0 kg', 'finite-mass', withParam('friction', 0.4, withFootMass(4.0))],
+    ['無限質量', 'kinematic-wall', withParam('friction', 0.4)],
+  ];
+  console.log('\n### 9. VAL-02 の参考：当てる位置の横のずれと回転（足は水平に 25 m/s、μ = 0.4、e = 0.5）\n');
+  console.log('Asai ら（2002）の FEM 計算（脚の質量 4.0 kg、μ = 0.4、足速 25 m/s）と同じ条件にそろえた。b = R sin(接触点の方位角)。回転は回転/s（r/s）。\n');
+  console.log(`| b mm | 方位角 ° | ${models.map(([n]) => `${n}：球速 m/s・回転 r/s・衝突`).join(' | ')} |`);
+  console.log(`|---|---|${models.map(() => '---').join('|')}|`);
+  const radius = P.ballRadius.value;
+  for (const bmm of [0, 20, 40, 60, 80, 100, 105]) {
+    const b = bmm / 1000;
+    const az = toDeg(Math.asin(Math.min(1, b / radius)));
+    const cellsText = models.map(([, model, params]) => {
+      const o = run({ ...offsetState(b), footModel: model }, params, { ...S, ground: 'stop-at-first-contact' });
+      if (!o.ok) return `エラー：${o.code}`;
+      return `${f(o.value.metrics.launchSpeed, 1)}・${f(RPS(o.value.metrics.spinRate), 1)}・${o.value.impact.regime}`;
+    });
+    console.log(`| ${bmm} | ${f(az, 1)} | ${cellsText.join(' | ')} |`);
+  }
+  console.log(`\nR = ${f(radius * 1000, 1)} mm なので、b が R に近づくと接触点は横（方位角 90°）に近づき、足の速度の法線成分が 0 に近づく。`);
+
+  console.log('\n**摩擦係数と回転**（b = 40・80 mm、有限質量 1.2 kg と 4.0 kg）\n');
+  console.log('| μ | 1.2 kg、40 mm | 1.2 kg、80 mm | 4.0 kg、40 mm | 4.0 kg、80 mm |');
+  console.log('|---|---|---|---|---|');
+  for (const mu of [0, 0.2, 0.4, 0.6, 0.8, 1.0]) {
+    const cellsText = [[P, 0.04], [P, 0.08], [withFootMass(4.0), 0.04], [withFootMass(4.0), 0.08]].map(([base, b]) => {
+      const o = run(offsetState(b), withParam('friction', mu, base), { ...S, ground: 'stop-at-first-contact' });
+      return o.ok ? `${f(RPS(o.value.metrics.spinRate), 1)} r/s（${o.value.impact.regime}）` : `エラー：${o.code}`;
+    });
+    console.log(`| ${mu} | ${cellsText.join(' | ')} |`);
+  }
+};
+
 const selected = process.argv.slice(2);
 console.log(`# V1 の掃引（MODEL_VERSION ${MODEL_VERSION}、Node ${process.version}）`);
 console.log('\nパラメータは Lab の既定（05 §10.2）。特記のない入力は Lab の初期入力（spec 001 §4）。球速 / 足速の足速は、接触点での足の速さ |v_A^p|。');
