@@ -26,7 +26,7 @@ registerHooks({
 const { DEFAULT_PARAMETER_SET: P } = await import(new URL('apps/web/src/params/default-parameter-set.ts', root).href);
 const { DEFAULT_SIMULATION_SETTINGS: S } = await import(new URL('apps/web/src/simulation/run-kick.ts', root).href);
 const { INITIAL_KICK_STATE: K0, toKickInput } = await import(new URL('apps/web/src/kick/kick-state.ts', root).href);
-const { simulateKick, MODEL_VERSION } = await import(coreEntry);
+const { simulateKick, boxInertia, MODEL_VERSION } = await import(coreEntry);
 
 const deg = (x) => (x * Math.PI) / 180;
 const toDeg = (x) => (x * 180) / Math.PI;
@@ -133,6 +133,79 @@ const sections = {
     for (const [key, n] of [...count].sort((a, b) => b[1] - a[1])) console.log(`| ${key} | ${n} |`);
     console.log(`| 合計 | ${total} |`);
   },
+};
+
+/** 足の質量を変える。慣性テンソルは同じ直方体の寸法で計算し直す（05 §5.2）。 */
+function withFootMass(mass, base = P) {
+  return { ...withParam('footMass', mass, base), footInertiaBody: { ...base.footInertiaBody, value: boxInertia(mass, base.footDimensions.value) } };
+}
+
+const norm = (v) => Math.hypot(v[0], v[1], v[2]);
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+
+/**
+ * VAL-01 の比べる量：球速 / 足速と、足の速度の減少率。
+ * 足の速度は、衝突前は接触点の速さ |v_A^p|（入力）。衝突後は、足の重心の速さと、接触点（足に固定した点）の速さの 2 通り。
+ * 文献（L-01）の足の速度は第 5 中足骨底のマーカーの速度で、モデルのどの点にあたるかは決まらない（spec §5 の対応づけの仮定）。
+ */
+function val01(state, params) {
+  const o = run(state, params, { ...S, ground: 'stop-at-first-contact' });
+  if (!o.ok) return { error: o.code };
+  const { impact, metrics, input } = o.value;
+  const d = input.contactDirection;
+  const radius = params.ballRadius.value;
+  const contact = add([0, radius, 0], [radius * d[0] / norm(d), radius * d[1] / norm(d), radius * d[2] / norm(d)]);
+  const foot = impact.footAfter;
+  const contactVelocityAfter = add(foot.linearVelocity, cross(foot.angularVelocity, sub(contact, foot.position)));
+  const v0 = state.footSpeed;
+  return {
+    ratio: metrics.launchSpeed / v0,
+    comReduction: 1 - norm(foot.linearVelocity) / v0,
+    contactReduction: 1 - norm(contactVelocityAfter) / v0,
+    regime: impact.regime,
+  };
+}
+
+const pct = (x) => `${(100 * x).toFixed(1)}`;
+
+sections[8] = () => {
+  const base = { ...K0, footSpeed: 23 };
+  console.log('\n### 8. VAL-01：球速 / 足速と足の速度の減少率（真後ろ、足の仰角 10°、23 m/s、足の上の接触位置 (0, 0)）\n');
+  console.log('文献（L-01）のインステップ：球速 / 足速 1.41 ± 0.08・1.39 ± 0.02、足の速度の減少率 33.7 ± 2.7 %・34.2 ± 1.4 %（2 名）。');
+  console.log('モデルの値は足速によらない（衝突は速度について線形）。減少率は、足の重心の速さと接触点の速さの 2 通り。\n');
+  console.log('| 足のモデル | m_A kg | e | 球速 / 足速 | 減少率（重心）% | 減少率（接触点）% | 衝突 |');
+  console.log('|---|---|---|---|---|---|---|');
+  const line = (label, mass, e, state, params) => {
+    const r = val01(state, params);
+    console.log(r.error
+      ? `| ${label} | ${mass} | ${e} | エラー：${r.error} |||`
+      : `| ${label} | ${mass} | ${e} | ${f(r.ratio)} | ${pct(r.comReduction)} | ${pct(r.contactReduction)} | ${r.regime} |`);
+  };
+  for (const e of [0.3, 0.5, 0.7, 0.9]) line('無限質量', '—', e, { ...base, footModel: 'kinematic-wall' }, withParam('restitution', e));
+  for (const mass of [0.8, 1.2, 2, 3, 6]) for (const e of [0.3, 0.5, 0.7, 0.9]) {
+    line('有限質量', mass, e, base, withParam('restitution', e, withFootMass(mass)));
+  }
+
+  console.log('\n**足の上の接触位置の影響**（m_A = 1.2 kg、e = 0.5）\n');
+  console.log('| (s_x, s_y) m | 球速 / 足速 | 減少率（重心）% | 減少率（接触点）% |');
+  console.log('|---|---|---|---|');
+  for (const [sx, sy] of [[0, 0], [-0.06, 0], [0.06, 0], [0, 0.03], [-0.06, 0.03]]) {
+    const r = val01({ ...base, footContactLocation: [sx, sy] }, P);
+    console.log(`| (${sx}, ${sy}) | ${f(r.ratio)} | ${pct(r.comReduction)} | ${pct(r.contactReduction)} |`);
+  }
+
+  // 1 次元の正面衝突（05 §6.10）で、文献の 2 つの量に合う m_A と e を逆算する（同定の参考。検証ではない）。
+  // 球速 / 足速 r = (1 + e) m_A / (m_A + m_B)、減少率 q = (1 + e) m_B / (m_A + m_B) なので、m_A = m_B r / q、1 + e = r (m_A + m_B) / m_A。
+  console.log('\n**参考：1 次元の正面衝突（05 §6.10）で、文献の 2 つの量に合う m_A と e**（同定の参考で、検証ではない）\n');
+  console.log('| 被験者 | 球速 / 足速 r | 減少率 q | m_A = m_B r / q kg | e = r (m_A + m_B) / m_A − 1 |');
+  console.log('|---|---|---|---|---|');
+  const mB = P.ballMass.value;
+  for (const [name, r, q] of [['A', 1.41, 0.337], ['B', 1.39, 0.342]]) {
+    const mA = (mB * r) / q;
+    console.log(`| ${name} | ${r} | ${q} | ${f(mA)} | ${f((r * (mA + mB)) / mA - 1)} |`);
+  }
 };
 
 const selected = process.argv.slice(2);

@@ -31,6 +31,7 @@
 
 - 本文の記述：インステップでは、足はボールとの接触で底屈・外転・外反の向きに動かされる（底屈の角変位 7.0°・10.1°）。インサイドでは底屈が大きく抑えられる。
 - 限界：被験者 2 名・各 2 本。回転は測っていない。
+- 読み取りの照合：Codex が独立に読み取り、値・条件・定義が一致した（2026-11-15、V2-02）。減少率は % と、球速 / 足速の分母は衝突前の足の速度と、表の平均値から判断した（表・本文に明記はない）。詳細は [V1 検証レポート](../reports/v1-validation-report.md) §2.1。
 
 **[L-02] H. Nunome, H. Shinkai, Y. Ikegami, "Ball impact kinematics and dynamics in soccer kicking", 30th Annual Conference of Biomechanics in Sports（Melbourne 2012）, pp. 35–42（基調講演）.** 区分：本文確認（会議録の公開版、https://ojs.ub.uni-konstanz.de/cpa/article/view/5153 ）。
 
