@@ -4,8 +4,8 @@ KickDynamics（サッカーキック軌道シミュレータ）で作業する A
 
 ## 現在の段階
 
-- Phase 1（M1.1〜M1.5）は完了した（2026-11-15、T1.5-10）。次は Phase 2 以降の計画で、Phase 2 と Phase 3 の順序は未決定（[03 §5](docs/03-roadmap.md)）。**ユーザーの指示なしに、指示された範囲を超える実装・依存パッケージ導入・フレームワーク初期化を始めない。**
-- 実装は [specs/001-kick-prototype/tasks.md](specs/001-kick-prototype/tasks.md) の順に 1 タスクずつ進め、完了したら結果欄を書く。変更後は `npm run check` を通す。
+- Phase 1（M1.1〜M1.5）は完了した（2026-11-15、T1.5-10）。次は、Phase 2 の前に行う文献による妥当性確認の段階（V1、仮称。2026-11-15、人間が決定。[03 §8](docs/03-roadmap.md)）。Phase 2 と Phase 3 の順序は未決定で、V1 の結果を見て決める（[03 §5](docs/03-roadmap.md)）。**ユーザーの指示なしに、指示された範囲を超える実装・依存パッケージ導入・フレームワーク初期化を始めない。**
+- 作業は該当する段階の tasks.md（V1 は [specs/002-literature-validation/tasks.md](specs/002-literature-validation/tasks.md)、Phase 1 は [specs/001-kick-prototype/tasks.md](specs/001-kick-prototype/tasks.md)）の順に 1 タスクずつ進め、完了したら結果欄を書く。変更後は `npm run check` を通す。
 
 ## 正本
 
@@ -19,6 +19,7 @@ KickDynamics（サッカーキック軌道シミュレータ）で作業する A
 | 要求・ロードマップ | [docs/02-requirements.md](docs/02-requirements.md)、[docs/03-roadmap.md](docs/03-roadmap.md) |
 | 未決事項（OQ）・実測データ（D） | [docs/research/references-and-open-questions.md](docs/research/references-and-open-questions.md) |
 | Phase 1 受入条件・タスク | [specs/001-kick-prototype/](specs/001-kick-prototype/) |
+| V1（文献による妥当性確認）受入条件・タスク | [specs/002-literature-validation/](specs/002-literature-validation/) |
 | AI エージェントの運用（Codex への依頼、Git、クラウド） | [docs/ai-workflow.md](docs/ai-workflow.md) |
 
 ## 役割と独立検証
