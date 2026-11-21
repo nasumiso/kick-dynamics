@@ -39,15 +39,15 @@ KickDynamics は、キックの物理現象を解明・再現することを目�
 | 項目 | 状態 |
 |---|---|
 | 成熟度 | 物理モデル PM-1、機能 UI UM-2（[03 §2](docs/03-roadmap.md)） |
-| KickDynamics Core（`packages/physics-core/`） | Phase 1 のモデル（瞬間点接触・飛翔・バウンドと転がり）を実装。モデルの版 `0.1.0`（[ADR-0008](docs/decisions/0008-model-version.md)） |
+| KickDynamics Core（`packages/physics-core/`） | Phase 1 のモデル（瞬間点接触・飛翔・バウンドと転がり）を実装。モデルの版 `0.1.1`（[ADR-0008](docs/decisions/0008-model-version.md)。V1 の後に $\kappa$ を文献値へ置き換えた） |
 | KickDynamics Lab（`apps/web/`） | キック入力・3D 表示・軌道の再生・測定値と衝突診断・パラメータの確からしさの表示・結果の JSON 出力を実装。静的ビルドで配信できる。対象ブラウザはデスクトップの Chrome の最新版だけ（OQ-20） |
 | 数理・実装検証（VER） | Phase 1 の項目はすべて自動テストで合格（[検証レポート](docs/reports/phase1-verification-report.md)）。許容誤差は、厳密な判定を除いて仮置き（OQ-13） |
 | 独立検証（IV） | IV-01〜IV-05 の照合と差異の解決が終わった。IV-06 は Phase 1 では実施しない |
-| 実測データとの照合（VAL） | 未実施（データ未収集、OQ-14） |
+| 実測データとの照合（VAL） | 文献の値と比較した（V1、[V1 検証レポート](docs/reports/v1-validation-report.md)）。VAL-01・VAL-10 と VAL-04 の一部が実測照合済み（合否は付けていない）。VAL-02 は比べられる実測がなかった |
 | パラメータ | 大半が仮置き（[05 §10.2](docs/05-physics-model.md)） |
 | ライセンス | 未決定 |
 
-次の段階は、Phase 2 の前に行う文献による妥当性確認（V1、仮称。[03 §8](docs/03-roadmap.md)）です。Phase 2（有限時間接触・変形）と Phase 3（面接触・足形状）の順序は未決定です（[03 §5](docs/03-roadmap.md)）。
+文献による妥当性確認（V1、[03 §8](docs/03-roadmap.md)）は完了しました。次の段階は空力の更新（A1、仮称）で、その後に Phase 2（点接触のばねと脚のモデル）、Phase 3（面接触・足形状）の順に進めます（[ADR-0009](docs/decisions/0009-plan-after-v1.md)、[03 §3・§5](docs/03-roadmap.md)）。
 
 ## 技術方針（暫定）
 
@@ -92,6 +92,7 @@ KickDynamics は、キックの物理現象を解明・再現することを目�
 - [ADR-0006 結果の出力形式（JSON 1 ファイル）](docs/decisions/0006-result-json-format.md) — Accepted
 - [ADR-0007 Phase 1 の計算はメインスレッドで行う](docs/decisions/0007-main-thread-simulation.md) — Accepted
 - [ADR-0008 モデルの版の付け方](docs/decisions/0008-model-version.md) — Accepted
+- [ADR-0009 V1 の結果にもとづく次の段階の順序・範囲とパラメータの置き換え](docs/decisions/0009-plan-after-v1.md) — Accepted
 
 初期の合意事項は [soccer_kick_simulator_docs_prompt.md](soccer_kick_simulator_docs_prompt.md)（引き継ぎプロンプト）に記録されています。以後の正本は上表の各文書です。
 
@@ -116,7 +117,7 @@ Claude Code が設計の具体化・実装・テストを、Codex が物理モ�
 ## 未実装・未決定の主な事項
 
 - 反発・摩擦・空力・接地の係数、足の質量と寸法、時間刻み、テストの許容誤差は、仮置きのまま Phase 1 を終えました。値は実測データ（OQ-14）や Phase 2 以降の検討で決めます（[未決事項一覧](docs/research/references-and-open-questions.md)）。
-- 実測データとの照合（VAL）は未実施です。
+- 実測データとの照合（VAL）は、文献の値との比較（V1）だけです。足の速度・当てた位置・回転がそろったデータや、横に曲がる軌道のデータは見つかっていません。
 - 接触時間・変形・面接触・足の形状は、Phase 2 以降の対象です。
 - Phase 1 の完了時点でも、本プロジェクトは「実際のキックを高精度に再現している」とは主張しません。
 
