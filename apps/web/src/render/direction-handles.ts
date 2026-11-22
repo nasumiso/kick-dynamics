@@ -52,6 +52,8 @@ const TIP_PX = 7;
 const KNOB_PX = 5.5;
 const TIP_PICK_PX = 14;
 const SEGMENTS = 128;
+/** 方位のリングの 1 回のドラッグで回せる最大の角 rad（π の少し手前）。 */
+const MAX_AZIMUTH_DRAG = Math.PI - 1e-3;
 const AZIMUTH_COLOR = new THREE.Color(0x40c057);
 const ELEVATION_COLOR = new THREE.Color(0xfa5252);
 const OUT_OF_RANGE_COLOR = new THREE.Color(0x6b7580);
@@ -287,8 +289,11 @@ export function createDirectionHandles({ dom, camera, elevationRange, onDrag }: 
       }
       // 円：掴んだときからのマウスの動きの、接線方向の成分だけ回す（掴んだときの向きからの累計）。
       const angle = ringDragAngle([event.clientX - drag.startX, event.clientY - drag.startY], drag.tangent, RING_PX);
+      // 方位の累積角は ±π の手前で止める。範囲の制限は今の向きから短い向きに回すので、累積が π を超えると
+      // 回る向きが逆になり、範囲の端から反対側の端へ跳ぶため（Codex のレビュー、PR #32）。
+      const azimuthAngle = Math.max(-MAX_AZIMUTH_DRAG, Math.min(MAX_AZIMUTH_DRAG, angle));
       onDrag(drag.kind === 'azimuth'
-        ? { azimuth: drag.start.azimuth + angle, elevation: state.angles.elevation }
+        ? { azimuth: drag.start.azimuth + azimuthAngle, elevation: state.angles.elevation }
         : { azimuth: state.angles.azimuth, elevation: drag.start.elevation + angle });
       return;
     }
