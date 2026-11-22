@@ -6,14 +6,14 @@
 
 > 2026-11-22 時点。段階が進んだら、この表を同じ変更で更新する（各段階の詳細は §3、成熟度は §6）。
 
-**いま：A1（空力の更新）の仕様の確定**（[spec 004](../specs/004-aero-update/spec.md) 承認済み、[tasks](../specs/004-aero-update/tasks.md) A1-01 完了、次は A2-01：05・06・04 の更新）
+**いま：A1（空力の更新）の独立導出と実装**（[spec 004](../specs/004-aero-update/spec.md)、[tasks](../specs/004-aero-update/tasks.md) A2-02・A3-01）
 
 | 段階 | 状態 | 完了日 | 仕様・タスク |
 |---|---|---|---|
 | Phase 1　点接触・瞬間衝突のブラウザ MVP | 完了 | 2026-11-15 | [spec 001](../specs/001-kick-prototype/spec.md)・[tasks](../specs/001-kick-prototype/tasks.md) |
 | V1　文献による妥当性確認 | 完了 | 2026-11-15 | [spec 002](../specs/002-literature-validation/spec.md)・[tasks](../specs/002-literature-validation/tasks.md) |
 | U1　キック入力 UI の改善 | 完了 | 2026-11-22 | [spec 003](../specs/003-input-ui/spec.md)・[tasks](../specs/003-input-ui/tasks.md) |
-| **A1　空力の更新** | **作業中**（A2-01 仕様の確定） | — | [spec 004](../specs/004-aero-update/spec.md)・[tasks](../specs/004-aero-update/tasks.md) |
+| **A1　空力の更新** | **作業中**（A2-02 独立導出・A3-01 実装） | — | [spec 004](../specs/004-aero-update/spec.md)・[tasks](../specs/004-aero-update/tasks.md) |
 | Phase 2　点接触のばね・脚のモデル | 未着手 | — | — |
 | Phase 3　面接触・足形状 | 未着手 | — | — |
 | Phase 4　高精度化と実測検証 | 未着手 | — | — |
