@@ -4,8 +4,8 @@ KickDynamics（サッカーキック軌道シミュレータ）で作業する A
 
 ## 現在の段階
 
-- Phase 1（M1.1〜M1.5）と、文献による妥当性確認の段階（V1。[03 §8](docs/03-roadmap.md)）は完了した（2026-11-15）。V1 の結果により、空力の更新（A1、仮称）、その後に Phase 2（点接触のばねと脚のモデル）、Phase 3 の順に進める（[ADR-0009](docs/decisions/0009-plan-after-v1.md)、[03 §3・§5](docs/03-roadmap.md)）。A1 の前に行うキック入力 UI の改善（U1、仮称、[spec 003](specs/003-input-ui/spec.md)、[ADR-0010](docs/decisions/0010-input-ui-before-a1.md)）は完了した（2026-11-22）。次は A1。A1 の仕様はまだない。**ユーザーの指示なしに、指示された範囲を超える実装・依存パッケージ導入・フレームワーク初期化を始めない。**
-- 作業は該当する段階の tasks.md（U1 は [specs/003-input-ui/tasks.md](specs/003-input-ui/tasks.md)、V1 は [specs/002-literature-validation/tasks.md](specs/002-literature-validation/tasks.md)、Phase 1 は [specs/001-kick-prototype/tasks.md](specs/001-kick-prototype/tasks.md)。A1 は仕様の作成から）の順に 1 タスクずつ進め、完了したら結果欄を書く。変更後は `npm run check` を通す。
+- Phase 1（M1.1〜M1.5）と、文献による妥当性確認の段階（V1。[03 §8](docs/03-roadmap.md)）は完了した（2026-11-15）。V1 の結果により、空力の更新（A1、仮称）、その後に Phase 2（点接触のばねと脚のモデル）、Phase 3 の順に進める（[ADR-0009](docs/decisions/0009-plan-after-v1.md)、[03 §3・§5](docs/03-roadmap.md)）。A1 の前に行うキック入力 UI の改善（U1、仮称、[spec 003](specs/003-input-ui/spec.md)、[ADR-0010](docs/decisions/0010-input-ui-before-a1.md)）は完了した（2026-11-22）。次は A1。A1 の仕様は作成中（[specs/004-aero-update/](specs/004-aero-update/)）。現在地の一覧は [03 §0](docs/03-roadmap.md)。**ユーザーの指示なしに、指示された範囲を超える実装・依存パッケージ導入・フレームワーク初期化を始めない。**
+- 作業は該当する段階の tasks.md（U1 は [specs/003-input-ui/tasks.md](specs/003-input-ui/tasks.md)、V1 は [specs/002-literature-validation/tasks.md](specs/002-literature-validation/tasks.md)、Phase 1 は [specs/001-kick-prototype/tasks.md](specs/001-kick-prototype/tasks.md)。A1 は [specs/004-aero-update/tasks.md](specs/004-aero-update/tasks.md)）の順に 1 タスクずつ進め、完了したら結果欄を書く。変更後は `npm run check` を通す。
 
 ## 正本
 
