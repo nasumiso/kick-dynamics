@@ -79,17 +79,27 @@ const valid = (angles: DirectionAngles, d: Vec3): boolean => withinHitLimit(d, a
 
 /**
  * 方向の変更を範囲の端で止める（spec 003 §4）。from から to へ（ψ は短い向きに回る）動かしていき、範囲を出る手前の向きを返す。
+ * 終点が範囲内でも、途中で範囲を出るなら最初の端で止める（範囲外の区間を飛び越えない）。
  * from が範囲外のとき（ふつうは起きない）は、to を接触点に合わせて寄せる。
  */
 export function limitDirection(from: DirectionAngles, to: DirectionAngles, d: Vec3, range: ElevationRange): DirectionAngles {
   const target = clampElevation(to, range);
-  if (valid(target, d)) return target;
-  if (!valid(from, d)) return directionTowardContact(d, target, range);
+  if (!valid(from, d)) return valid(target, d) ? target : directionTowardContact(d, target, range);
   const dPsi = wrapAngle(target.azimuth - from.azimuth);
   const dTheta = target.elevation - from.elevation;
   const at = (t: number): DirectionAngles => ({ azimuth: wrapAngle(from.azimuth + t * dPsi), elevation: from.elevation + t * dTheta });
+  // 終点が範囲内でも、途中で範囲を出て戻る経路では飛び越えない：経路を刻んで最初に範囲を出る区間を探し、その区間で二分法を使う。
+  const steps = 64;
   let lo = 0;
-  let hi = 1;
+  let hi = -1;
+  for (let k = 1; k <= steps; k++) {
+    if (!valid(at(k / steps), d)) {
+      hi = k / steps;
+      break;
+    }
+    lo = k / steps;
+  }
+  if (hi < 0) return target;
   for (let i = 0; i < 40; i++) {
     const mid = (lo + hi) / 2;
     if (valid(at(mid), d)) lo = mid;
@@ -99,7 +109,8 @@ export function limitDirection(from: DirectionAngles, to: DirectionAngles, d: Ve
 }
 
 /**
- * 接触点 d に対して範囲外の方向を、範囲内の最も近い向きへ寄せる（3D クリック、spec 003 §4）。範囲内ならそのまま返す。
+ * 接触点 d に対して範囲外の方向を、範囲内の向きへ寄せる（3D クリック、spec 003 §4）。範囲内ならそのまま返す。
+ * 最も近い向きになるとは限らない（θ の制限で円錐の縁への射影が使えないときは、n の向きへ戻す）。
  * まず n = −d を軸とする円錐の縁へ射影し、θ の範囲に収める。それでも範囲外なら、n の向きを θ の範囲に収めた向きにする
  * （n と θ を収めた向きのなす角は 45° 以下で、上限の角 arcsin 0.95 ≈ 71.8° より小さいので必ず範囲内）。
  */

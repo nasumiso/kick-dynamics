@@ -113,6 +113,24 @@ describe('limit direction (AC-U04)', () => {
     expect(result.elevation).toBeCloseTo(0, 12);
   });
 
+  it('does not jump over an out-of-range stretch when both ends are in range (Codex review, PR #32)', () => {
+    const raw: Vec3 = [-0.211309, -0.906308, 0.365998];
+    const l = Math.hypot(...raw);
+    const d: Vec3 = [raw[0] / l, raw[1] / l, raw[2] / l];
+    const from = angles(165, 40);
+    const to = angles(0, 40);
+    // 前提：両端は範囲内で、途中（ψ = 120°）は範囲外
+    expect(withinHitLimit(d, anglesToDirection(from))).toBe(true);
+    expect(withinHitLimit(d, anglesToDirection(to))).toBe(true);
+    expect(withinHitLimit(d, anglesToDirection(angles(120, 40)))).toBe(false);
+    const result = limitDirection(from, to, d, range);
+    expect(withinHitLimit(d, anglesToDirection(result))).toBe(true);
+    expect(result.azimuth).toBeGreaterThan(degToRad(120));
+    expect(result.azimuth).toBeLessThan(degToRad(165));
+    // 端で止まったあと、同じ向きへさらに求めても動かない
+    expect(limitDirection(result, to, d, range).azimuth).toBeCloseTo(result.azimuth, 6);
+  });
+
   it('rotates ψ the short way across ±180°', () => {
     const d: Vec3 = [1, 0, 0]; // 足は −x へ動く
     expect(limitDirection(angles(170, 0), angles(-170, 0), d, range)).toEqual(angles(-170, 0));
