@@ -1,6 +1,6 @@
 # 004 空力の更新（A1）タスク
 
-> 状態：A0-01〜A2-01 完了（2026-11-22）。A2-02（Codex の独立導出）と A3-01（実装）を並行で進める。受入条件は [spec.md](spec.md)。
+> 状態：A0-01〜A2-01、A3-01 完了（2026-11-22）。A2-02（Codex の独立導出）の完了を待って A3-02（照合）。受入条件は [spec.md](spec.md)。
 > 使い方は [001 の tasks.md](../001-kick-prototype/tasks.md) の「使い方」と同じ（上から順に 1 タスクずつ。完了したら結果欄を書く）。
 
 ## A0 着手前の決定
@@ -44,12 +44,16 @@
 
 ## A3 実装
 
-### [ ] A3-01 Core の係数の型と VER
+### [x] A3-01 Core の係数の型と VER
 - 担当：Claude Code
 - 内容：$C_D(Re)$・$C_L(Re, S)$ の表の型、検証、評価を実装し、VER を書く。既存の形の結果を変えない。
 - 依存：A2-01（A2-02 と並行してよい）
 - 完了確認：AC-A01・AC-A02。`npm run check`。
-- 結果：
+- 結果（2026-11-22）：
+  - Core：`ReynoldsSpinCoefficientTable`（`kind: 'reynolds-spin-table'`、`flight/types.ts`）、`reynoldsSpinTableError`・`evaluateReynoldsSpinTable`・`coefficientTableError`・`usesReynolds`（`flight/forces.ts`）。飛翔・バウンド・転がりの入口で表の構造を確かめ、Re に依存する係数のときだけ $\eta$ を要求する。`ParameterSet` の P-12 が「定数か表」、P-13 が「定数・$S$ の折れ線・表」を受け付け、`simulateKick` は表の構造を各値の範囲より先に確かめ、範囲（05 §10.3）は表の各値に当てる。Core の外部依存なし（`check:boundary`）。
+  - テスト：`test/flight/reynolds-spin-table.test.ts`（VER-F15〜F17、22 件）、`test/flight/reynolds-spin-convergence.test.ts`（VER-F18）、`test/pipeline/simulate-kick.test.ts` に表の 4 件。既存のテストは変更なしで合格（既存の形の結果は変わらない、AC-A01）。`npm run check` 合格（452 件）。
+  - VER-F18：格子線をまたぐと 4 次の収束は保たれず、隣り合う刻みで誤差が増えることもある。P-18 の Δt = 0.005 s での位置の誤差は約 3×10⁻⁶ m（06 §4.2 の記録）。
+  - 照合（A3-02）の前なので、`verification/independent/` は読んでいない。
 
 ### [ ] A3-02 Codex による照合と差異の解決
 - 担当：Codex（照合）、Claude Code（差異の修正）、人間（根拠で決まらない場合の判断）

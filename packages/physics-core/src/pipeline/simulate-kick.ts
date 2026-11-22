@@ -13,7 +13,8 @@ import { solveImpact } from '../contact/solver';
 import type { ImpactResult, ImpactWarning, KickInput } from '../contact/types';
 import { simulateFlight, type Trajectory } from '../flight/trajectory';
 import type { FlightEnvironment, FlightForceSettings, FlightSimulationSettings, GroundContactHandler } from '../flight/types';
-import { spinTableError } from '../flight/forces';
+import { coefficientTableError } from '../flight/forces';
+import type { CoefficientModel } from '../flight/types';
 import { terminateOnGroundContact } from '../flight/ground-events';
 import { groundHandler } from '../ground/bounce';
 import { length, type Vec3 } from '../math/vec3';
@@ -107,10 +108,30 @@ function requiredEntries(parameters: ParameterSet, input: KickInput, settings: S
   if (usesAero(settings)) entries.push(p.airDensity);
   if (f.drag) entries.push(p.dragCoefficient);
   if (f.magnus) entries.push(p.liftCoefficient, p.magnusThreshold);
+  // η（P-11）は、(Re, S) の表の係数を使う力項があるときだけ要求する（05 §10.3）。
+  if ((f.drag && isReynoldsTable(p.dragCoefficient.value)) || (f.magnus && isReynoldsTable(p.liftCoefficient.value))) entries.push(p.airViscosity);
   if (f.spinDecay === 'linear') entries.push(p.spinDecayLinear);
   if (f.spinDecay === 'torque-coefficient') entries.push(p.torqueCoefficient, p.zeroSpinThreshold);
   if (settings.ground === 'bounce-and-roll') entries.push(p.groundRestitution, p.groundFriction, p.rollingResistance, p.restThresholds, p.spinFrictionLength);
   return entries;
+}
+
+/** P-12・P-13 の値が (Re, S) の表か。 */
+function isReynoldsTable(value: unknown): boolean {
+  return typeof value === 'object' && value !== null && (value as { kind?: unknown }).kind === 'reynolds-spin-table';
+}
+
+/** P-12・P-13 の値を係数モデルにする（定数・S の折れ線・(Re, S) の表）。 */
+function coefficientModel(value: number | CoefficientModel): CoefficientModel {
+  return typeof value === 'number' ? { kind: 'constant', value } : value;
+}
+
+/** 係数の値（定数なら 1 つ、表なら全ての値）。05 §10.3 の範囲を表の各値に当てる。 */
+function coefficientValues(value: number | CoefficientModel): readonly number[] {
+  if (typeof value === 'number') return [value];
+  if (value.kind === 'spin-table') return value.points.map(([, c]) => c);
+  if (value.kind === 'reynolds-spin-table') return value.values.flat();
+  return [];
 }
 
 /** 値が決まっている（null でない）ことを型で表す。requiredEntries で確認した後に使う。 */
@@ -165,11 +186,11 @@ function validateRanges(input: KickInput, parameters: ParameterSet, settings: Si
   if (usesAero(settings)) {
     checks.push({ name: 'air density ρ', value: v(p.airDensity), range: r.airDensity, code: 'invalid-parameter', id: 'P-10' });
   }
-  if (f.drag) checks.push({ name: 'drag coefficient C_D', value: v(p.dragCoefficient), range: r.dragCoefficient, code: 'invalid-parameter', id: 'P-12' });
+  if (f.drag) {
+    checks.push(...coefficientValues(v(p.dragCoefficient)).map((value): RangeCheck => ({ name: 'drag coefficient C_D', value, range: r.dragCoefficient, code: 'invalid-parameter', id: 'P-12' })));
+  }
   if (f.magnus) {
-    const lift = v(p.liftCoefficient);
-    const values = typeof lift === 'number' ? [lift] : lift.points.map(([, c]) => c);
-    checks.push(...values.map((value): RangeCheck => ({ name: 'lift coefficient C_L', value, range: r.liftCoefficient, code: 'invalid-parameter', id: 'P-13' })));
+    checks.push(...coefficientValues(v(p.liftCoefficient)).map((value): RangeCheck => ({ name: 'lift coefficient C_L', value, range: r.liftCoefficient, code: 'invalid-parameter', id: 'P-13' })));
   }
   if (f.spinDecay === 'linear') {
     checks.push({ name: 'linear spin decay c_ω', value: v(p.spinDecayLinear), range: r.spinDecayLinear, code: 'invalid-parameter', id: 'P-14' });
@@ -190,11 +211,10 @@ function validateRanges(input: KickInput, parameters: ParameterSet, settings: Si
 function flightForces(parameters: ParameterSet, settings: SimulationSettings): FlightForceSettings {
   const f = settings.forces;
   const p = parameters;
-  const lift = f.magnus ? v(p.liftCoefficient) : 0;
   return {
     gravity: f.gravity,
-    drag: { enabled: f.drag, coefficient: { kind: 'constant', value: f.drag ? v(p.dragCoefficient) : 0 } },
-    magnus: { enabled: f.magnus, coefficient: typeof lift === 'number' ? { kind: 'constant', value: lift } : lift },
+    drag: { enabled: f.drag, coefficient: coefficientModel(f.drag ? v(p.dragCoefficient) : 0) },
+    magnus: { enabled: f.magnus, coefficient: coefficientModel(f.magnus ? v(p.liftCoefficient) : 0) },
     spinDecay: f.spinDecay === 'linear'
       ? { kind: 'linear', coefficient: v(p.spinDecayLinear) }
       : f.spinDecay === 'torque-coefficient'
@@ -209,12 +229,16 @@ export function simulateKick(input: KickInput, parameters: ParameterSet, setting
   if (missing.length > 0) {
     return fail('invalid-parameter', `parameters used by this simulation are undetermined: ${missing.join(', ')}`, { missing });
   }
-  // 折れ線の表の構造（有限性・先頭の S・単調性）は、各点の範囲より先に確かめる。非有限の値の表は、
-  // 範囲外（invalid-parameter）ではなく無効な係数（invalid-coefficient、05 §7.4）として返すため（IV-03-C2 の D01）。
-  const lift = parameters.liftCoefficient.value;
-  if (settings.forces.magnus && lift !== null && typeof lift !== 'number') {
-    const error = spinTableError(lift);
-    if (error !== null) return fail('invalid-coefficient', `C_L (P-13): ${error}`);
+  // 表の構造（有限性・格子・単調性・C_D の非負）は、各値の範囲より先に確かめる。非有限の値の表は、
+  // 範囲外（invalid-parameter）ではなく無効な係数（invalid-coefficient、05 §7.4・§7.9）として返すため（IV-03-C2 の D01）。
+  const tables: Array<[string, boolean, boolean, number | CoefficientModel | null]> = [
+    ['C_D (P-12)', settings.forces.drag, true, parameters.dragCoefficient.value],
+    ['C_L (P-13)', settings.forces.magnus, false, parameters.liftCoefficient.value],
+  ];
+  for (const [name, enabled, nonNegative, value] of tables) {
+    if (!enabled || value === null || typeof value === 'number') continue;
+    const error = coefficientTableError(value, nonNegative);
+    if (error !== null) return fail('invalid-coefficient', `${name}: ${error}`);
   }
   // P-27 は値があれば正の有限値に限る（NaN では鉛直に近い打ち出しのスピン成分が NaN になる。PR #12 のレビュー）。
   const vertical = parameters.verticalLaunchThreshold.value;
@@ -248,7 +272,7 @@ export function simulateKick(input: KickInput, parameters: ParameterSet, setting
   const environment: FlightEnvironment = {
     gravity,
     airDensity: p.airDensity.value ?? 0,
-    // η は係数を関数で与える場合の Re の計算にだけ使う。この API の係数は定数なので使わない（未決定なら NaN を渡す）。
+    // η は、(Re, S) の表の係数を使うときの Re の計算にだけ使う（そのときは requiredEntries で要求済み）。使わないときは NaN を渡す。
     airViscosity: p.airViscosity.value ?? Number.NaN,
     wind: v(p.wind),
   };

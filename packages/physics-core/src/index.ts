@@ -24,10 +24,10 @@ export type {
 } from './params/parameter-set';
 
 export type {
-  CoefficientModel, DegeneracyThresholds, SpinCoefficientTable, FlightEnvironment, FlightEvent, FlightForceSettings, FlightSample, FlightSettings,
+  CoefficientModel, DegeneracyThresholds, ReynoldsSpinCoefficientTable, SpinCoefficientTable, FlightEnvironment, FlightEvent, FlightForceSettings, FlightSample, FlightSettings,
   FlightSimulationSettings, ForceAndTorque, GroundContact, GroundContactHandler, GroundContactResponse, GroundRolling, SpinDecayModel,
 } from './flight/types';
-export { computeForces, evaluateSpinTable } from './flight/forces';
+export { computeForces, evaluateReynoldsSpinTable, evaluateSpinTable, reynoldsSpinTableError } from './flight/forces';
 export { integrateFixedSteps, rk4Step } from './flight/integrator';
 export { simulateFlightRun, terminateOnGroundContact } from './flight/ground-events';
 export type { FlightRun } from './flight/ground-events';

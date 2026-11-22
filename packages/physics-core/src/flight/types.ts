@@ -17,11 +17,24 @@ export interface SpinCoefficientTable {
   readonly points: readonly (readonly [number, number])[];
 }
 
-/** 空力係数のモデル：定数、(Re, S) の関数、または S の折れ線（05 §7.3〜7.6、04 §6）。 */
+/**
+ * (Re, S) の格子の上の値の表で与える係数（05 §7.9、A1）。reynolds は狭義単調増加で正、spin は 0 から狭義単調増加、
+ * values は reynolds の行 × spin の列。双線形補間し、範囲外は端の値（外挿しない）。関数を含まない素のデータなので、
+ * 一括 API（simulateKick）の境界を越えて渡せる（04 §9）。
+ */
+export interface ReynoldsSpinCoefficientTable {
+  readonly kind: 'reynolds-spin-table';
+  readonly reynolds: readonly number[];
+  readonly spin: readonly number[];
+  readonly values: readonly (readonly number[])[];
+}
+
+/** 空力係数のモデル：定数、(Re, S) の関数、S の折れ線、または (Re, S) の表（05 §7.3〜7.6、§7.9、04 §6）。 */
 export type CoefficientModel =
   | { readonly kind: 'constant'; readonly value: number }
   | { readonly kind: 'function'; readonly evaluate: (reynolds: number, spinParameter: number) => number }
-  | SpinCoefficientTable;
+  | SpinCoefficientTable
+  | ReynoldsSpinCoefficientTable;
 
 /** 回転減衰のモデル（05 §7.5）。 */
 export type SpinDecayModel =
