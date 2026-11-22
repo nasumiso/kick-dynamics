@@ -14,6 +14,12 @@ import { createFootMesh } from './render/foot-mesh';
 import { createDisplayPanel, DEFAULT_DISPLAY_SETTINGS, type DisplaySettings } from './ui/display-panel';
 import { createSceneView } from './render/scene-view';
 import { createVelocityArrow, velocityArrowGeometry } from './render/velocity-arrow';
+import { createDirectionHandles } from './render/direction-handles';
+import { behindView } from './render/camera-presets';
+import { clampHitToRange, directionFromHit, directionTowardContact, hitOffset, limitDirection, onPadSide, padFrame, selectableHit } from './kick/contact-frame';
+import { KICK_INPUT_RANGES } from './kick/kick-state';
+import { createHitPad, createNotice } from './ui/hit-pad';
+import type { DirectionAngles } from './units/direction';
 import { createContactPanel } from './ui/contact-panel';
 import { createKickPanel } from './ui/kick-panel';
 import { createParameterPanel } from './ui/parameter-panel';
@@ -32,6 +38,8 @@ import type { Trajectory } from '@kick-dynamics/physics-core';
 const viewport = document.querySelector<HTMLElement>('#viewport');
 const panel = document.querySelector<HTMLElement>('#panel');
 if (!viewport || !panel) throw new Error('#viewport or #panel element is missing');
+const elevationRange = KICK_INPUT_RANGES.footElevation;
+const footAngles = (state: KickState): DirectionAngles => ({ azimuth: state.footAzimuth, elevation: state.footElevation });
 const view = createSceneView(viewport);
 const sun = addField(view.scene);
 
@@ -46,6 +54,47 @@ const foot = createFootMesh(WORKING_FOOT);
 view.scene.add(foot);
 const velocityArrow = createVelocityArrow();
 view.scene.add(velocityArrow.object);
+// 方向のハンドル（spec 003 §4）。接触点のピッキングより先に登録し、掴んだときはクリックとカメラ操作に渡さない。
+const directionHandles = createDirectionHandles({
+  dom: view.renderer.domElement, camera: view.camera, elevationRange, onDrag: (requested) => setDirection(requested),
+});
+view.scene.add(directionHandles.object);
+view.onFrame(() => directionHandles.fitToScreen()); // 画面上で一定の大きさに保つ
+// 打点パッドと知らせ（3D ビューの右下・上に重ねる）
+const notice = createNotice();
+/** 打点パッドの視点の水平の向き（カメラから注視点への向きの方位角）。カメラが真上にあるときは前の値を使う。 */
+let padAzimuth = 0;
+function cameraAzimuth(): number {
+  const x = view.controls.target.x - view.camera.position.x;
+  const z = view.controls.target.z - view.camera.position.z;
+  return Math.hypot(x, z) > 1e-6 ? Math.atan2(z, x) : padAzimuth;
+}
+const hitPad = createHitPad(radius, ([a, b]) => {
+  if (clock !== null) return;
+  const angles = footAngles(kick);
+  const front = onPadSide(kick.contactDirection, padAzimuth);
+  const from = front ? hitOffset(kick.contactDirection, padFrame(padAzimuth)) : null;
+  const hit = clampHitToRange(a, b, padAzimuth, angles, from);
+  if (!hit) return;
+  kick = { ...kick, contactDirection: directionFromHit(hit[0], hit[1], padFrame(padAzimuth)) };
+  render();
+});
+/** 打点パッドの表示：カメラの水平の向きから見た今の接触点と、今の足の移動方向で選べる範囲。 */
+function showHitPad(enabled: boolean): void {
+  const angles = footAngles(kick);
+  const az = padAzimuth;
+  hitPad.show(hitOffset(kick.contactDirection, padFrame(az)), onPadSide(kick.contactDirection, az), enabled,
+    (a, b) => selectableHit(a, b, az, angles));
+}
+// カメラを回したら、打点パッドの視点も合わせる。
+view.onFrame(() => {
+  const az = cameraAzimuth();
+  if (Math.abs(az - padAzimuth) < 1e-4) return;
+  padAzimuth = az;
+  showHitPad(clock === null);
+});
+padAzimuth = cameraAzimuth();
+viewport.append(notice.root, hitPad.root);
 
 const contactPanel = createContactPanel();
 panel.append(contactPanel.root);
@@ -56,14 +105,30 @@ let settings: SimulationSettings = DEFAULT_SIMULATION_SETTINGS;
 /** 軌道の再生クロック。null 以外の間（再生後も「初期位置に戻す」まで）は、ボールが入力時の位置にない。 */
 let clock: PlaybackClock | null = null;
 let speed: number = PLAYBACK_SPEEDS[0];
-const kickPanel = createKickPanel(toFormValues(kick), (values) => {
-  kick = applyFormValues(kick, values);
+/** 足の移動方向を変える（spec 003 §4）。接触点は動かさず、打点が上限を超える向きへは範囲の端で止める。 */
+function setDirection(requested: DirectionAngles): void {
+  const limited = limitDirection(footAngles(kick), requested, kick.contactDirection, elevationRange);
+  kick = { ...kick, footAzimuth: limited.azimuth, footElevation: limited.elevation };
+  kickPanel.setValues(toFormValues(kick));
   render();
+}
+const kickPanel = createKickPanel(toFormValues(kick), (values) => {
+  const next = applyFormValues(kick, values);
+  const requested = footAngles(next);
+  kick = { ...next, footAzimuth: kick.footAzimuth, footElevation: kick.footElevation };
+  setDirection(requested);
 });
 panel.append(kickPanel.root);
 /** 表示の設定（表示専用）。変更はすぐに反映する。 */
 let display: DisplaySettings = DEFAULT_DISPLAY_SETTINGS;
-panel.append(createDisplayPanel(display, (next) => { display = next; render(); }));
+// 足の移動方向の水平成分の真後ろから見る視点（V キー、spec 003 §4）。ボールが動いた後は、今のボールの位置を基準にする。
+function viewBehindFoot(): void {
+  const { position, target } = behindView([ball.position.x, ball.position.y, ball.position.z], kick.footAzimuth);
+  view.camera.position.set(...position);
+  view.controls.target.set(...target);
+  view.controls.update();
+}
+panel.append(createDisplayPanel(display, (next) => { display = next; render(); }, viewBehindFoot));
 panel.append(createSettingsPanel(settings, DEFAULT_PARAMETER_SET, (next) => { settings = next; }));
 panel.append(createParameterPanel(DEFAULT_PARAMETER_SET));
 
@@ -79,7 +144,10 @@ function render(): void {
   toThreeVector(kick.contactDirection, marker.position).multiplyScalar(radius);
   marker.visible = atRest;
   // 足の速度 v_A^p の矢印（入力の確認用）。ボールは原点で静止している前提で接触点を求める。
-  velocityArrow.update(atRest ? velocityArrowGeometry([0, radius, 0], radius, kick.contactDirection, input.footContactPointVelocity) : null);
+  const arrow = atRest ? velocityArrowGeometry([0, radius, 0], radius, kick.contactDirection, input.footContactPointVelocity) : null;
+  velocityArrow.update(arrow);
+  directionHandles.update(arrow ? { contact: arrow.origin, d: kick.contactDirection, angles: footAngles(kick) } : null);
+  showHitPad(atRest);
   const pose = footPose(input, WORKING_GEOMETRY);
   foot.visible = display.foot && atRest && pose.ok;
   if (pose.ok) {
@@ -91,7 +159,13 @@ function render(): void {
 installContactPicker(view.renderer.domElement, view.camera, ball, (d) => {
   // 接触点はボールが初期位置で静止しているときだけ指定できる（再生後は「初期位置に戻す」で戻る）。
   if (clock !== null) return;
-  kick = { ...kick, contactDirection: d };
+  // 接触点を優先し、打点が上限を超える向きなら方向を範囲内へ寄せる（spec 003 §4）。
+  const angles = directionTowardContact(d, footAngles(kick), elevationRange);
+  if (angles.azimuth !== kick.footAzimuth || angles.elevation !== kick.footElevation) {
+    notice.show('この接触点では今の足の向きが範囲外のため、足の移動方向を範囲の端へ寄せました。');
+  }
+  kick = { ...kick, contactDirection: d, footAzimuth: angles.azimuth, footElevation: angles.elevation };
+  kickPanel.setValues(toFormValues(kick));
   render();
 });
 render();
@@ -158,6 +232,8 @@ const playback = createPlaybackPanel(
     foot.visible = false;
     marker.visible = false;
     velocityArrow.update(null);
+    directionHandles.update(null);
+    showHitPad(false);
   },
   resetBall,
   {

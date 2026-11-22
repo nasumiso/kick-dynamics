@@ -238,3 +238,103 @@ table.results td.si {
   display: block;
   margin: 4px 0;
 }
+
+/* 3D ビューに重ねる部品（spec 003 §4） */
+.overlay-pad {
+  width: 168px;
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px 10px;
+  background: rgba(22, 27, 33, 0.86);
+  border: 1px solid #3a434d;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.overlay-pad.disabled {
+  opacity: 0.45;
+}
+
+.overlay-pad svg {
+  display: block;
+  width: 168px;
+  height: 168px;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.overlay-pad svg:focus-visible {
+  outline: 2px solid #4dabf7;
+  outline-offset: 2px;
+  border-radius: 50%;
+}
+
+.overlay-pad.disabled svg {
+  cursor: default;
+}
+
+.pad-title {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.pad-sub {
+  font-size: 11px;
+  color: #9aa4ae;
+}
+
+.pad-readout {
+  font-variant-numeric: tabular-nums;
+}
+
+
+.hit-axis {
+  stroke: #6b7580;
+  stroke-width: 0.8;
+}
+
+.hit-center {
+  fill: #6b7580;
+}
+
+.hit-line {
+  stroke: #ff3b30;
+  stroke-width: 1.5;
+  stroke-opacity: 0.6;
+}
+
+.hit-dot {
+  fill: #ff3b30;
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+.overlay-notice {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 24px);
+  padding: 6px 12px;
+  background: rgba(22, 27, 33, 0.9);
+  color: #ffd8a8;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .overlay-pad svg {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+
+.hit-dot.hidden-side {
+  fill: none;
+  stroke: #ff3b30;
+  stroke-width: 3;
+}

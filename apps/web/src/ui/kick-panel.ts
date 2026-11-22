@@ -11,6 +11,8 @@ export interface KickPanel {
   readonly root: HTMLElement;
   /** 入力の妥当性の表示（Core の buildImpactSetup の結果） */
   readonly showStatus: (message: string, ok: boolean) => void;
+  /** 外（方向ハンドル・制限）で変わった値を表示に反映する。onChange は呼ばない */
+  readonly setValues: (values: KickFormValues) => void;
 }
 
 interface SliderSpec {
@@ -24,8 +26,13 @@ interface SliderSpec {
   readonly testId: string;
 }
 
+interface Slider {
+  readonly row: HTMLElement;
+  readonly set: (value: number) => void;
+}
+
 /** スライダーと数値欄の組。どちらを操作しても同じ値になる。 */
-function slider(spec: SliderSpec, initial: number, onInput: (value: number) => void): HTMLElement {
+function slider(spec: SliderSpec, initial: number, onInput: (value: number) => void): Slider {
   const attrs = { min: String(spec.min), max: String(spec.max), step: String(spec.step) };
   const range = element('input', { type: 'range', ...attrs });
   const number = element('input', { type: 'number', class: 'number', 'data-testid': spec.testId, ...attrs });
@@ -44,7 +51,8 @@ function slider(spec: SliderSpec, initial: number, onInput: (value: number) => v
     set(value);
     onInput(value);
   });
-  return element('label', { class: 'slider-row' }, element('span', { class: 'slider-label' }, spec.label), range, number, element('span', { class: 'unit' }, spec.unit));
+  const row = element('label', { class: 'slider-row' }, element('span', { class: 'slider-label' }, spec.label), range, number, element('span', { class: 'unit' }, spec.unit));
+  return { row, set };
 }
 
 export function createKickPanel(initial: KickFormValues, onChange: (values: KickFormValues) => void): KickPanel {
@@ -82,24 +90,30 @@ export function createKickPanel(initial: KickFormValues, onChange: (values: Kick
       update({ footSpinRpm: spin });
     },
   ));
+  const speed = slider({ label: '足の速さ', unit: 'km/h', min: msToKmh(r.footSpeed.min), max: msToKmh(r.footSpeed.max), step: 1, digits: 0, testId: 'foot-speed' },
+    values.footSpeedKmh, (v) => update({ footSpeedKmh: v }));
+  const azimuth = slider({ label: '移動 方位角 ψ', unit: '°', min: radToDeg(r.footAzimuth.min), max: radToDeg(r.footAzimuth.max), step: 1, digits: 0, testId: 'foot-azimuth' },
+    values.footAzimuthDeg, (v) => update({ footAzimuthDeg: v }));
+  const elevation = slider({ label: '移動 仰角 θ', unit: '°', min: radToDeg(r.footElevation.min), max: radToDeg(r.footElevation.max), step: 1, digits: 0, testId: 'foot-elevation' },
+    values.footElevationDeg, (v) => update({ footElevationDeg: v }));
+  const roll = slider({ label: '足の回転 φ', unit: '°', min: radToDeg(r.footRoll.min), max: radToDeg(r.footRoll.max), step: 1, digits: 0, testId: 'foot-roll' },
+    values.footRollDeg, (v) => update({ footRollDeg: v }));
+  const contactX = slider({ label: '接触位置 s_x', unit: 'mm', min: -sxMax, max: sxMax, step: 1, digits: 0, testId: 'contact-x' },
+    values.contactXmm, (v) => update({ contactXmm: v }));
+  const contactY = slider({ label: '接触位置 s_y', unit: 'mm', min: -syMax, max: syMax, step: 1, digits: 0, testId: 'contact-y' },
+    values.contactYmm, (v) => update({ contactYmm: v }));
 
-  const root = section('キック入力',
-    slider({ label: '足の速さ', unit: 'km/h', min: msToKmh(r.footSpeed.min), max: msToKmh(r.footSpeed.max), step: 1, digits: 0, testId: 'foot-speed' },
-      values.footSpeedKmh, (v) => update({ footSpeedKmh: v })),
+  const root = section('キック入力（数値入力）',
+    speed.row,
     speedMs,
-    element('p', { class: 'hint' }, '足の移動方向（接触点での足の速度 v_A^p の向き。3D ビューの矢印：緑 = ボールへ近づく、赤 = 離れる）'),
-    slider({ label: '移動 方位角 ψ', unit: '°', min: radToDeg(r.footAzimuth.min), max: radToDeg(r.footAzimuth.max), step: 1, digits: 0, testId: 'foot-azimuth' },
-      values.footAzimuthDeg, (v) => update({ footAzimuthDeg: v })),
-    slider({ label: '移動 仰角 θ', unit: '°', min: radToDeg(r.footElevation.min), max: radToDeg(r.footElevation.max), step: 1, digits: 0, testId: 'foot-elevation' },
-      values.footElevationDeg, (v) => update({ footElevationDeg: v })),
-    slider({ label: '足の回転 φ', unit: '°', min: radToDeg(r.footRoll.min), max: radToDeg(r.footRoll.max), step: 1, digits: 0, testId: 'foot-roll' },
-      values.footRollDeg, (v) => update({ footRollDeg: v })),
-    slider({ label: '接触位置 s_x', unit: 'mm', min: -sxMax, max: sxMax, step: 1, digits: 0, testId: 'contact-x' },
-      values.contactXmm, (v) => update({ contactXmm: v })),
-    slider({ label: '接触位置 s_y', unit: 'mm', min: -syMax, max: syMax, step: 1, digits: 0, testId: 'contact-y' },
-      values.contactYmm, (v) => update({ contactYmm: v })),
+    element('p', { class: 'hint' }, '足の移動方向（接触点での足の速度 v_A^p の向き）。3D ビューの矢印の先端の白い球か、回転ギズモの緑のリング（方位）・赤のリング（仰角）をドラッグしても変えられます。入力の範囲外の向き（リングの灰色の部分）へは動きません。'),
+    azimuth.row,
+    elevation.row,
+    roll.row,
+    contactX.row,
+    contactY.row,
     element('label', { class: 'slider-row' }, element('span', { class: 'slider-label' }, '足モデル'), modelSelect),
-    element('details', {}, element('summary', {}, '詳細：足の角速度 ω_A（ワールド座標、既定 0）'), ...spinRows),
+    element('details', {}, element('summary', {}, '詳細：足の角速度 ω_A（ワールド座標、既定 0）'), ...spinRows.map((s) => s.row)),
     element('p', { class: 'hint' }, '足の速さ・方向は接触点での足の速度 v_A^p（05 §6.2）。範囲は試作用の暫定値です。'),
     status,
   );
@@ -109,6 +123,18 @@ export function createKickPanel(initial: KickFormValues, onChange: (values: Kick
     showStatus: (message, ok) => {
       status.textContent = message;
       status.className = ok ? 'status ok' : 'status error';
+    },
+    setValues: (next) => {
+      values = next;
+      speed.set(next.footSpeedKmh);
+      azimuth.set(next.footAzimuthDeg);
+      elevation.set(next.footElevationDeg);
+      roll.set(next.footRollDeg);
+      contactX.set(next.contactXmm);
+      contactY.set(next.contactYmm);
+      spinRows.forEach((s, i) => s.set(next.footSpinRpm[i]!));
+      modelSelect.value = next.footModel;
+      showSpeedMs();
     },
   };
 }

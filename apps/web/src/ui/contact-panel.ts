@@ -11,7 +11,7 @@ export interface ContactPanel {
 
 export function createContactPanel(): ContactPanel {
   const value = element('dl', { class: 'readout' });
-  const root = section('接触点', element('p', { class: 'hint' }, 'ボールの表面をクリックして指定します。'), value);
+  const root = section('接触点', element('p', { class: 'hint' }, 'ボールの表面をクリックするか、3D ビュー右下の打点パッドで指定します。'), value);
   const show = (d: Vec3 | null): void => {
     if (!d) {
       value.replaceChildren(element('dt', {}, '未指定'));

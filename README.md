@@ -47,7 +47,7 @@ KickDynamics は、キックの物理現象を解明・再現することを目�
 | パラメータ | 大半が仮置き（[05 §10.2](docs/05-physics-model.md)） |
 | ライセンス | 未決定 |
 
-文献による妥当性確認（V1、[03 §8](docs/03-roadmap.md)）は完了しました。次の段階は空力の更新（A1、仮称）で、その後に Phase 2（点接触のばねと脚のモデル）、Phase 3（面接触・足形状）の順に進めます（[ADR-0009](docs/decisions/0009-plan-after-v1.md)、[03 §3・§5](docs/03-roadmap.md)）。
+文献による妥当性確認（V1、[03 §8](docs/03-roadmap.md)）は完了しました。続けてキック入力 UI の改善（U1、仮称、[spec 003](specs/003-input-ui/spec.md)。打点パッド・回転ギズモ・足の後ろからの視点）も完了しました（2026-11-22）。次は空力の更新（A1、仮称）で、その後に Phase 2（点接触のばねと脚のモデル）、Phase 3（面接触・足形状）の順に進めます（[ADR-0009](docs/decisions/0009-plan-after-v1.md)、[03 §3・§5](docs/03-roadmap.md)）。
 
 ## 技術方針（暫定）
 
@@ -93,6 +93,7 @@ KickDynamics は、キックの物理現象を解明・再現することを目�
 - [ADR-0007 Phase 1 の計算はメインスレッドで行う](docs/decisions/0007-main-thread-simulation.md) — Accepted
 - [ADR-0008 モデルの版の付け方](docs/decisions/0008-model-version.md) — Accepted
 - [ADR-0009 V1 の結果にもとづく次の段階の順序・範囲とパラメータの置き換え](docs/decisions/0009-plan-after-v1.md) — Accepted
+- [ADR-0010 A1 の前にキック入力 UI を改善する（U1）](docs/decisions/0010-input-ui-before-a1.md) — Accepted
 
 初期の合意事項は [soccer_kick_simulator_docs_prompt.md](soccer_kick_simulator_docs_prompt.md)（引き継ぎプロンプト）に記録されています。以後の正本は上表の各文書です。
 
