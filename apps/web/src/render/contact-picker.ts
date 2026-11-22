@@ -25,8 +25,9 @@ export function installContactPicker(
     down = { x: event.clientX, y: event.clientY };
   });
   dom.addEventListener('pointerup', (event) => {
-    if (!down || Math.hypot(event.clientX - down.x, event.clientY - down.y) > CLICK_TOLERANCE_PX) return;
-    down = null;
+    const start = down;
+    down = null; // ドラッグで終わった場合も消す（前の押下の位置が残らないように）
+    if (!start || Math.hypot(event.clientX - start.x, event.clientY - start.y) > CLICK_TOLERANCE_PX) return;
     const rect = dom.getBoundingClientRect();
     pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
     raycaster.setFromCamera(pointer, camera);

@@ -1,6 +1,6 @@
 // キーボードショートカット（反復操作の補助、表示層だけ）。対応するボタンを押したのと同じ動作にする。
 
-export type ShortcutAction = 'kick' | 'reset' | 'pause' | 'replay';
+export type ShortcutAction = 'kick' | 'reset' | 'pause' | 'replay' | 'behind';
 
 /** 操作ごとのキー。表示（ボタンのキー表記・ツールチップ・一覧）にも使う。 */
 export const SHORTCUT_KEYS: Readonly<Record<ShortcutAction, { readonly code: string; readonly label: string }>> = {
@@ -8,6 +8,7 @@ export const SHORTCUT_KEYS: Readonly<Record<ShortcutAction, { readonly code: str
   reset: { code: 'KeyR', label: 'R' },
   pause: { code: 'Space', label: 'Space' },
   replay: { code: 'KeyP', label: 'P' },
+  behind: { code: 'KeyV', label: 'V' },
 };
 
 export interface KeyLike {
@@ -40,17 +41,18 @@ function isEditable(target: EventTarget | null): boolean {
   return target.isContentEditable || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement;
 }
 
-/** ショートカットを登録する。無効になっているボタンの操作は行わない。 */
-export function installShortcuts(buttons: Readonly<Record<ShortcutAction, HTMLButtonElement>>): void {
+/** ショートカットを登録する（渡したボタンの操作だけを受け持つ。複数回に分けて登録してよい）。無効になっているボタンの操作は行わない。 */
+export function installShortcuts(buttons: Readonly<Partial<Record<ShortcutAction, HTMLButtonElement>>>): void {
   document.addEventListener('keydown', (event) => {
     const action = shortcutAction({
       code: event.code, ctrlKey: event.ctrlKey, metaKey: event.metaKey, altKey: event.altKey,
       shiftKey: event.shiftKey, repeat: event.repeat, inEditable: isEditable(event.target),
     });
     if (action === null) return;
+    const button = buttons[action];
+    if (!button) return;
     // Space がフォーカス中のボタンを押したり、ページをスクロールしたりしないようにする。
     event.preventDefault();
-    const button = buttons[action];
     if (!button.disabled) button.click();
   });
 }
@@ -73,5 +75,5 @@ export function shortcutButton(text: string, action: ShortcutAction, testId: str
 /** パネルに出すショートカットの一覧の文言。 */
 export function shortcutSummary(): string {
   const k = SHORTCUT_KEYS;
-  return `キーボード：${k.kick.label} キック、${k.reset.label} 初期位置に戻す、${k.pause.label} 一時停止／再開、${k.replay.label} リプレイ（数値の入力欄・選択欄にフォーカスがあるときは効きません）`;
+  return `キーボード：${k.kick.label} キック、${k.reset.label} 初期位置に戻す、${k.pause.label} 一時停止／再開、${k.replay.label} リプレイ、${k.behind.label} 足の後ろから見る（数値の入力欄・選択欄にフォーカスがあるときは効きません）`;
 }

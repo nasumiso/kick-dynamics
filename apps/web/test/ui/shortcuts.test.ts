@@ -5,9 +5,9 @@ import { shortcutAction, type KeyLike } from '../../src/ui/shortcuts';
 const plain: KeyLike = { code: '', ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, repeat: false, inEditable: false };
 
 describe('keyboard shortcuts', () => {
-  it('maps K, R, Space and P to kick, reset, pause and replay', () => {
-    expect(['KeyK', 'KeyR', 'Space', 'KeyP', 'KeyX'].map((code) => shortcutAction({ ...plain, code })))
-      .toEqual(['kick', 'reset', 'pause', 'replay', null]);
+  it('maps K, R, Space, P and V to kick, reset, pause, replay and the behind view', () => {
+    expect(['KeyK', 'KeyR', 'Space', 'KeyP', 'KeyV', 'KeyX'].map((code) => shortcutAction({ ...plain, code })))
+      .toEqual(['kick', 'reset', 'pause', 'replay', 'behind', null]);
   });
 
   it('ignores modified keys, key repeat and typing in an input', () => {
