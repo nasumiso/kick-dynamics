@@ -25,7 +25,8 @@ export function createParameterPanel(parameters: ParameterSet): HTMLElement {
       element('td', { class: 'param-id' }, entry.id),
       element('td', {},
         element('div', {}, `${PARAMETER_MEANINGS[entry.id]}（${entry.symbol}）`),
-        element('div', { class: 'param-source' }, entry.source)),
+        element('div', { class: 'param-source' }, entry.source),
+        ...(entry.applicability ? [element('div', { class: 'param-source', 'data-testid': `param-applicability-${entry.id}` }, `適用条件：${entry.applicability}`)] : [])),
       element('td', { class: 'param-value' }, formatParameterValue(entry), element('div', { class: 'unit' }, entry.unit)),
       element('td', {}, badge));
     // (Re, S) の表は、パラメータの行の下にパネル幅いっぱいの行で出す（値の列には入りきらないため）。
