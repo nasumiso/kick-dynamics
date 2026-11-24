@@ -2,6 +2,7 @@
 // Core の既定値ではない（Core は既定値を持たない）。05 §10.2 を変更したら、ここも同時に更新する。
 // 値の多くは「仮置き」で、UI はそれと分かる表示をする（AC-13）。P-14・P-22 は未決定のため、回転減衰は使わない。
 import { boxInertia, type ParameterEntry, type ParameterId, type ParameterSet, type Vec3 } from '@kick-dynamics/physics-core';
+import { DRAG_TABLE, LIFT_TABLE } from './aero-tables';
 
 function undetermined<T>(id: ParameterId, symbol: string, unit: string, source: string): ParameterEntry<T> {
   return { id, symbol, unit, value: null, confidence: 'undetermined', source };
@@ -39,13 +40,16 @@ export const DEFAULT_PARAMETER_SET: ParameterSet = {
   airViscosity: {
     id: 'P-11', symbol: 'η', unit: 'Pa·s', value: 1.789e-5, confidence: 'standard', source: '国際標準大気の海面値とされる値（一次情報未照合）',
   },
+  // P-12・P-13：(Re, S) の表（05 §7.9・§10.4、A1、2026-11-24 に置き換え。それまでは C_D 0.2 の定数と C_L の S の折れ線）。
   dragCoefficient: {
-    id: 'P-12', symbol: 'C_D', unit: '—', value: 0.2, confidence: 'literature',
-    source: 'Goff & Carré, Am. J. Phys. 77(11), 1020–1027 (2009)。無回転、抗力危機より高い Re。OQ-07',
+    id: 'P-12', symbol: 'C_D', unit: '—', value: DRAG_TABLE, confidence: 'literature',
+    source: 'Asai ら, Sports Eng. 10, 101–110 (2007) の風洞：無回転は Fig. 4 の Roteiro（32 枚パネル）、回転による増加は Fig. 8（Teamgeist の模型、22〜30 m/s）。図の読み取り（±0.004）。仮置き：22〜30 m/s 以外の回転による増加（同じ増加量と仮定）、表の範囲外の端の値。OQ-07',
+    applicability: '速さ約 8〜35 m/s、S 0〜0.5（範囲外は端の値）。回転軸が気流に垂直な測定だけ',
   },
   liftCoefficient: {
-    id: 'P-13', symbol: 'C_L', unit: '—', value: { kind: 'spin-table', points: [[0, 0], [0.25, 0.3], [1, 0.3]] }, confidence: 'provisional',
-    source: 'S の折れ線。値の水準は Goff & Carré (2009) Fig. 14 の |C_L| 0.27–0.31、形は仮定。OQ-07',
+    id: 'P-13', symbol: 'C_L', unit: '—', value: LIFT_TABLE, confidence: 'literature',
+    source: '22〜30 m/s は Asai ら (2007) Fig. 9 の横力係数（Teamgeist の模型、2 rev/s の点は除く）。約 10〜20 m/s は Carré ら, Proc. IMechE C 219, 657–666 (2005) の当てはめの式（縮尺模型）。ボールの種類が出典で異なる。仮置き：S = 0 の列を 0、表の範囲外の端の値。OQ-07',
+    applicability: '速さ約 10〜30 m/s、S 0〜0.5（範囲外は端の値）。回転軸が気流に垂直な測定だけ',
   },
   spinDecayLinear: undetermined('P-14', 'c_ω', 'kg·m²/s', 'OQ-08'),
   groundRestitution: { id: 'P-15', symbol: 'e_g', unit: '—', value: 0.6, confidence: 'provisional', source: '出典なし。OQ-09' },

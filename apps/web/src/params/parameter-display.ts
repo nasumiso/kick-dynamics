@@ -40,6 +40,13 @@ export function formatParameterValue(entry: ParameterEntry<unknown>): string {
     const points = value.points as ReadonlyArray<readonly [number, number]>;
     return `S の折れ線 ${points.map(([x, y]) => `(${formatScalar(x)}, ${formatScalar(y)})`).join(' ')}`;
   }
+  if (typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'reynolds-spin-table') {
+    const table = value as unknown as { reynolds: readonly number[]; spin: readonly number[]; values: readonly (readonly number[])[] };
+    const all = table.values.flat();
+    const re = table.reynolds;
+    const s = table.spin;
+    return `(Re, S) の表 ${re.length} × ${s.length}（Re ${formatScalar(re[0]!)}–${formatScalar(re[re.length - 1]!)}、S ${formatScalar(s[0]!)}–${formatScalar(s[s.length - 1]!)}、値 ${formatScalar(Math.min(...all))}–${formatScalar(Math.max(...all))}）`;
+  }
   if (typeof value === 'object' && value !== null && 'rest' in value && 'stopSpeed' in value && 'stopSpin' in value) {
     return `${formatScalar(value.rest as number)}、${formatScalar(value.stopSpeed as number)}、${formatScalar(value.stopSpin as number)}`;
   }

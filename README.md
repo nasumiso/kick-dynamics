@@ -39,7 +39,7 @@ KickDynamics は、キックの物理現象を解明・再現することを目�
 | 項目 | 状態 |
 |---|---|
 | 成熟度 | 物理モデル PM-1、機能 UI UM-2（[03 §2](docs/03-roadmap.md)） |
-| KickDynamics Core（`packages/physics-core/`） | Phase 1 のモデル（瞬間点接触・飛翔・バウンドと転がり）を実装。モデルの版 `0.1.1`（[ADR-0008](docs/decisions/0008-model-version.md)。V1 の後に $\kappa$ を文献値へ置き換えた） |
+| KickDynamics Core（`packages/physics-core/`） | Phase 1 のモデル（瞬間点接触・飛翔・バウンドと転がり）を実装。モデルの版 `0.2.0`（[ADR-0008](docs/decisions/0008-model-version.md)。V1 の後に $\kappa$ を文献値へ、A1 で空力係数を $(Re, S)$ の表へ置き換えた） |
 | KickDynamics Lab（`apps/web/`） | キック入力・3D 表示・軌道の再生・測定値と衝突診断・パラメータの確からしさの表示・結果の JSON 出力を実装。静的ビルドで配信できる。対象ブラウザはデスクトップの Chrome の最新版だけ（OQ-20） |
 | 数理・実装検証（VER） | Phase 1 の項目はすべて自動テストで合格（[検証レポート](docs/reports/phase1-verification-report.md)）。許容誤差は、厳密な判定を除いて仮置き（OQ-13） |
 | 独立検証（IV） | IV-01〜IV-05 の照合と差異の解決が終わった。IV-06 は Phase 1 では実施しない |
