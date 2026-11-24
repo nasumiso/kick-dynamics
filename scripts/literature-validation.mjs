@@ -24,15 +24,27 @@ registerHooks({
 });
 
 const { DEFAULT_PARAMETER_SET: LAB_DEFAULTS } = await import(new URL('apps/web/src/params/default-parameter-set.ts', root).href);
-// V1 の比較は、V1 の時点の既定（MODEL_VERSION 0.1.0）で行った。その後 P-03（κ）を 2/3 から 0.61 に置き換えた（ADR-0009）ので、
-// V1 検証レポートの数値を再現するため、κ だけ V1 の時点の値に戻す。Lab の現在の既定で計算するには、環境変数 V1_USE_LAB_DEFAULTS=1 を付ける。
+// V1 の比較は、V1 の時点の既定（MODEL_VERSION 0.1.0）で行った。その後 P-03（κ）を 2/3 から 0.61 に（ADR-0009）、P-12・P-13 を
+// (Re, S) の表に（A1、05 §10.4、MODEL_VERSION 0.2.0）置き換えたので、V1 検証レポートの数値を再現するため、κ・P-12・P-13 を
+// V1 の時点の値に戻す。Lab の現在の既定で計算するには、環境変数 V1_USE_LAB_DEFAULTS=1 を付ける（1〜12 節のうち、P-13 を S の
+// 折れ線として扱う節（10b・10e・11 の C_L）は V1 の再現用で、表の既定では動かない）。A1 のやり直しは 13 節（環境変数によらない）。
 const V1_KAPPA = 2 / 3;
+const V1_DRAG = 0.2;
+const V1_LIFT = { kind: 'spin-table', points: [[0, 0], [0.25, 0.3], [1, 0.3]] };
+const v1Entry = (entry, value) => ({ ...entry, value, confidence: entry.confidence, source: 'V1 の時点の値（A1 の前）' });
 const P = process.env.V1_USE_LAB_DEFAULTS === '1'
   ? LAB_DEFAULTS
-  : { ...LAB_DEFAULTS, ballInertiaCoefficient: { ...LAB_DEFAULTS.ballInertiaCoefficient, value: V1_KAPPA, confidence: 'provisional', source: 'V1 の時点の仮置き（ADR-0009 の前）' } };
+  : {
+    ...LAB_DEFAULTS,
+    ballInertiaCoefficient: { ...LAB_DEFAULTS.ballInertiaCoefficient, value: V1_KAPPA, confidence: 'provisional', source: 'V1 の時点の仮置き（ADR-0009 の前）' },
+    dragCoefficient: v1Entry(LAB_DEFAULTS.dragCoefficient, V1_DRAG),
+    liftCoefficient: v1Entry(LAB_DEFAULTS.liftCoefficient, V1_LIFT),
+  };
+/** P-12・P-13 の値を係数モデルにする（定数か表）。 */
+const coef = (value) => (typeof value === 'number' ? { kind: 'constant', value } : value);
 const { DEFAULT_SIMULATION_SETTINGS: S } = await import(new URL('apps/web/src/simulation/run-kick.ts', root).href);
 const { INITIAL_KICK_STATE: K0, toKickInput } = await import(new URL('apps/web/src/kick/kick-state.ts', root).href);
-const { simulateKick, simulateFlight, boxInertia, MODEL_VERSION } = await import(coreEntry);
+const { simulateKick, simulateFlight, boxInertia, evaluateReynoldsSpinTable, MODEL_VERSION } = await import(coreEntry);
 
 const deg = (x) => (x * Math.PI) / 180;
 const toDeg = (x) => (x * 180) / Math.PI;
@@ -530,10 +542,10 @@ sections[12] = () => {
     const dragL06 = { kind: 'constant', value: k * cd };
     const liftL06 = { kind: 'constant', value: k * cl };
     const variants = [
-      ['モデル（P-12・P-13）', { kind: 'constant', value: P.dragCoefficient.value }, P.liftCoefficient.value, defaultBall],
+      ['モデル（P-12・P-13）', coef(P.dragCoefficient.value), P.liftCoefficient.value, defaultBall],
       ['確認用：C_D・C_L とも L-06 の水準', dragL06, liftL06, defaultBall],
       ['C_D だけ L-06 の水準（C_L は P-13）', dragL06, P.liftCoefficient.value, defaultBall],
-      ['C_L だけ L-06 の水準（C_D は P-12）', { kind: 'constant', value: P.dragCoefficient.value }, liftL06, defaultBall],
+      ['C_L だけ L-06 の水準（C_D は P-12）', coef(P.dragCoefficient.value), liftL06, defaultBall],
     ];
     for (const [name, drag, lift, ball] of variants) {
       const o = flightFrom(v0, theta, omega, drag, lift, ball);
@@ -545,7 +557,56 @@ sections[12] = () => {
   console.log(`\nL-06 の水準：Fig. 4・5 から読み取った各軌道の速度域の C_D・|C_L|（表の右の 2 列、読み取りの不確かさ ±0.02 程度）を一定とし、断面積の比 0.0333 / πR² = ${f(0.0333 / (Math.PI * radius * radius), 3)} をかけた。「確認用」は、比較の設定（初期条件の対応づけ）が実測を再現できるかを確かめるためのもので、モデルの検証ではない。質量を L-06 の 0.424 kg にしても、x(z = −0.9) の変化は 0.1 m 未満（2026-11-15 に確認）。`);
 };
 
+/**
+ * 13. A1（空力の更新、specs/004-aero-update）の VAL-04・VAL-10 のやり直し（A4-01）。環境変数によらず、V1 の時点の空力係数
+ * （P-12 0.2、P-13 の S の折れ線）と A1 の表（Lab の現在の既定、05 §10.4）を並べる。表の作成に L-06・L-05 は使っていない
+ * （同定は L-10・L-04、spec 004 §4）ので、ここでの比較は同定に使っていないデータとの比較。
+ */
+sections[13] = () => {
+  const radius = P.ballRadius.value;
+  const ball = { mass: P.ballMass.value, radius, inertiaCoefficient: P.ballInertiaCoefficient.value };
+  const v1 = { drag: { kind: 'constant', value: V1_DRAG }, lift: V1_LIFT };
+  const a1 = { drag: coef(LAB_DEFAULTS.dragCoefficient.value), lift: coef(LAB_DEFAULTS.liftCoefficient.value) };
+  const k = 0.0333 / (Math.PI * radius * radius); // L-06 の断面積 0.0333 m² → モデルの πR²
+  const reOf = (v) => (P.airDensity.value * v * 2 * radius) / LAB_DEFAULTS.airViscosity.value;
+  const evalCoef = (model, v, sp) => {
+    if (model.kind === 'constant') return model.value;
+    if (model.kind === 'spin-table') {
+      const pts = model.points;
+      if (sp >= pts[pts.length - 1][0]) return pts[pts.length - 1][1];
+      for (let i = 1; i < pts.length; i++) if (sp <= pts[i][0]) return pts[i - 1][1] + ((pts[i][1] - pts[i - 1][1]) * (sp - pts[i - 1][0])) / (pts[i][0] - pts[i - 1][0]);
+    }
+    return evaluateReynoldsSpinTable(model, reOf(v), sp);
+  };
+
+  console.log('\n### 13. A1 の VAL-04・VAL-10 のやり直し（A4-01）\n');
+  console.log('V1：P-12 = 0.2（定数）、P-13 = S の折れ線（MODEL_VERSION 0.1.x）。A1：05 §10.4 の (Re, S) の表（0.2.0）。飛翔だけを計算する（12 節と同じ設定）。\n');
+  console.log('**13a. VAL-04：L-06 の発射装置の軌道、高さ −0.9 m までの水平距離 m（括弧は実測との差）**\n');
+  console.log('| 軌道 | v0 m/s | S0 | 実測 | V1 | A1 | 最高点 実測 / V1 / A1 m |');
+  console.log('|---|---|---|---|---|---|---|');
+  for (const [id, v0, theta, omega, peak, , , x9] of L06_TRAJECTORIES) {
+    const r1 = flightFrom(v0, theta, omega, v1.drag, v1.lift, ball);
+    const ra = flightFrom(v0, theta, omega, a1.drag, a1.lift, ball);
+    const cell = (o) => (o && o.crossings[2] !== null ? `${f(o.crossings[2])}（${o.crossings[2] - x9 >= 0 ? '+' : ''}${f(o.crossings[2] - x9)}）` : 'エラー');
+    console.log(`| ${id} | ${f(v0)} | ${f((radius * omega) / v0, 3)} | ${f(x9)} | ${cell(r1)} | ${cell(ra)} | ${f(peak)} / ${r1 ? f(r1.peak) : '—'} / ${ra ? f(ra.peak) : '—'} |`);
+  }
+  console.log('\n**13b. VAL-10：打ち出しの条件での係数（モデルの断面積 πR² に換算）**\n');
+  console.log('| 軌道 | v0 m/s | S0 | C_D：L-06 / V1 / A1 | C_L：L-06 / V1 / A1 |');
+  console.log('|---|---|---|---|---|');
+  for (const [id, v0, , omega, , , , , cd, cl] of L06_TRAJECTORIES) {
+    const sp = (radius * omega) / v0;
+    console.log(`| ${id} | ${f(v0)} | ${f(sp, 3)} | ${f(k * cd, 3)} / ${f(evalCoef(v1.drag, v0, sp), 3)} / ${f(evalCoef(a1.drag, v0, sp), 3)} | ${f(k * cl, 3)} / ${f(evalCoef(v1.lift, v0, sp), 3)} / ${f(evalCoef(a1.lift, v0, sp), 3)} |`);
+  }
+  console.log('\nL-06 の値は Fig. 4・5 の読み取り（±0.02 程度、12 節と同じ）に面積の比をかけた。L-06 は軌道から求めた値で、表の作成には使っていない。');
+  console.log('\n**13c. VAL-10：L-05（Goff & Carré 2012、32 枚パネル、軌道解析）の C_L との比較**\n');
+  console.log('L-05 の Fig. 3(a)：S_p 0.24〜0.71、Re_0 2.6〜3.1×10⁵（約 17〜21 m/s、L-05 の ν 1.54×10⁻⁵ m²/s で換算）で |C_L| 0.27〜0.31。\n');
+  console.log('| 速さ m/s | S | V1 | A1 |');
+  console.log('|---|---|---|---|');
+  for (const v of [17, 19, 21]) for (const sp of [0.25, 0.4, 0.5, 0.7]) console.log(`| ${v} | ${sp} | ${f(evalCoef(v1.lift, v, sp), 3)} | ${f(evalCoef(a1.lift, v, sp), 3)} |`);
+  console.log('\nA1 の表は S 0.5 より大きい S で端の値（S = 0.5 の値）を使う。');
+};
+
 const selected = process.argv.slice(2);
 console.log(`# V1 の掃引（MODEL_VERSION ${MODEL_VERSION}、Node ${process.version}）`);
-console.log(`\nパラメータは ${process.env.V1_USE_LAB_DEFAULTS === '1' ? 'Lab の現在の既定' : 'V1 の時点の既定（Lab の既定のうち κ = 2/3。ADR-0009 の前）'}（05 §10.2）。` + '特記のない入力は Lab の初期入力（spec 001 §4）。球速 / 足速の足速は、接触点での足の速さ |v_A^p|。');
+console.log(`\nパラメータは ${process.env.V1_USE_LAB_DEFAULTS === '1' ? 'Lab の現在の既定' : 'V1 の時点の既定（Lab の既定のうち κ = 2/3、P-12 = 0.2、P-13 = S の折れ線。ADR-0009・A1 の前）'}（05 §10.2）。` + '特記のない入力は Lab の初期入力（spec 001 §4）。球速 / 足速の足速は、接触点での足の速さ |v_A^p|。');
 for (const [id, fn] of Object.entries(sections)) if (selected.length === 0 || selected.includes(id)) fn();
