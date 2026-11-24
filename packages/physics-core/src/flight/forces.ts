@@ -63,10 +63,15 @@ export function reynoldsSpinTableError(table: ReynoldsSpinCoefficientTable, nonN
   if (spin[0] !== 0) return `the first spin parameter must be 0 (${spin[0]})`;
   if (!strictlyIncreasing(spin)) return 'the spin parameters must be strictly increasing';
   if (values.length !== reynolds.length) return `the table has ${values.length} rows for ${reynolds.length} Reynolds numbers`;
-  for (const row of values) {
-    if (row.length !== spin.length) return `a row has ${row.length} values for ${spin.length} spin parameters`;
-    if (!row.every(Number.isFinite)) return 'the table contains a non-finite value';
-    if (nonNegative && row.some((c) => c < 0)) return 'the table contains a negative value';
+  // 添字で 1 つずつ確かめる（every・some は疎な配列の穴を飛ばすため。IV-07-C の H03）。
+  for (let j = 0; j < values.length; j++) {
+    const row = values[j];
+    if (!Array.isArray(row) || row.length !== spin.length) return `row ${j} must have ${spin.length} values`;
+    for (let k = 0; k < row.length; k++) {
+      const c = row[k];
+      if (typeof c !== 'number' || !Number.isFinite(c)) return 'the table contains a non-finite value';
+      if (nonNegative && c < 0) return 'the table contains a negative value';
+    }
   }
   return null;
 }

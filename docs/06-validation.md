@@ -70,7 +70,7 @@ VER に合格しても、モデルが実物を再現していることにはな�
 | VER-F14 | $C_L$ の $S$ の折れ線（05 §7.4） | マグヌス力のみ ON、$\boldsymbol\omega\perp\mathbf v$、テスト用の表 | 節点で表の値、節点の間で線形補間、最後の点より大きい $S$ で最後の値。力の大きさが $\tfrac12\rho A C_L(S)\lvert\mathbf v_r\rvert^2$（$S = R\lvert\boldsymbol\omega\rvert/\lvert\mathbf v_r\rvert$）。$C_L(0) = 0$ の表で、力が回転の速さに比例して 0 へ近づく。無効な表（空、有限でない値、最初の $S \ne 0$、増加しない $S$）は積分の前に `invalid-coefficient` | TOL-A | 1 |
 | VER-F15 | 係数の $(Re, S)$ の表の評価（05 §7.9） | テスト用の表（$J, K \ge 2$。$J = 1$・$K = 1$ の表も） | 格子点で表の値。格子線の上では 1 次元の線形補間。セルの中で双線形補間（四隅の値と、中心で四隅の平均）。$Re < Re_0$・$Re > Re_{J-1}$・$S > S_{K-1}$ で端の値。$J = 1$（$K = 1$）でその方向に一定 | TOL-A | A1 |
 | VER-F16 | 表の検証（05 §7.9） | 無効な表（空、有限でない値、$Re$ の格子が増加しない・正でない、$S_0 \ne 0$、$S$ が増加しない、行数・列数の不一致、$C_D$ の負の値） | 積分の前に `invalid-coefficient`。$C_L$ の負の値は拒否しない。無効にした力項の表は確かめない | 厳密 | A1 |
-| VER-F17 | 表の係数での力の大きさと既存の性質 | 抗力・マグヌス力を表で与える | 抗力の大きさが $\tfrac12\rho A C_D(Re, S)\lvert\mathbf v_r\rvert^2$、マグヌス力が $\tfrac12\rho A C_L(Re, S)\lvert\mathbf v_r\rvert^2$（$Re$・$S$ は 05 §7.6）。VER-F03（抗力による散逸）、F05（重力・抗力 OFF で速さ一定の円運動。$\lvert\mathbf v\rvert$・$\lvert\boldsymbol\omega\rvert$ が一定なので $C_L$ も一定で、半径 $2m/(\rho A C_L)$）、F06（縮退）、F07（鏡映）が表の係数でも成り立つ。$\eta$ が未決定・正でないとき `invalid-parameter`（05 §10.3） | F03・F05・F07 は元の許容誤差、ほかは TOL-A | A1 |
+| VER-F17 | 表の係数での力の大きさと既存の性質 | 抗力・マグヌス力を表で与える | 抗力の大きさが $\tfrac12\rho A C_D(Re, S)\lvert\mathbf v_r\rvert^2$、マグヌス力の大きさが $\tfrac12\rho A \lvert C_L(Re, S)\rvert\lvert\mathbf v_r\rvert^2$（$Re$・$S$ は 05 §7.6。負の $C_L$ では向きが逆）。VER-F03（抗力による散逸）、F05（重力・抗力 OFF で速さ一定の円運動。$\lvert\mathbf v\rvert$・$\lvert\boldsymbol\omega\rvert$ が一定なので $C_L$ も一定で、$C_L \ne 0$ なら半径 $2m/(\rho A \lvert C_L\rvert)$、$C_L = 0$ なら直進。IV-07-C の D01）、F06（縮退）、F07（鏡映）が表の係数でも成り立つ。$\eta$ が未決定・正でないとき `invalid-parameter`（05 §10.3） | F03・F05・F07 は元の許容誤差、ほかは TOL-A | A1 |
 | VER-F18 | 表の格子線をまたぐ軌道の時間刻みの収束 | VER-F02 の方法で、軌道の途中で $Re$ が格子線をまたぐ条件 | 観測した収束次数を記録する（格子線で係数の 1 階微分が不連続なため、4 次から下がりうる）。合否の基準は設けず、P-18 の Δt での誤差の大きさを記録する | 記録のみ | A1 |
 
 **VER-F02 の記録**（T1.2-04、2026-10-18、`packages/physics-core/test/flight/convergence.test.ts`）：古典的 RK4、重力＋抗力（$C_D = 0.25$ はテスト用の任意の値）、$m_B = 0.43$ kg・$R = 0.11$ m・$\rho = 1.225$ kg/m³（いずれもテスト用）、初期位置 $(0, R, 0)$。基準解は評価する最小の刻みの 1/64 の刻みの解。時刻 1.5〜1.6 s での位置の誤差から観測した収束次数は次のとおり（実装の計測値であり、独立検証の照合前）。
@@ -96,7 +96,7 @@ VER に合格しても、モデルが実物を再現していることにはな�
 
 - 係数の 1 階微分が格子線で不連続なため、4 次の収束は保たれない。格子線をまたぐ時刻がステップの中のどこに来るかで誤差が上下し、隣り合う刻みで誤差が増えることもある（0.01 → 0.005 s）。0.02 → 0.0025 s の平均の次数は約 1.6。
 - P-18 の候補（Δt = 0.005 s）での位置の誤差は約 3×10⁻⁶ m で、軌道の表示・測定値に影響しない大きさ。
-- 自動テストは、最も粗い刻みから最も細かい刻みまでで誤差が 2 桁以上減ることだけを確かめる（合否の基準ではなく、収束していることの確認）。
+- 自動テストは、最も細かい刻みの誤差が最も粗い刻みの誤差より小さいことだけを確かめる（合否の基準ではなく、収束していることの確認。減り方の大きさに根拠のある基準はないため、判定に使わない。IV-07-C の H04）。
 
 **縮退判定の閾値**：VER-F02〜F13 のテストは、05 §10.2 の仮置きの値（P-21 $\varepsilon$、P-23 $\varepsilon_v$、P-24 $\varepsilon_\omega$）を使う（`packages/physics-core/test/flight/fixtures.ts`）。VER-F06 は、$\boldsymbol\omega \parallel \mathbf v_r$ で外積に丸め誤差が残る場合も $\varepsilon$ によって $\mathbf F_M = \mathbf 0$ になることを含めて確かめる（T1.2-05）。05 §7.5 (c) の縮退（$\lvert\boldsymbol\omega\rvert \le \varepsilon_\omega$、$\lvert\mathbf v_r\rvert \le \varepsilon_v$）は T1.2-06 で確かめる。
 

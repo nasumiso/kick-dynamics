@@ -1,5 +1,5 @@
 // VER-F18：(Re, S) の表の格子線をまたぐ軌道の時間刻みの収束（05 §7.9、06 §4.2）。合否の基準は設けず、観測した次数を記録する。
-// ここでの判定は、全体として収束することだけ。次数の記録は 06 §4.2 の VER-F18 の記録にある。
+// ここでの判定は、最も細かい刻みの誤差が最も粗い刻みより小さいことだけ。次数の記録は 06 §4.2 の VER-F18 の記録にある。
 import { describe, expect, it } from 'vitest';
 import { simulateFlightRun } from '../../src/flight/ground-events';
 import type { ReynoldsSpinCoefficientTable } from '../../src/flight/types';
@@ -45,8 +45,9 @@ export function observedOrders(steps: readonly number[]): { readonly errors: num
 describe('VER-F18: convergence across table grid lines (record only)', () => {
   it('converges as the time step is refined', () => {
     // 格子線をまたぐ位置がステップのどこに来るかで誤差が上下するため、隣り合う刻みでの単調な減少は求めない
-    // （2026-11-22 の記録：0.01 → 0.005 s で一度増えた）。最も粗い刻みから最も細かい刻みまでで 2 桁以上減ることだけを確かめる。
+    // （2026-11-22 の記録：0.01 → 0.005 s で一度増えた）。減り方の大きさにも根拠のある基準はないので、
+    // 最も細かい刻みの誤差が最も粗い刻みの誤差より小さいことだけを確かめる（IV-07-C の H04）。
     const { errors } = observedOrders([0.04, 0.02, 0.01, 0.005, 0.0025]);
-    expect(errors[errors.length - 1]!).toBeLessThan(errors[0]! / 100);
+    expect(errors[errors.length - 1]!).toBeLessThan(errors[0]!);
   });
 });

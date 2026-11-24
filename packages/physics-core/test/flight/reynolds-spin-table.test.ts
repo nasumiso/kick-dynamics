@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { RigidBodyState } from '../../src/bodies/types';
 import { computeForces, evaluateReynoldsSpinTable, reynoldsSpinTableError } from '../../src/flight/forces';
+import { groundHandler, type GroundParameters } from '../../src/ground/bounce';
 import { simulateFlightRun } from '../../src/flight/ground-events';
 import { simulateFlight } from '../../src/flight/trajectory';
 import type { CoefficientModel, ReynoldsSpinCoefficientTable } from '../../src/flight/types';
@@ -183,5 +184,80 @@ describe('VER-F17: forces with table coefficients keep their properties', () => 
       expectClose(pb[1], pa[1]);
       expectClose(pb[2], -pa[2]);
     });
+  });
+});
+
+// IV-07 の照合（IV-07-C）で追加したテスト。期待値は独立導出（verification/independent/IV-07/derivation.md §2.2）の閉形式の値。
+describe('IV-07: derivation cases', () => {
+  /** 非等間隔の 3 × 3 の表 T（導出 §2.2）。 */
+  const T: ReynoldsSpinCoefficientTable = {
+    kind: 'reynolds-spin-table',
+    reynolds: [100000, 300000, 700000],
+    spin: [0, 1 / 4, 1],
+    values: [[0, 1 / 4, 3 / 4], [1 / 2, 1, 5 / 4], [3 / 2, 7 / 4, 2]],
+  };
+
+  it('T01: returns the value at every grid point, including the interior row and column', () => {
+    T.reynolds.forEach((re, j) => T.spin.forEach((s, k) => expect(evaluateReynoldsSpinTable(T, re, s)).toBe(T.values[j]![k]!)));
+  });
+
+  it.each<[string, number, number, number]>([
+    ['T02 interior Re grid line', 300000, 1 / 8, 3 / 4],
+    ['T03 interior S grid line', 500000, 1 / 4, 11 / 8],
+    ['T04 lower-left cell centre', 200000, 1 / 8, 7 / 16],
+    ['T05 upper-left cell centre', 200000, 5 / 8, 13 / 16],
+    ['T06 lower-right cell centre', 500000, 1 / 8, 19 / 16],
+    ['T07 upper-right cell centre', 500000, 5 / 8, 3 / 2],
+    ['T08 t = 1/4, u = 3/4', 150000, 3 / 16, 23 / 64],
+    ['T09 below the Re grid', 50000, 1 / 8, 1 / 8],
+    ['T10 above the Re grid', 900000, 1 / 8, 13 / 8],
+    ['T11 above the S grid', 200000, 2, 1],
+    ['T12 low Re and high S corner', 50000, 2, 3 / 4],
+    ['T13 high Re and high S corner', 900000, 2, 2],
+    ['T14 first row', 100000, 5 / 8, 1 / 2],
+    ['T15 last row', 700000, 5 / 8, 15 / 8],
+    ['T16 first column', 500000, 0, 1],
+    ['T17 last grid point', 700000, 1, 2],
+  ])('%s', (_, re, s, expected) => {
+    expectClose(evaluateReynoldsSpinTable(T, re, s), expected);
+  });
+
+  it('rejects sparse rows (holes are not values, IV-07-C H03)', () => {
+    const row = new Array<number>(3);
+    row[0] = 0;
+    row[2] = 0.5;
+    expect(reynoldsSpinTableError({ ...T, values: [row, [1 / 2, 1, 5 / 4], [3 / 2, 7 / 4, 2]] }, false)).not.toBeNull();
+  });
+
+  it('turns on a circle of radius 2m/(ρ A |C_L|) the other way for a negative C_L (IV-07-C D01)', () => {
+    const negative: ReynoldsSpinCoefficientTable = { kind: 'reynolds-spin-table', reynolds: [1e5], spin: [0], values: [[-0.25]] };
+    const settings = { ...settingsWith({ magnus: { enabled: true, coefficient: negative } }, 0.001), maxTime: 0.5, eventTimeTolerance: 1e-9 };
+    const r = simulateFlightRun(body([20, 0, 0], [0, 0, 30]), ball, environment, settings);
+    if (!r.ok) throw new Error(r.error.message);
+    const radius = (2 * ball.mass) / (environment.airDensity * Math.PI * ball.radius ** 2 * 0.25);
+    const center: Vec3 = [0, 1 - radius, 0]; // 負の C_L では −y へ曲がる
+    for (const sample of r.value.samples) {
+      const p = sample.state.position;
+      expectClose(Math.hypot(p[0] - center[0], p[1] - center[1]), radius, { relative: 1e-9, absolute: 0 });
+    }
+  });
+
+  it.each([0, -1e-5, Number.POSITIVE_INFINITY])('rejects η = %s when a table is used in flight', (eta) => {
+    const r = simulateFlight(body([20, 5, 0], [0, 0, 30]), ball, { ...environment, airViscosity: eta },
+      { ...settingsWith({ drag: { enabled: true, coefficient: T } }, 0.01), maxTime: 1, eventTimeTolerance: 1e-9 });
+    expect(r.ok ? null : r.error.code).toBe('invalid-parameter');
+  });
+
+  it('checks the drag table and η on the rolling path too (groundHandler)', () => {
+    const base: GroundParameters = {
+      gravity: environment.gravity, restitution: 0.6, friction: 0.6, tangentialSpeedThreshold: 1e-9, diagnosticRelativeTolerance: 1e-9,
+      rollingResistance: 0.15, restSpeed: 0.3, stopSpeed: 0.01, stopSpin: 0.1, zeroSpeed: thresholds.zeroSpeed, spinFrictionLength: 0,
+      drag: { coefficient: T, airDensity: environment.airDensity, airViscosity: environment.airViscosity },
+    };
+    expect(groundHandler(ball, base).ok).toBe(true);
+    const noEta = groundHandler(ball, { ...base, drag: { ...base.drag!, airViscosity: Number.NaN } });
+    expect(noEta.ok ? null : noEta.error.code).toBe('invalid-parameter');
+    const bad = groundHandler(ball, { ...base, drag: { ...base.drag!, coefficient: { ...T, spin: [0.1, 0.25, 1] } } });
+    expect(bad.ok ? null : bad.error.code).toBe('invalid-coefficient');
   });
 });
