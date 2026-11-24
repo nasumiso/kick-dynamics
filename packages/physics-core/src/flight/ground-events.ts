@@ -9,7 +9,7 @@
 import type { BallParams, RigidBodyState } from '../bodies/types';
 import { GROUND_HEIGHT } from '../frames';
 import { fail, ok, type SimResult } from '../result';
-import { spinTableError } from './forces';
+import { coefficientTableError, usesReynolds } from './forces';
 import { rk4Step } from './integrator';
 import type {
   CoefficientModel, FlightEnvironment, FlightEvent, FlightSample, FlightSimulationSettings, GroundContact, GroundContactHandler,
@@ -50,11 +50,13 @@ function validate(settings: FlightSimulationSettings, environment: FlightEnviron
   if (magnus.enabled) models.push(['C_L', magnus.coefficient]);
   if (spinDecay.kind === 'torque-coefficient') models.push(['C_M', spinDecay.coefficient]);
   for (const [name, model] of models) {
-    const error = model.kind === 'spin-table' ? spinTableError(model) : null;
+    // C_D・C_M の (Re, S) の表は負の値を拒否する（05 §7.9）。C_L の符号は制限しない（05 §7.4）。
+    const error = coefficientTableError(model, name !== 'C_L');
     if (error !== null) return fail('invalid-coefficient', `${name}: ${error}`);
   }
-  // η（P-11）は、係数を関数で与えるときの Re の計算にだけ使うので、そのときだけ正の有限値を確かめる（05 §10.3）。
-  if (models.some(([, model]) => model.kind === 'function')) {
+  // η（P-11）は、係数を Re の関数または (Re, S) の表で与えるときの Re の計算にだけ使うので、そのときだけ
+  // 正の有限値を確かめる（05 §10.3）。
+  if (models.some(([, model]) => usesReynolds(model))) {
     const eta = environment.airViscosity;
     if (!(Number.isFinite(eta) && eta > 0)) return fail('invalid-parameter', `air viscosity η must be finite and positive when a coefficient is a function of Re (${eta})`);
   }

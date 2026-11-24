@@ -35,7 +35,7 @@ describe('result file (AC-14)', () => {
       expect([...original.input.contactDirection, ...original.input.footAngularVelocity, ...original.input.footContactLocation,
         ...original.input.footContactPointVelocity, original.input.footRollAboutNormal].some((x) => Object.is(x, -0))).toBe(false);
       expect(file.parameters.ballRadius.confidence).toBe('provisional'); // 確からしさ・出典も出力される
-      expect(file.parameters.dragCoefficient.source).toContain('Goff');
+      expect(file.parameters.dragCoefficient.source).toContain('Asai'); // メタデータ（出典）が出力に含まれる（P-12 の出典は A1 で置き換え）
 
       const rerun = simulateKick(file.input as KickInput, file.parameters as ParameterSet, file.settings as SimulationSettings);
       if (!rerun.ok) throw new Error(rerun.error.message);

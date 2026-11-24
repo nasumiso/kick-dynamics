@@ -4,7 +4,8 @@ import { gravityVector } from '../frames';
 import { add, cross, length, scale, sub, ZERO, type Vec3 } from '../math/vec3';
 import { fail, ok, type SimResult } from '../result';
 import type {
-  CoefficientModel, DegeneracyThresholds, FlightEnvironment, FlightForceSettings, ForceAndTorque, SpinCoefficientTable,
+  CoefficientModel, DegeneracyThresholds, FlightEnvironment, FlightForceSettings, ForceAndTorque, ReynoldsSpinCoefficientTable,
+  SpinCoefficientTable,
 } from './types';
 
 export interface AeroContext {
@@ -46,6 +47,65 @@ export function evaluateSpinTable(table: SpinCoefficientTable, spinParameter: nu
   return c0 + ((c1 - c0) * (spinParameter - s0)) / (s1 - s0);
 }
 
+const strictlyIncreasing = (xs: readonly number[]): boolean => xs.every((x, i) => i === 0 || x > xs[i - 1]!);
+
+/**
+ * (Re, S) の表が有効か（05 §7.9）：格子・値がすべて有限、Re の格子が正で狭義単調増加、S の格子が 0 から狭義単調増加、
+ * 値の行数・列数が格子と一致。nonNegative（C_D・C_M）なら値が非負。無効なら理由を返す。
+ */
+export function reynoldsSpinTableError(table: ReynoldsSpinCoefficientTable, nonNegative: boolean): string | null {
+  const { reynolds, spin, values } = table;
+  if (reynolds.length === 0) return 'the Reynolds number grid is empty';
+  if (spin.length === 0) return 'the spin parameter grid is empty';
+  if (![...reynolds, ...spin].every(Number.isFinite)) return 'a grid contains a non-finite value';
+  if (!(reynolds[0]! > 0)) return `the Reynolds numbers must be positive (${reynolds[0]})`;
+  if (!strictlyIncreasing(reynolds)) return 'the Reynolds numbers must be strictly increasing';
+  if (spin[0] !== 0) return `the first spin parameter must be 0 (${spin[0]})`;
+  if (!strictlyIncreasing(spin)) return 'the spin parameters must be strictly increasing';
+  if (values.length !== reynolds.length) return `the table has ${values.length} rows for ${reynolds.length} Reynolds numbers`;
+  // 添字で 1 つずつ確かめる（every・some は疎な配列の穴を飛ばすため。IV-07-C の H03）。
+  for (let j = 0; j < values.length; j++) {
+    const row = values[j];
+    if (!Array.isArray(row) || row.length !== spin.length) return `row ${j} must have ${spin.length} values`;
+    for (let k = 0; k < row.length; k++) {
+      const c = row[k];
+      if (typeof c !== 'number' || !Number.isFinite(c)) return 'the table contains a non-finite value';
+      if (nonNegative && c < 0) return 'the table contains a negative value';
+    }
+  }
+  return null;
+}
+
+/** 格子 grid の上で x を含む区間の左端の添字 i と、区間内の位置 t ∈ [0, 1]。x は範囲に切り詰めてから使う。 */
+function locate(grid: readonly number[], x: number): readonly [number, number] {
+  if (grid.length === 1) return [0, 0];
+  const clamped = Math.min(Math.max(x, grid[0]!), grid[grid.length - 1]!);
+  let i = 0;
+  while (i < grid.length - 2 && clamped > grid[i + 1]!) i++;
+  return [i, (clamped - grid[i]!) / (grid[i + 1]! - grid[i]!)];
+}
+
+/** (Re, S) の表を双線形補間で評価する（05 §7.9）。範囲外は端の値。表は reynoldsSpinTableError で確かめたもの。 */
+export function evaluateReynoldsSpinTable(table: ReynoldsSpinCoefficientTable, reynolds: number, spinParameter: number): number {
+  const [j, t] = locate(table.reynolds, reynolds);
+  const [k, u] = locate(table.spin, spinParameter);
+  const row = (jj: number) => table.values[Math.min(jj, table.reynolds.length - 1)]!;
+  const at = (jj: number, kk: number) => row(jj)[Math.min(kk, table.spin.length - 1)]!;
+  return (1 - t) * (1 - u) * at(j, k) + t * (1 - u) * at(j + 1, k) + (1 - t) * u * at(j, k + 1) + t * u * at(j + 1, k + 1);
+}
+
+/** 係数モデルの表の構造の誤り（表でなければ null）。積分の前に一度だけ確かめる（05 §7.4・§7.9）。 */
+export function coefficientTableError(model: CoefficientModel, nonNegative: boolean): string | null {
+  if (model.kind === 'spin-table') return spinTableError(model);
+  if (model.kind === 'reynolds-spin-table') return reynoldsSpinTableError(model, nonNegative);
+  return null;
+}
+
+/** 係数の評価に Re（したがって η、P-11）を使うか（05 §10.3）。 */
+export function usesReynolds(model: CoefficientModel): boolean {
+  return model.kind === 'function' || model.kind === 'reynolds-spin-table';
+}
+
 /** 係数モデルを評価する。結果が有限でない、または nonNegative なのに負なら SimResult のエラー（04 §6）。 */
 export function evaluateCoefficient(
   model: CoefficientModel, context: AeroContext, name: string, nonNegative: boolean,
@@ -54,7 +114,9 @@ export function evaluateCoefficient(
     ? model.value
     : model.kind === 'spin-table'
       ? evaluateSpinTable(model, context.spinParameter)
-      : model.evaluate(context.reynolds, context.spinParameter);
+      : model.kind === 'reynolds-spin-table'
+        ? evaluateReynoldsSpinTable(model, context.reynolds, context.spinParameter)
+        : model.evaluate(context.reynolds, context.spinParameter);
   if (!Number.isFinite(value)) {
     return fail('invalid-coefficient', `${name} is not finite (${value})`);
   }

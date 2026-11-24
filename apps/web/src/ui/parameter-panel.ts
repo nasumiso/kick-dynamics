@@ -5,18 +5,33 @@ import { CONFIDENCE_LABELS, formatParameterValue, needsAttention } from '../para
 import { PARAMETER_MEANINGS } from '../params/default-parameter-set';
 import { element, section } from './dom';
 
+/** (Re, S) の表の全体（05 §10.4）。行は Re（換算した速さを併記）、列は S。 */
+function tableDetails(entry: ParameterEntry<unknown>): HTMLElement[] {
+  const value = entry.value as { kind?: unknown; reynolds?: readonly number[]; spin?: readonly number[]; values?: readonly (readonly number[])[] } | null;
+  if (!value || value.kind !== 'reynolds-spin-table' || !value.reynolds || !value.spin || !value.values) return [];
+  const head = element('tr', {}, element('th', {}, 'Re＼S'), ...value.spin.map((s) => element('th', {}, String(s))));
+  const rows = value.reynolds.map((re, j) => element('tr', {},
+    element('th', {}, re.toExponential(2)), ...value.values![j]!.map((c) => element('td', {}, c.toFixed(3)))));
+  return [element('details', { class: 'coefficient-table' }, element('summary', {}, '表の全体'),
+    element('table', {}, element('thead', {}, head), element('tbody', {}, ...rows)))];
+}
+
 export function createParameterPanel(parameters: ParameterSet): HTMLElement {
   const entries = Object.values(parameters) as Array<ParameterEntry<unknown>>;
   entries.sort((a, b) => a.id.localeCompare(b.id));
-  const rows = entries.map((entry) => {
+  const rows = entries.flatMap((entry) => {
     const badge = element('span', { class: `badge ${needsAttention(entry.confidence) ? 'badge-warn' : 'badge-info'}` }, CONFIDENCE_LABELS[entry.confidence]);
-    return element('tr', { 'data-testid': `param-${entry.id}`, class: needsAttention(entry.confidence) ? 'attention' : '' },
+    const row = element('tr', { 'data-testid': `param-${entry.id}`, class: needsAttention(entry.confidence) ? 'attention' : '' },
       element('td', { class: 'param-id' }, entry.id),
       element('td', {},
         element('div', {}, `${PARAMETER_MEANINGS[entry.id]}（${entry.symbol}）`),
-        element('div', { class: 'param-source' }, entry.source)),
+        element('div', { class: 'param-source' }, entry.source),
+        ...(entry.applicability ? [element('div', { class: 'param-source', 'data-testid': `param-applicability-${entry.id}` }, `適用条件：${entry.applicability}`)] : [])),
       element('td', { class: 'param-value' }, formatParameterValue(entry), element('div', { class: 'unit' }, entry.unit)),
       element('td', {}, badge));
+    // (Re, S) の表は、パラメータの行の下にパネル幅いっぱいの行で出す（値の列には入りきらないため）。
+    const details = tableDetails(entry);
+    return details.length === 0 ? [row] : [row, element('tr', { class: 'coefficient-table-row' }, element('td', { colspan: '4' }, ...details))];
   });
   const counts = (label: string, n: number): string => `${label} ${n}`;
   const provisional = entries.filter((e) => e.confidence === 'provisional').length;

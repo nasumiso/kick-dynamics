@@ -355,3 +355,48 @@ describe('simulateKick', () => {
     if (!result.ok) expect(result.error.code).toBe('separating-input');
   });
 });
+
+// A1：P-12・P-13 を (Re, S) の表で与える（05 §7.9、§10.3、04 §6）。表の値はテスト用の任意の値。
+describe('simulateKick with (Re, S) coefficient tables (A1)', () => {
+  const dragTable = { kind: 'reynolds-spin-table', reynolds: [1e5, 4e5], spin: [0, 0.5], values: [[0.4, 0.5], [0.15, 0.3]] } as const;
+  const liftTable = { kind: 'reynolds-spin-table', reynolds: [1e5, 4e5], spin: [0, 0.5], values: [[0, 0.3], [0, 0.35]] } as const;
+  const withTables = (eta: number | null): ParameterSet => ({
+    ...parameters,
+    airViscosity: { ...parameters.airViscosity, value: eta },
+    dragCoefficient: { ...parameters.dragCoefficient, value: dragTable },
+    liftCoefficient: { ...parameters.liftCoefficient, value: liftTable },
+  });
+  const flightOnly: SimulationSettings = { ...settings, ground: 'stop-at-first-contact' };
+
+  it('accepts the tables and is deterministic', () => {
+    const a = run(input, withTables(1.789e-5), flightOnly);
+    const b = run(input, withTables(1.789e-5), flightOnly);
+    expect(a.trajectory.position).toEqual(b.trajectory.position);
+    expect(a.trajectory.time.length).toBeGreaterThan(10);
+  });
+
+  it('requires η (P-11) only when a table is used by an enabled force', () => {
+    const missing = simulateKick(input, withTables(null), flightOnly);
+    expect(missing.ok ? null : missing.error.details).toEqual({ missing: ['P-11'] });
+    // 抗力・マグヌス力を OFF にすれば、表があっても η は要らない
+    const off = simulateKick(input, withTables(null), { ...flightOnly, forces: { ...flightOnly.forces, drag: false, magnus: false } });
+    expect(off.ok).toBe(true);
+    // 定数の係数では η は要らない（これまでどおり）
+    expect(simulateKick(input, parameters, flightOnly).ok).toBe(true);
+  });
+
+  it('checks the table structure before the value ranges (invalid-coefficient first)', () => {
+    const bad = { ...dragTable, values: [[0.4, Number.NaN], [0.15, 0.3]] };
+    const r = simulateKick(input, { ...withTables(1.789e-5), dragCoefficient: { ...parameters.dragCoefficient, value: bad } }, flightOnly);
+    expect(r.ok ? null : r.error.code).toBe('invalid-coefficient');
+    const negative = { ...dragTable, values: [[0.4, -0.1], [0.15, 0.3]] };
+    const n = simulateKick(input, { ...withTables(1.789e-5), dragCoefficient: { ...parameters.dragCoefficient, value: negative } }, flightOnly);
+    expect(n.ok ? null : n.error.code).toBe('invalid-coefficient');
+  });
+
+  it('applies the 05 §10.3 range to every table value', () => {
+    const tooLarge = { ...liftTable, values: [[0, 0.3], [0, 3]] };
+    const r = simulateKick(input, { ...withTables(1.789e-5), liftCoefficient: { ...parameters.liftCoefficient, value: tooLarge } }, flightOnly);
+    expect(r.ok ? null : r.error.code).toBe('invalid-parameter');
+  });
+});

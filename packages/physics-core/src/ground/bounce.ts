@@ -5,7 +5,7 @@ import { validateBall } from '../bodies/validate';
 import { solveContact, type ContactCoefficients } from '../contact/solver';
 import type { ImpactResult } from '../contact/types';
 import { GROUND_HEIGHT, WORLD_UP } from '../frames';
-import { spinTableError } from '../flight/forces';
+import { coefficientTableError, usesReynolds } from '../flight/forces';
 import type { GroundContactHandler } from '../flight/types';
 import { IDENTITY_QUAT } from '../math/quat';
 import type { Vec3 } from '../math/vec3';
@@ -59,13 +59,11 @@ function validateGround(ball: BallParams, params: GroundParameters): SimResult<v
   const drag = params.drag;
   if (drag !== null) {
     if (!(Number.isFinite(drag.airDensity) && drag.airDensity >= 0)) return fail('invalid-parameter', `air density must be finite and non-negative (${drag.airDensity})`);
-    // η は、係数を関数で与えるときの Re の計算にだけ使う（05 §10.3。飛翔と同じ扱い）。
-    if (drag.coefficient.kind === 'function' && !(Number.isFinite(drag.airViscosity) && drag.airViscosity > 0)) {
-      return fail('invalid-parameter', `air viscosity η must be finite and positive when C_D is a function of Re (${drag.airViscosity})`);
-    }
-    if (drag.coefficient.kind === 'spin-table') {
-      const error = spinTableError(drag.coefficient);
-      if (error !== null) return fail('invalid-coefficient', `C_D: ${error}`);
+    // 表の構造を先に確かめる。η は、係数が Re に依存するとき（関数・(Re, S) の表）の Re の計算にだけ使う（05 §10.3。飛翔と同じ扱い）。
+    const error = coefficientTableError(drag.coefficient, true);
+    if (error !== null) return fail('invalid-coefficient', `C_D: ${error}`);
+    if (usesReynolds(drag.coefficient) && !(Number.isFinite(drag.airViscosity) && drag.airViscosity > 0)) {
+      return fail('invalid-parameter', `air viscosity η must be finite and positive when C_D depends on Re (${drag.airViscosity})`);
     }
   }
   const tau = params.diagnosticRelativeTolerance;

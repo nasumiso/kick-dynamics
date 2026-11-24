@@ -41,7 +41,11 @@ describe('parameter display', () => {
     expect(formatParameterValue(DEFAULT_PARAMETER_SET.ballMass)).toBe('0.43（範囲 0.41–0.45）');
     expect(formatParameterValue({ ...DEFAULT_PARAMETER_SET.ballMass, value: null })).toBe('候補範囲 0.41–0.45');
     expect(formatParameterValue(DEFAULT_PARAMETER_SET.spinDecayLinear)).toBe('—（未決定）');
-    expect(formatParameterValue(DEFAULT_PARAMETER_SET.liftCoefficient)).toBe('S の折れ線 (0, 0) (0.25, 0.3) (1, 0.3)');
+    expect(formatParameterValue({ ...DEFAULT_PARAMETER_SET.liftCoefficient, value: { kind: 'spin-table', points: [[0, 0], [0.25, 0.3], [1, 0.3]] } }))
+      .toBe('S の折れ線 (0, 0) (0.25, 0.3) (1, 0.3)');
+    // (Re, S) の表（05 §10.4）は要約を出す（全体はパネルの「表の全体」）
+    expect(formatParameterValue(DEFAULT_PARAMETER_SET.liftCoefficient)).toBe('(Re, S) の表 9 × 9（Re 1.52875e+5–4.51107e+5、S 0–0.5、値 0–0.339）'.replace('1.52875e+5', '1.53e+5').replace('4.51107e+5', '4.51e+5'));
+    expect(formatParameterValue(DEFAULT_PARAMETER_SET.dragCoefficient)).toMatch(/^\(Re, S\) の表 16 × 9（/);
     expect(formatParameterValue(DEFAULT_PARAMETER_SET.restThresholds)).toBe('0.1、0.05、0.5');
     expect(formatParameterValue(DEFAULT_PARAMETER_SET.footDimensions)).toBe('(0.26, 0.1, 0.08)');
     expect(formatParameterValue(DEFAULT_PARAMETER_SET.footInertiaBody)).toBe('diag(0.00164, 0.0074, 0.00776)') // 05 §10.2 の表記と同じ;

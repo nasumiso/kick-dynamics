@@ -338,3 +338,28 @@ table.results td.si {
   stroke: #ff3b30;
   stroke-width: 3;
 }
+
+/* 空力係数の (Re, S) の表（05 §10.4） */
+.coefficient-table {
+  margin-top: 4px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.coefficient-table table {
+  border-collapse: collapse;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.coefficient-table th,
+.coefficient-table td {
+  padding: 1px 4px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.coefficient-table th {
+  color: #9aa4ae;
+  font-weight: normal;
+}

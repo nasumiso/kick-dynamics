@@ -39,7 +39,7 @@ KickDynamics は、キックの物理現象を解明・再現することを目�
 | 項目 | 状態 |
 |---|---|
 | 成熟度 | 物理モデル PM-1、機能 UI UM-2（[03 §2](docs/03-roadmap.md)） |
-| KickDynamics Core（`packages/physics-core/`） | Phase 1 のモデル（瞬間点接触・飛翔・バウンドと転がり）を実装。モデルの版 `0.1.1`（[ADR-0008](docs/decisions/0008-model-version.md)。V1 の後に $\kappa$ を文献値へ置き換えた） |
+| KickDynamics Core（`packages/physics-core/`） | Phase 1 のモデル（瞬間点接触・飛翔・バウンドと転がり）を実装。モデルの版 `0.2.0`（[ADR-0008](docs/decisions/0008-model-version.md)。V1 の後に $\kappa$ を文献値へ、A1 で空力係数を $(Re, S)$ の表へ置き換えた） |
 | KickDynamics Lab（`apps/web/`） | キック入力・3D 表示・軌道の再生・測定値と衝突診断・パラメータの確からしさの表示・結果の JSON 出力を実装。静的ビルドで配信できる。対象ブラウザはデスクトップの Chrome の最新版だけ（OQ-20） |
 | 数理・実装検証（VER） | Phase 1 の項目はすべて自動テストで合格（[検証レポート](docs/reports/phase1-verification-report.md)）。許容誤差は、厳密な判定を除いて仮置き（OQ-13） |
 | 独立検証（IV） | IV-01〜IV-05 の照合と差異の解決が終わった。IV-06 は Phase 1 では実施しない |
@@ -47,7 +47,7 @@ KickDynamics は、キックの物理現象を解明・再現することを目�
 | パラメータ | 大半が仮置き（[05 §10.2](docs/05-physics-model.md)） |
 | ライセンス | 未決定 |
 
-文献による妥当性確認（V1、[03 §8](docs/03-roadmap.md)）は完了しました。続けてキック入力 UI の改善（U1、仮称、[spec 003](specs/003-input-ui/spec.md)。打点パッド・回転ギズモ・足の後ろからの視点）も完了しました（2026-11-22）。次は空力の更新（A1、仮称）で、その後に Phase 2（点接触のばねと脚のモデル）、Phase 3（面接触・足形状）の順に進めます（[ADR-0009](docs/decisions/0009-plan-after-v1.md)、[03 §3・§5](docs/03-roadmap.md)）。
+文献による妥当性確認（V1、[03 §8](docs/03-roadmap.md)）は完了しました。続けてキック入力 UI の改善（U1、仮称、[spec 003](specs/003-input-ui/spec.md)。打点パッド・回転ギズモ・足の後ろからの視点）も完了しました（2026-11-22）。空力の更新（A1、仮称、[spec 004](specs/004-aero-update/spec.md)。空力係数を $(Re, S)$ の表に置き換え）も完了しました（2026-11-25、[A1 検証レポート](docs/reports/a1-validation-report.md)）。次は Phase 2（点接触のばねと脚のモデル）、その後に Phase 3（面接触・足形状）の順に進めます（[ADR-0009](docs/decisions/0009-plan-after-v1.md)、[03 §3・§5](docs/03-roadmap.md)）。
 
 ## 技術方針（暫定）
 
